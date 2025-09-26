@@ -14,6 +14,18 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
 
+// Add this new table definition to your schema.ts file
+
+export const vlhAdmin = pgTable("vlh_admin", {
+  id: serial("id").primaryKey(),
+  mobile: varchar("mobile", { length: 10 }).notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Also, add this type export at the bottom of the file
+export type VlhAdmin = typeof vlhAdmin.$inferSelect;
+
 // Session storage table (required for Replit Auth)
 export const sessions = pgTable(
   "sessions",
