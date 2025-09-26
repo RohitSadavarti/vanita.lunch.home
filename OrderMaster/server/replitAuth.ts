@@ -47,7 +47,10 @@ export async function setupAuth(app: Express) {
  * For a production app, you should replace this with a real
  * authentication check (e.g., username/password, or another OAuth provider).
  */
-export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  // This function now immediately allows the request to proceed.
-  return next();
+export const isAuthenticated: RequestHandler = (req, res, next) => {
+  if (req.session && req.session.user && req.session.user.isAdmin) {
+    return next();
+  } else {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
 };
