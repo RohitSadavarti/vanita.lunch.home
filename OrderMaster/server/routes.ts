@@ -7,6 +7,7 @@ import { insertMenuItemSchema, insertOrderSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import bcrypt from "bcryptjs";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -47,35 +48,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   /**
    * 🔹 NEW: Login endpoint
    */
-  app.post('/api/login', async (req: any, res) => {
-    const { mobile, password } = req.body;
+  app.post('/api/login', async (req, res) => {
+  const { mobile, password } = req.body;
 
-    if (!mobile || !password) {
-      return res.status(400).json({ message: 'Mobile and password are required' });
+  if (!mobile || !password) {
+    return res.status(400).json({ message: 'Mobile and password are required' });
+  }
+
+  try {
+    const admin = await storage.getAdminByMobile(mobile);
+
+    if (!admin) {
+      // Use a generic message to prevent user enumeration
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    try {
-      const admin = await storage.getAdminByMobile(mobile);
-
-      if (!admin) {
-        return res.status(401).json({ message: 'Invalid credentials' });
-      }
-
-      const isValid = await storage.verifyPassword(password, admin.passwordHash);
-      if (!isValid) {
-        return res.status(401).json({ message: 'Invalid credentials' });
-      }
-
-      // Save session
-      req.session.user = { id: admin.id, mobile: admin.mobile, isAdmin: true };
-      req.session.save();
-
-      return res.status(200).json({ message: 'Login successful' });
-    } catch (error) {
-      console.error("Login error:", error);
-      return res.status(500).json({ message: "Internal server error" });
+    // Use bcryptjs to securely compare the password with the hash from the DB
+    const isValid = bcrypt.compareSync(password, admin.passwordHash);
+    
+    if (!isValid) {
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
-  });
+
+    // If valid, create a session
+    req.session.user = { id: admin.id, mobile: admin.mobile, isAdmin: true };
+    req.session.save();
+
+    return res.status(200).json({ message: 'Login successful' });
+
+  } catch (error) {
+    console.error("Login error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+});
 
   /**
    * 🔹 NEW: Logout endpoint
