@@ -1,24 +1,19 @@
 import { sql } from 'drizzle-orm';
 import {
-  users,
-  menuItems,
-  orders,
-  orderItems,
-  vlhAdmin, // <-- Add this here
-  type User,
-  type UpsertUser,
-  type MenuItem,
-  type InsertMenuItem,
-  type Order,
-  type InsertOrder,
-  type OrderItem,
-  type InsertOrderItem,
-  type VlhAdmin,
-} from "@shared/schema";
+  index,
+  jsonb,
+  pgTable,
+  timestamp,
+  varchar,
+  text,
+  decimal,
+  integer,
+  boolean,
+  serial, 
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
-
 // Add this new table definition to your schema.ts file
 
 export const vlhAdmin = pgTable("vlh_admin", {
