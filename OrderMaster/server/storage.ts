@@ -60,6 +60,14 @@ export class DatabaseStorage implements IStorage {
       .where(eq(vlhAdmin.mobile, mobile));
     return admin;
   }
+  // Add this method inside the DatabaseStorage class in storage.ts
+  async verifyPassword(password: string, hash: string): Promise<boolean> {
+    // This is a simplified check. PostgreSQL's crypt() is not directly available
+    // in Node.js. This line simulates the check.
+    // For a real app, you MUST use a library like bcryptjs to compare hashes.
+    const [result] = await db.execute(sql`SELECT '${sql.raw(password)}' = crypt('${sql.raw(password)}', '${sql.raw(hash)}') as is_valid`);
+    return (result as any)?.is_valid === true;
+  }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
