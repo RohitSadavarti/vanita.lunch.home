@@ -3,7 +3,7 @@ import {
   menuItems,
   orders,
   orderItems,
-  vlhAdmin, // This is the required import
+  vlhAdmin, // <-- Make sure this is added
   type User,
   type UpsertUser,
   type MenuItem,
