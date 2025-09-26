@@ -1,16 +1,20 @@
 import { sql } from 'drizzle-orm';
 import {
-  index,
-  jsonb,
-  pgTable,
-  timestamp,
-  varchar,
-  text,
-  decimal,
-  integer,
-  boolean,
-  serial, // <-- Add this word here
-} from "drizzle-orm/pg-core";
+  users,
+  menuItems,
+  orders,
+  orderItems,
+  vlhAdmin, // <-- Add this here
+  type User,
+  type UpsertUser,
+  type MenuItem,
+  type InsertMenuItem,
+  type Order,
+  type InsertOrder,
+  type OrderItem,
+  type InsertOrderItem,
+  type VlhAdmin,
+} from "@shared/schema";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
