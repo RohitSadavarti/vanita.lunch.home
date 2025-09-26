@@ -3,6 +3,7 @@ import {
   menuItems,
   orders,
   orderItems,
+  vlhAdmin, // <-- Make sure this is added
   type User,
   type UpsertUser,
   type MenuItem,
@@ -11,8 +12,8 @@ import {
   type InsertOrder,
   type OrderItem,
   type InsertOrderItem,
-} from "@shared/schema";
-import { db } from "./db";
+  type VlhAdmin,
+} from "@shared/schema";import { db } from "./db";
 import { eq, desc, and, like, sql } from "drizzle-orm";
 
 export interface IStorage {
