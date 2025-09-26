@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated } from "./replitAuth"; // still using this for session setup
 import { insertMenuItemSchema, insertOrderSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
@@ -29,12 +29,11 @@ const upload = multer({
 const adminConnections = new Set<WebSocket>();
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
+  // Auth/session setup
   await setupAuth(app);
 
   // Serve uploaded files
-  app.use('/uploads', (req, res, next) => {
-    // Basic security check for file access
+  app.use('/uploads', (req, res) => {
     const filename = path.basename(req.path);
     const filepath = path.join(process.cwd(), 'uploads', filename);
     
@@ -45,45 +44,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Auth routes
-app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-  try {
-    // Since we removed Replit auth, req.user is undefined.
-    // We will return a mock admin user to allow the frontend to load.
-    // In a real application, you would replace this with a proper user session check.
-    const mockAdminUser = {
-      id: 'mock-admin-user',
-      email: 'admin@example.com',
-      firstName: 'Admin',
-      lastName: 'User',
-      profileImageUrl: '',
-      isAdmin: true, // This is important for the frontend logic
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    res.json(mockAdminUser);
-  } catch (error) {
-    console.error("Error fetching user:", error);
-    res.status(500).json({ message: "Failed to fetch user" });
-  }
-});
-  // Admin check middleware
+  /**
+   * 🔹 NEW: Login endpoint
+   */
+  app.post('/api/login', async (req: any, res) => {
+    const { mobile, password } = req.body;
+
+    if (!mobile || !password) {
+      return res.status(400).json({ message: 'Mobile and password are required' });
+    }
+
+    try {
+      const admin = await storage.getAdminByMobile(mobile);
+
+      if (!admin) {
+        return res.status(401).json({ message: 'Invalid credentials' });
+      }
+
+      const isValid = await storage.verifyPassword(password, admin.passwordHash);
+      if (!isValid) {
+        return res.status(401).json({ message: 'Invalid credentials' });
+      }
+
+      // Save session
+      req.session.user = { id: admin.id, mobile: admin.mobile, isAdmin: true };
+      req.session.save();
+
+      return res.status(200).json({ message: 'Login successful' });
+    } catch (error) {
+      console.error("Login error:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  /**
+   * 🔹 NEW: Logout endpoint
+   */
+  app.post('/api/logout', (req: any, res) => {
+    req.session.destroy((err: any) => {
+      if (err) {
+        return res.status(500).json({ message: 'Could not log out.' });
+      }
+      res.clearCookie('connect.sid');
+      return res.status(200).json({ message: 'Logout successful' });
+    });
+  });
+
+  /**
+   * 🔹 UPDATED: Auth user endpoint
+   */
+  app.get('/api/auth/user', (req: any, res) => {
+    if (req.session.user && req.session.user.isAdmin) {
+      res.json(req.session.user);
+    } else {
+      res.status(401).json({ message: 'Unauthorized' });
+    }
+  });
+
+  // Admin check middleware (now uses session)
   const isAdmin = async (req: any, res: any, next: any) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      
-      if (!user || !user.isAdmin) {
+      if (!req.session.user || !req.session.user.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
-      
       next();
     } catch (error) {
       res.status(500).json({ message: "Failed to verify admin status" });
     }
   };
 
-  // Menu management routes
+  /**
+   * 🔹 Admin menu management routes
+   */
   app.get('/api/admin/menu', isAuthenticated, isAdmin, async (req, res) => {
     try {
       const menuItems = await storage.getMenuItems();
@@ -103,7 +135,6 @@ app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
 
       let imageUrl = null;
       if (req.file) {
-        // In production, you'd upload to a cloud storage service
         imageUrl = `/uploads/${req.file.filename}`;
       }
 
@@ -112,7 +143,6 @@ app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
         imageUrl,
       });
 
-      // Notify all admin clients about new menu item
       broadcastToAdmins({
         type: 'MENU_ITEM_ADDED',
         data: menuItem
@@ -157,18 +187,15 @@ app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     }
   });
 
-  // Order management routes
+  /**
+   * 🔹 Order management
+   */
   app.get('/api/admin/orders', isAuthenticated, isAdmin, async (req, res) => {
     try {
       const { status } = req.query;
-      let orders;
-      
-      if (status && typeof status === 'string') {
-        orders = await storage.getOrdersByStatus(status);
-      } else {
-        orders = await storage.getOrders();
-      }
-      
+      const orders = status && typeof status === 'string'
+        ? await storage.getOrdersByStatus(status)
+        : await storage.getOrders();
       res.json(orders);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -180,11 +207,8 @@ app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
       const order = await storage.getOrder(id);
-      
-      if (!order) {
-        return res.status(404).json({ message: "Order not found" });
-      }
-      
+      if (!order) return res.status(404).json({ message: "Order not found" });
+
       const orderItems = await storage.getOrderItems(id);
       res.json({ ...order, orderItems });
     } catch (error) {
@@ -197,19 +221,14 @@ app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
       const { status } = req.body;
-      
+
       if (!['preparing', 'ready', 'completed'].includes(status)) {
         return res.status(400).json({ message: "Invalid order status" });
       }
-      
+
       const order = await storage.updateOrderStatus(id, status);
-      
-      // Notify all admin clients about order status change
-      broadcastToAdmins({
-        type: 'ORDER_STATUS_UPDATED',
-        data: order
-      });
-      
+      broadcastToAdmins({ type: 'ORDER_STATUS_UPDATED', data: order });
+
       res.json(order);
     } catch (error) {
       console.error("Error updating order status:", error);
@@ -217,7 +236,9 @@ app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     }
   });
 
-  // Customer order creation (for when customers place orders)
+  /**
+   * 🔹 Customer order creation
+   */
   app.post('/api/orders', async (req, res) => {
     try {
       const validation = insertOrderSchema.safeParse(req.body);
@@ -227,13 +248,8 @@ app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
 
       const { items, ...orderData } = req.body;
       const order = await storage.createOrder(orderData, items);
-      
-      // Notify all admin clients about new order
-      broadcastToAdmins({
-        type: 'NEW_ORDER',
-        data: order
-      });
-      
+
+      broadcastToAdmins({ type: 'NEW_ORDER', data: order });
       res.json(order);
     } catch (error) {
       console.error("Error creating order:", error);
@@ -241,7 +257,9 @@ app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     }
   });
 
-  // Dashboard stats
+  /**
+   * 🔹 Dashboard stats
+   */
   app.get('/api/admin/stats', isAuthenticated, isAdmin, async (req, res) => {
     try {
       const stats = await storage.getOrderStats();
@@ -252,49 +270,44 @@ app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     }
   });
 
-  // Public menu endpoint for customer portal
+  /**
+   * 🔹 Public menu
+   */
   app.get('/api/menu', async (req, res) => {
     try {
       const { search, category } = req.query;
-      let menuItems;
-      
-      if (search && typeof search === 'string') {
-        menuItems = await storage.searchMenuItems(search, category as string);
-      } else {
-        menuItems = await storage.getMenuItems();
-        if (category && typeof category === 'string') {
-          menuItems = menuItems.filter(item => item.category === category);
-        }
+      let menuItems = search && typeof search === 'string'
+        ? await storage.searchMenuItems(search, category as string)
+        : await storage.getMenuItems();
+
+      if (category && typeof category === 'string') {
+        menuItems = menuItems.filter(item => item.category === category);
       }
-      
-      // Only return available items for customers
-      menuItems = menuItems.filter(item => item.isAvailable);
-      res.json(menuItems);
+
+      res.json(menuItems.filter(item => item.isAvailable));
     } catch (error) {
       console.error("Error fetching public menu:", error);
       res.status(500).json({ message: "Failed to fetch menu" });
     }
   });
 
+  /**
+   * 🔹 WebSockets for real-time notifications
+   */
   const httpServer = createServer(app);
-
-  // WebSocket server for real-time admin notifications
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
-  wss.on('connection', (ws: WebSocket, req) => {
+  wss.on('connection', (ws: WebSocket) => {
     console.log('New WebSocket connection');
-    
-    // Add to admin connections
     adminConnections.add(ws);
-    
-    // Send connection status
+
     ws.send(JSON.stringify({
       type: 'CONNECTION_STATUS',
       data: { status: 'connected' }
     }));
 
     ws.on('close', () => {
-      console.log('WebSocket connection closed');
+      console.log('WebSocket closed');
       adminConnections.delete(ws);
     });
 
@@ -305,10 +318,10 @@ app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
   });
 
   function broadcastToAdmins(message: any) {
-    const messageString = JSON.stringify(message);
+    const str = JSON.stringify(message);
     adminConnections.forEach(ws => {
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send(messageString);
+        ws.send(str);
       }
     });
   }
