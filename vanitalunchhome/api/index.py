@@ -29,6 +29,11 @@ def get_db_connection():
 # --- API Routes ---
 # These handle your application's data.
 
+@app.route('/')
+def serve_index():
+    return send_from_directory(os.path.join(os.path.dirname(__file__), '../customer/template'), 'index.html')
+
+
 @app.route('/api/menu-items')
 def get_menu_items():
     """Get all menu items, grouped by category."""
@@ -105,4 +110,5 @@ def create_order():
 # --- Frontend Serving Route ---
 # This single route serves your main webpage.
 # It should be defined AFTER your API routes.
+
 
