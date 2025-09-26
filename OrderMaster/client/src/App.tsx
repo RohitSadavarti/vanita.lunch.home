@@ -12,17 +12,24 @@ import MenuManagement from "@/pages/menu-management";
 import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
 
+// No changes are strictly necessary here if your useAuth hook works correctly,
+// but ensure the logic remains: if the user is not authenticated, show the 
+// AdminLogin component. The `useAuth` hook will now fail for unauthenticated
+// users, which is the correct behavior.
 function Router() {
   const { user, isLoading, isAuthenticated } = useAuth();
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    // ... loading spinner
   }
 
+  // This logic is now correct. If useAuth returns no user, it shows the login page.
+  if (!isAuthenticated || !user?.isAdmin) {
+    return <AdminLogin />;
+  }
+
+  // ... rest of the router switch
+}
   if (!isAuthenticated || !user?.isAdmin) {
     return <AdminLogin />;
   }
