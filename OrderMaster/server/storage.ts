@@ -51,6 +51,15 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
+  // Add this method inside the DatabaseStorage class in storage.ts
+
+  async getAdminByMobile(mobile: string): Promise<VlhAdmin | undefined> {
+    const [admin] = await db
+      .select()
+      .from(vlhAdmin)
+      .where(eq(vlhAdmin.mobile, mobile));
+    return admin;
+  }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
