@@ -9,6 +9,7 @@ import {
   decimal,
   integer,
   boolean,
+  serial, // <-- Add this word here
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
