@@ -3,7 +3,7 @@ import {
   menuItems,
   orders,
   orderItems,
-  vlhAdmin, // <-- Make sure this is added
+  vlhAdmin, // This is the required import
   type User,
   type UpsertUser,
   type MenuItem,
@@ -13,13 +13,18 @@ import {
   type OrderItem,
   type InsertOrderItem,
   type VlhAdmin,
-} from "@shared/schema";import { db } from "./db";
+} from "@shared/schema";
+import { db } from "./db";
 import { eq, desc, and, like, sql } from "drizzle-orm";
 
 export interface IStorage {
-  // User operations (required for Replit Auth)
+  // User operations
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+
+  // Admin operations for login
+  getAdminByMobile(mobile: string): Promise<VlhAdmin | undefined>;
+  verifyPassword(password: string, hash: string): Promise<boolean>;
   
   // Menu operations
   getMenuItems(): Promise<MenuItem[]>;
@@ -52,23 +57,6 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
-  // Add this method inside the DatabaseStorage class in storage.ts
-
-  async getAdminByMobile(mobile: string): Promise<VlhAdmin | undefined> {
-    const [admin] = await db
-      .select()
-      .from(vlhAdmin)
-      .where(eq(vlhAdmin.mobile, mobile));
-    return admin;
-  }
-  // Add this method inside the DatabaseStorage class in storage.ts
-  async verifyPassword(password: string, hash: string): Promise<boolean> {
-    // This is a simplified check. PostgreSQL's crypt() is not directly available
-    // in Node.js. This line simulates the check.
-    // For a real app, you MUST use a library like bcryptjs to compare hashes.
-    const [result] = await db.execute(sql`SELECT '${sql.raw(password)}' = crypt('${sql.raw(password)}', '${sql.raw(hash)}') as is_valid`);
-    return (result as any)?.is_valid === true;
-  }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
@@ -83,6 +71,22 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  // Admin operations
+  async getAdminByMobile(mobile: string): Promise<VlhAdmin | undefined> {
+    const [admin] = await db
+      .select()
+      .from(vlhAdmin)
+      .where(eq(vlhAdmin.mobile, mobile));
+    return admin;
+  }
+
+  async verifyPassword(password: string, hash: string): Promise<boolean> {
+    // This query directly asks PostgreSQL to verify the password using the crypt function.
+    // Ensure the pgcrypto extension is enabled in your Supabase project.
+    const result: any[] = await db.execute(sql`SELECT (crypt(${password}, ${hash}) = ${hash}) as is_valid`);
+    return result[0]?.is_valid === true;
   }
 
   // Menu operations
@@ -141,7 +145,6 @@ export class DatabaseStorage implements IStorage {
       .values({ ...order, orderNumber })
       .returning();
 
-    // Create order items
     const orderItemsWithOrderId = items.map(item => ({
       ...item,
       orderId: createdOrder.id,
@@ -209,10 +212,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(menuItems.isAvailable, true));
 
     return {
-      activeOrders: activeOrdersResult.count || 0,
-      todayRevenue: todayRevenueResult.total || 0,
-      completedOrders: completedOrdersResult.count || 0,
-      totalMenuItems: menuItemsResult.count || 0,
+      activeOrders: Number(activeOrdersResult.count) || 0,
+      todayRevenue: Number(todayRevenueResult.total) || 0,
+      completedOrders: Number(completedOrdersResult.count) || 0,
+      totalMenuItems: Number(menuItemsResult.count) || 0,
     };
   }
 
