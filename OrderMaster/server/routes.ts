@@ -46,17 +46,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
-
+app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  try {
+    // Since we removed Replit auth, req.user is undefined.
+    // We will return a mock admin user to allow the frontend to load.
+    // In a real application, you would replace this with a proper user session check.
+    const mockAdminUser = {
+      id: 'mock-admin-user',
+      email: 'admin@example.com',
+      firstName: 'Admin',
+      lastName: 'User',
+      profileImageUrl: '',
+      isAdmin: true, // This is important for the frontend logic
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    res.json(mockAdminUser);
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({ message: "Failed to fetch user" });
+  }
+});
   // Admin check middleware
   const isAdmin = async (req: any, res: any, next: any) => {
     try {
