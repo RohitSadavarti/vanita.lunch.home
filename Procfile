@@ -1,1 +1,1 @@
-web: gunicorn --chdir OrderMaster vanita_lunch.wsgi:application
+web: gunicorn vanita_lunch.wsgi:application --chdir OrderMaster
