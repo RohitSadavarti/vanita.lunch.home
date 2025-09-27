@@ -1,4 +1,4 @@
-# OrderMaster/models.py - Add this to your existing models
+# OrderMaster/models.py - Fixed version
 
 import bcrypt
 from django.db import models
@@ -6,7 +6,6 @@ from django.utils import timezone
 
 
 class MenuItem(models.Model):
-    # ... your existing MenuItem model code stays the same ...
     CATEGORY_CHOICES = [
         ('breakfast', 'Breakfast'),
         ('lunch', 'Lunch'),
@@ -45,7 +44,6 @@ class MenuItem(models.Model):
 
 
 class Order(models.Model):
-    # ... your existing Order model code stays the same ...
     STATUS_CHOICES = [
         ('preparing', 'Preparing'),
         ('ready', 'Ready'),
@@ -56,9 +54,23 @@ class Order(models.Model):
     customer_name = models.CharField(max_length=200)
     items = models.TextField()  # JSON string of ordered items
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_id = models.CharField(max_length=100, default='COD', blank=True)  # Added this field
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='preparing')
     order_time = models.DateTimeField(default=timezone.now)
     ready_time = models.DateTimeField(blank=True, null=True)
+    
+    def get_parsed_items(self):
+        """Safely parse JSON items"""
+        try:
+            import json
+            return json.loads(self.items)
+        except (json.JSONDecodeError, TypeError):
+            return {'items': [], 'customer_mobile': '', 'customer_address': ''}
+    
+    # Add this property for template access
+    @property
+    def parsed_items(self):
+        return self.get_parsed_items()
     
     def __str__(self):
         return f"Order {self.order_id} - {self.customer_name}"
@@ -68,7 +80,6 @@ class Order(models.Model):
         ordering = ['-order_time']
 
 
-# Add this new model for your custom admin
 class VlhAdmin(models.Model):
     mobile = models.CharField(max_length=10, unique=True)
     password_hash = models.TextField()
