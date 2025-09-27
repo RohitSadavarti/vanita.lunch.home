@@ -1,0 +1,67 @@
+{% extends 'OrderMaster/base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Order Management</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-warning">
+                <h5 class="mb-0">Preparing Orders ({{ preparing_orders.count }})</h5>
+            </div>
+            <div class="card-body" id="preparing-orders">
+                {% for order in preparing_orders %}
+                <div class="card mb-3 order-card" data-order-id="{{ order.id }}">
+                    <div class="card-body">
+                        <h6 class="card-title">Order #{{ order.order_id }}</h6>
+                        <p class="card-text">
+                            <strong>Customer:</strong> {{ order.customer_name }}<br>
+                            <strong>Items:</strong> {{ order.items }}<br>
+                            <strong>Total:</strong> ${{ order.total_amount }}<br>
+                            <strong>Time:</strong> {{ order.order_time|date:"H:i" }}
+                        </p>
+                        <button class="btn btn-success btn-sm move-to-ready" data-order-id="{{ order.id }}">
+                            Mark as Ready
+                        </button>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted">No orders in preparation</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success">
+                <h5 class="mb-0">Ready Orders ({{ ready_orders.count }})</h5>
+            </div>
+            <div class="card-body" id="ready-orders">
+                {% for order in ready_orders %}
+                <div class="card mb-3 order-card" data-order-id="{{ order.id }}">
+                    <div class="card-body">
+                        <h6 class="card-title">Order #{{ order.order_id }}</h6>
+                        <p class="card-text">
+                            <strong>Customer:</strong> {{ order.customer_name }}<br>
+                            <strong>Items:</strong> {{ order.items }}<br>
+                            <strong>Total:</strong> ${{ order.total_amount }}<br>
+                            <strong>Ready Time:</strong> {{ order.ready_time|date:"H:i" }}
+                        </p>
+                        <button class="btn btn-primary btn-sm mark-completed" data-order-id="{{ order.id }}">
+                            Mark as Completed
+                        </button>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted">No ready orders</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

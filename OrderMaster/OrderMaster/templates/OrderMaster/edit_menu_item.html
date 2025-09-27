@@ -1,0 +1,109 @@
+{% extends 'OrderMaster/base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Edit Menu Item</h1>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Edit "{{ item.item_name }}"</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    {% if item.image %}
+                    <div class="mb-3">
+                        <label class="form-label">Current Image</label>
+                        <div>
+                            <img src="{{ item.image.url }}" class="img-thumbnail" style="max-width: 200px; max-height: 200px;">
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="item_name" class="form-label">Item Name</label>
+                                <input type="text" class="form-control" id="item_name" name="item_name" value="{{ item.item_name }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="price" class="form-label">Price</label>
+                                <input type="number" class="form-control" id="price" name="price" step="0.01" value="{{ item.price }}" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" required>{{ item.description }}</textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="category" class="form-label">Category</label>
+                                <select class="form-select" id="category" name="category" required>
+                                    <option value="breakfast" {% if item.category == 'breakfast' %}selected{% endif %}>Breakfast</option>
+                                    <option value="lunch" {% if item.category == 'lunch' %}selected{% endif %}>Lunch</option>
+                                    <option value="dinner" {% if item.category == 'dinner' %}selected{% endif %}>Dinner</option>
+                                    <option value="snacks" {% if item.category == 'snacks' %}selected{% endif %}>Snacks</option>
+                                    <option value="beverages" {% if item.category == 'beverages' %}selected{% endif %}>Beverages</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="veg_nonveg" class="form-label">Veg/Non-Veg</label>
+                                <select class="form-select" id="veg_nonveg" name="veg_nonveg" required>
+                                    <option value="veg" {% if item.veg_nonveg == 'veg' %}selected{% endif %}>Vegetarian</option>
+                                    <option value="non_veg" {% if item.veg_nonveg == 'non_veg' %}selected{% endif %}>Non-Vegetarian</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="meal_type" class="form-label">Meal Type</label>
+                                <select class="form-select" id="meal_type" name="meal_type" required>
+                                    <option value="main_course" {% if item.meal_type == 'main_course' %}selected{% endif %}>Main Course</option>
+                                    <option value="starter" {% if item.meal_type == 'starter' %}selected{% endif %}>Starter</option>
+                                    <option value="dessert" {% if item.meal_type == 'dessert' %}selected{% endif %}>Dessert</option>
+                                    <option value="beverage" {% if item.meal_type == 'beverage' %}selected{% endif %}>Beverage</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="availability_time" class="form-label">Availability Time</label>
+                                <input type="text" class="form-control" id="availability_time" name="availability_time" value="{{ item.availability_time }}" placeholder="e.g., 9:00 AM - 11:00 AM" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="image" class="form-label">Update Image (optional)</label>
+                                <input type="file" class="form-control" id="image" name="image" accept="image/*">
+                                <div class="form-text">Leave empty to keep current image</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Update Menu Item</button>
+                        <a href="{% url 'menu_management' %}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
