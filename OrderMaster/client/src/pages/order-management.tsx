@@ -15,10 +15,18 @@ export default function OrderManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: orders = [], isLoading } = useQuery({
+  // Fetch all orders to get accurate counts for each tab
+  const { data: allOrders = [], isLoading: isLoadingAllOrders } = useQuery({
+    queryKey: ["/api/admin/orders"],
+    queryFn: () => fetch(`/api/admin/orders`).then(res => res.json()),
+  });
+
+  const { data: orders = [], isLoading: isLoadingTabOrders } = useQuery({
     queryKey: ["/api/admin/orders", activeTab],
     queryFn: () => fetch(`/api/admin/orders?status=${activeTab}`).then(res => res.json()),
   });
+
+  const isLoading = isLoadingAllOrders || isLoadingTabOrders;
 
   const updateOrderStatus = useMutation({
     mutationFn: async ({ orderId, status }: { orderId: string; status: string }) => {
@@ -42,9 +50,9 @@ export default function OrderManagement() {
   });
 
   const orderCounts = {
-    preparing: orders.filter((o: any) => o.status === 'preparing').length,
-    ready: orders.filter((o: any) => o.status === 'ready').length,
-    completed: orders.filter((o: any) => o.status === 'completed').length,
+    preparing: allOrders.filter((o: any) => o.status === 'preparing').length,
+    ready: allOrders.filter((o: any) => o.status === 'ready').length,
+    completed: allOrders.filter((o: any) => o.status === 'completed').length,
   };
 
   const handleMarkReady = (orderId: string) => {
