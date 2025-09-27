@@ -66,12 +66,12 @@ export const menuItems = pgTable("menu_items", {
 // Orders table
 export const orders = pgTable("orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  orderNumber: integer("order_number").notNull().unique(),
+  orderNumber: integer("orderNumber").notNull().unique(),
   customerName: varchar("customer_name", { length: 255 }).notNull(),
   customerMobile: varchar("customer_mobile", { length: 15 }).notNull(),
   customerAddress: text("customer_address").notNull(),
   status: varchar("status", { length: 20 }).notNull().default('preparing'), // 'preparing', 'ready', 'completed'
-  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  totalAmount: decimal("totalAmount", { precision: 10, scale: 2 }).notNull(),
   items: jsonb("items").notNull(), // Array of order items
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
