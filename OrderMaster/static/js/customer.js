@@ -54,7 +54,6 @@ async function loadMenuItems() {
     }
 }
 
-
 // Render menu items
 function renderMenuItems() {
     const container = document.getElementById('menuContainer');
@@ -233,10 +232,28 @@ async function handleOrderSubmit(e) {
     e.preventDefault();
     
     const submitBtn = document.getElementById('placeOrderBtn');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Placing Order...';
+    submitBtn.disabled = true;
     
     const customerName = document.getElementById('customerName').value.trim();
     const customerMobile = document.getElementById('customerMobile').value.trim();
     const customerAddress = document.getElementById('customerAddress').value.trim();
+
+    // Validate inputs
+    if (!customerName || !customerMobile || !customerAddress) {
+        showToast('Please fill in all fields', 'error');
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+        return;
+    }
+
+    if (!/^\d{10}$/.test(customerMobile)) {
+        showToast('Please enter a valid 10-digit mobile number', 'error');
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+        return;
+    }
 
     const subtotal = cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
     const deliveryFee = subtotal >= 300 ? 0 : 40;
@@ -246,8 +263,9 @@ async function handleOrderSubmit(e) {
         customer_name: customerName,
         customer_mobile: customerMobile,
         customer_address: customerAddress,
-        items: JSON.stringify(cart),
-        total_amount: totalAmount
+        items: cart,  // Send as array, not stringified
+        total_amount: totalAmount,
+        payment_id: 'COD_' + Date.now()
     };
 
     try {
@@ -263,7 +281,7 @@ async function handleOrderSubmit(e) {
         const result = await response.json();
 
         if (response.ok && result.success) {
-            showToast('Order placed successfully!', 'success');
+            showToast('Order placed successfully! Order ID: ' + result.order_id, 'success');
             clearCart();
             resetCheckoutForm();
             toggleCart();
@@ -271,7 +289,11 @@ async function handleOrderSubmit(e) {
             throw new Error(result.error || 'Failed to place order');
         }
     } catch (error) {
+        console.error('Order placement error:', error);
         showToast(error.message || 'Failed to place order. Please try again.', 'error');
+    } finally {
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
     }
 }
 
@@ -298,8 +320,13 @@ function saveCartToStorage() {
 function loadCartFromStorage() {
     const savedCart = localStorage.getItem('vanita_cart');
     if (savedCart) {
-        cart = JSON.parse(savedCart);
-        updateCartDisplay();
+        try {
+            cart = JSON.parse(savedCart);
+            updateCartDisplay();
+        } catch (error) {
+            console.error('Error loading cart from storage:', error);
+            cart = [];
+        }
     }
 }
 
@@ -311,6 +338,16 @@ function showToast(message, type = 'success') {
 
     toastTitle.textContent = type.charAt(0).toUpperCase() + type.slice(1);
     toastBody.textContent = message;
+
+    // Add color classes based on type
+    toastEl.className = 'toast';
+    if (type === 'success') {
+        toastEl.classList.add('bg-success', 'text-white');
+    } else if (type === 'error') {
+        toastEl.classList.add('bg-danger', 'text-white');
+    } else if (type === 'warning') {
+        toastEl.classList.add('bg-warning', 'text-dark');
+    }
 
     const toast = new bootstrap.Toast(toastEl);
     toast.show();
