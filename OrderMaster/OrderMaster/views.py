@@ -315,7 +315,6 @@ def analytics(request):
     """Renders the analytics page."""
     return render(request, 'OrderMaster/analytics.html')
 
-
 @admin_required
 def settings(request):
     """Renders the settings page."""
