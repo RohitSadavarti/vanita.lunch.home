@@ -5,5 +5,4 @@ set -o errexit
 pip install -r requirements.txt
 
 python manage.py collectstatic --no-input
-# This new command will fix the deployment error by faking the initial migration
-python manage.py migrate --fake-initial
+python manage.py migrate
