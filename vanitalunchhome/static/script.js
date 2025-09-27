@@ -352,21 +352,25 @@ async function processOrder() {
     await placeOrderOnBackend(dummyPaymentResponse, customerDetails);
 }
 
+// vanitalunchhome/static/script.js
+
+// ... (keep all the existing code before this function)
+
+
 // 2. Send the final order data to the backend API
 async function placeOrderOnBackend(paymentResponse, customerDetails) {
-    const { total } = calculateTotals();
-
-    // **CORRECTED**: This object structure now matches the backend API requirements
+    // This object structure MUST match what the Flask backend (app.py) expects
     const orderData = {
-        customer_name: customerDetails.name,
-        customer_mobile: customerDetails.mobile,
-        customer_address: customerDetails.address,
-        items: cart, // The backend expects 'items'
+        name: customerDetails.name,                 // Correct key: 'name'
+        mobile: customerDetails.mobile,               // Correct key: 'mobile'
+        address: customerDetails.address,             // Correct key: 'address'
+        cart_items: cart,                           // Correct key: 'cart_items'
         payment_id: paymentResponse.razorpay_payment_id,
-        total_amount: total // The backend expects 'total_amount'
+        amount: customerDetails.amount              // The original code sent this
     };
 
     try {
+        // The API endpoint is /api/order as defined in your app.py
         const apiResponse = await fetch('/api/order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -396,6 +400,8 @@ async function placeOrderOnBackend(paymentResponse, customerDetails) {
     }
 }
 
+
+// ... (keep all the existing code after this function)
 
 // =================================================================================
 // UTILITY FUNCTIONS
