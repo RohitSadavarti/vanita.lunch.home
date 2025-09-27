@@ -1,0 +1,30 @@
+{% extends 'OrderMaster/base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Dashboard</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title">Order Management</h5>
+                <p class="card-text">Manage preparing and ready orders</p>
+                <a href="{% url 'order_management' %}" class="btn btn-primary">Manage Orders</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title">Menu Management</h5>
+                <p class="card-text">Add and edit menu items</p>
+                <a href="{% url 'menu_management' %}" class="btn btn-success">Manage Menu</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

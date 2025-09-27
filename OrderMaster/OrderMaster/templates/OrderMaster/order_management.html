@@ -1,0 +1,205 @@
+<!-- Updated OrderMaster/templates/OrderMaster/order_management.html -->
+{% extends 'OrderMaster/base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Order Management</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-warning">
+                <h5 class="mb-0">Preparing Orders ({{ preparing_orders.count }})</h5>
+            </div>
+            <div class="card-body" id="preparing-orders">
+                {% for order in preparing_orders %}
+                <div class="card mb-3 order-card" data-order-id="{{ order.id }}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="card-title mb-0">Order #{{ order.order_id }}</h6>
+                            <span class="badge bg-warning text-dark">{{ order.status|title }}</span>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="card-text mb-1">
+                                    <strong>Customer:</strong> {{ order.customer_name }}<br>
+                                    {% if order.parsed_items.customer_mobile %}
+                                        <strong>Mobile:</strong> {{ order.parsed_items.customer_mobile }}<br>
+                                    {% endif %}
+                                    <strong>Time:</strong> {{ order.order_time|date:"H:i" }}<br>
+                                    <strong>Total:</strong> ₹{{ order.total_amount }}
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                {% if order.parsed_items.customer_address %}
+                                <p class="small text-muted mb-2">
+                                    <strong>Address:</strong><br>
+                                    {{ order.parsed_items.customer_address }}
+                                </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="mt-2">
+                            <strong>Items:</strong>
+                            <ul class="list-unstyled small mt-1">
+                                {% if order.parsed_items.items %}
+                                    {% for item in order.parsed_items.items %}
+                                    <li>• {{ item.quantity }}x {{ item.name }} - ₹{{ item.total|floatformat:2 }}</li>
+                                    {% endfor %}
+                                {% else %}
+                                    <li class="text-muted">{{ order.items }}</li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <small class="text-muted">{{ order.order_time|timesince }} ago</small>
+                            <button class="btn btn-success btn-sm move-to-ready" data-order-id="{{ order.id }}">
+                                <i class="fas fa-check"></i> Mark as Ready
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-4">
+                    <i class="fas fa-clock fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No orders in preparation</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success">
+                <h5 class="mb-0 text-white">Ready Orders ({{ ready_orders.count }})</h5>
+            </div>
+            <div class="card-body" id="ready-orders">
+                {% for order in ready_orders %}
+                <div class="card mb-3 order-card" data-order-id="{{ order.id }}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="card-title mb-0">Order #{{ order.order_id }}</h6>
+                            <span class="badge bg-success">{{ order.status|title }}</span>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="card-text mb-1">
+                                    <strong>Customer:</strong> {{ order.customer_name }}<br>
+                                    {% if order.parsed_items.customer_mobile %}
+                                        <strong>Mobile:</strong> 
+                                        <a href="tel:{{ order.parsed_items.customer_mobile }}" class="text-decoration-none">
+                                            {{ order.parsed_items.customer_mobile }}
+                                        </a><br>
+                                    {% endif %}
+                                    <strong>Ready Time:</strong> {{ order.ready_time|date:"H:i" }}<br>
+                                    <strong>Total:</strong> ₹{{ order.total_amount }}
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                {% if order.parsed_items.customer_address %}
+                                <p class="small text-muted mb-2">
+                                    <strong>Address:</strong><br>
+                                    {{ order.parsed_items.customer_address }}
+                                </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="mt-2">
+                            <strong>Items:</strong>
+                            <ul class="list-unstyled small mt-1">
+                                {% if order.parsed_items.items %}
+                                    {% for item in order.parsed_items.items %}
+                                    <li>• {{ item.quantity }}x {{ item.name }} - ₹{{ item.total|floatformat:2 }}</li>
+                                    {% endfor %}
+                                {% else %}
+                                    <li class="text-muted">{{ order.items }}</li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <small class="text-muted">Ready for {{ order.ready_time|timesince }}</small>
+                            <div>
+                                {% if order.parsed_items.customer_mobile %}
+                                <a href="tel:{{ order.parsed_items.customer_mobile }}" class="btn btn-outline-primary btn-sm me-2">
+                                    <i class="fas fa-phone"></i> Call
+                                </a>
+                                {% endif %}
+                                <button class="btn btn-primary btn-sm mark-completed" data-order-id="{{ order.id }}">
+                                    <i class="fas fa-check-double"></i> Complete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-4">
+                    <i class="fas fa-utensils fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No ready orders</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add some custom styles for better order card appearance -->
+<style>
+.order-card {
+    border-left: 4px solid #007bff;
+    transition: transform 0.2s ease;
+}
+
+.order-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.bg-warning .text-white {
+    color: white !important;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+.btn-sm {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.75rem;
+}
+
+@media (max-width: 768px) {
+    .row .col-md-6:not(:last-child) {
+        margin-bottom: 2rem;
+    }
+}
+</style>
+
+<script>
+// Auto-refresh orders every 30 seconds
+setInterval(function() {
+    location.reload();
+}, 30000);
+
+// Add sound notification for new orders (optional)
+function playNotificationSound() {
+    // You can add a subtle notification sound here
+    try {
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmRTCz6Lz/LNeSsFJXfH8N2PPAoTXbPp66hWFApGn+DywnVTCz6Lz/LNeSsFJXfH8N2PPAoTXbPp66hWFApGn+DywnVTCz6Lz/LNeSsFJXfH8N2PPAoTXbPp66hWFApGn+DywnVTCz6Lz/LNeSsFJXfH8N2PPAoTXbPp66hWFApGn+DywnVT');
+        audio.volume = 0.1;
+        audio.play().catch(e => console.log('Could not play notification sound'));
+    } catch (e) {
+        // Ignore audio errors
+    }
+}
+</script>
+{% endblock %}
