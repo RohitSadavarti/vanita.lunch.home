@@ -1,4 +1,8 @@
-// Application state
+// =================================================================================
+// APPLICATION STATE & INITIALIZATION
+// =================================================================================
+
+// Global state variables
 let cart = [];
 let menuItems = [];
 let filteredMenuItems = [];
@@ -6,40 +10,46 @@ let currentCategory = 'all';
 let currentVegFilter = 'all';
 let currentSearchTerm = '';
 
-// Initialize the application
+// Initialize the application once the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
-    lucide.createIcons();
+    lucide.createIcons(); // Initialize icons
     loadMenu();
     setupEventListeners();
 });
 
-// Setup event listeners
+// =================================================================================
+// EVENT LISTENERS
+// =================================================================================
+
+// Centralized function to set up all event listeners
 function setupEventListeners() {
-    // Cart functionality
+    // Page navigation
     document.getElementById('cartBtn').addEventListener('click', showCartPage);
     document.getElementById('backToMenuBtn').addEventListener('click', showHomePage);
-    document.getElementById('payNowBtn').addEventListener('click', processPayment);
-    
-    // Search functionality
+
+    // Cart actions
+    document.getElementById('payNowBtn').addEventListener('click', processOrder);
+
+    // Menu filtering and searching
     document.getElementById('searchInput').addEventListener('input', handleSearch);
-    
-    // Category filters
     document.querySelectorAll('.category-filter').forEach(button => {
         button.addEventListener('click', handleCategoryFilter);
     });
-    
-    // Veg/Non-veg filters
     document.querySelectorAll('.veg-filter').forEach(button => {
         button.addEventListener('click', handleVegFilter);
     });
 }
 
-// Load menu items from API
+// =================================================================================
+// API & DATA HANDLING
+// =================================================================================
+
+// Load menu items from the backend API
 async function loadMenu() {
     try {
         const response = await fetch('/api/menu');
         if (!response.ok) {
-            throw new Error('Failed to load menu');
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
         menuItems = await response.json();
         filteredMenuItems = [...menuItems];
@@ -50,230 +60,93 @@ async function loadMenu() {
     }
 }
 
-// Handle search functionality
-function handleSearch(e) {
-    currentSearchTerm = e.target.value.toLowerCase();
-    applyFilters();
-}
+// =================================================================================
+// UI RENDERING & PAGE NAVIGATION
+// =================================================================================
 
-// Handle category filter
-function handleCategoryFilter(e) {
-    // Update active button
-    document.querySelectorAll('.category-filter').forEach(btn => {
-        btn.classList.remove('active', 'bg-orange-500', 'text-white');
-        btn.classList.add('bg-gray-200', 'text-gray-700');
-    });
-    e.target.classList.add('active', 'bg-orange-500', 'text-white');
-    e.target.classList.remove('bg-gray-200', 'text-gray-700');
-    
-    currentCategory = e.target.getAttribute('data-category');
-    applyFilters();
-}
-
-// Handle veg/non-veg filter
-function handleVegFilter(e) {
-    // Update active button
-    document.querySelectorAll('.veg-filter').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    e.target.classList.add('active');
-    
-    currentVegFilter = e.target.getAttribute('data-type');
-    applyFilters();
-}
-
-// Apply all filters
-function applyFilters() {
-    filteredMenuItems = menuItems.filter(item => {
-        // Category filter
-        if (currentCategory !== 'all' && item.category !== currentCategory) {
-            return false;
-        }
-        
-        // Veg/Non-veg filter
-        if (currentVegFilter !== 'all' && item.veg_nonveg !== currentVegFilter) {
-            return false;
-        }
-        
-        // Search filter
-        if (currentSearchTerm && !item.item_name.toLowerCase().includes(currentSearchTerm) && 
-            !item.description.toLowerCase().includes(currentSearchTerm)) {
-            return false;
-        }
-        
-        return true;
-    });
-    
-    renderMenu();
-}
-
-// Render menu items
-function renderMenu() {
-    const menuContainer = document.getElementById('menu-container');
-    menuContainer.innerHTML = '';
-    
-    if (filteredMenuItems.length === 0) {
-        menuContainer.innerHTML = `
-            <div class="col-span-full text-center py-12">
-                <i data-lucide="search-x" class="mx-auto h-12 w-12 text-gray-400 mb-4"></i>
-                <h3 class="text-lg font-medium text-gray-900 mb-2">No items found</h3>
-                <p class="text-gray-500">Try adjusting your search or filters</p>
-            </div>
-        `;
-        lucide.createIcons();
-        return;
-    }
-    
-    filteredMenuItems.forEach(item => {
-        const menuCard = createMenuCard(item);
-        menuContainer.appendChild(menuCard);
-    });
-    
-    lucide.createIcons();
-}
-
-// Create menu card element
-function createMenuCard(item) {
-    const card = document.createElement('div');
-    card.className = 'bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300';
-    
-    // Determine category badge color
-    const vegType = item.veg_nonveg && item.veg_nonveg.toLowerCase() === 'veg' ? 'veg' : 'non-veg';
-    const vegIndicator = vegType === 'veg' ? 
-        '<span class="w-3 h-3 bg-green-500 rounded-sm"></span>' : 
-        '<span class="w-3 h-3 bg-red-500 rounded-sm"></span>';
-    
-    card.innerHTML = `
-        <div class="relative">
-            <img src="https://placehold.co/300x200/f3f4f6/6b7280?text=${encodeURIComponent(item.item_name || 'Food')}" 
-                 alt="${escapeHtml(item.item_name)}" 
-                 class="w-full h-48 object-cover">
-            <div class="absolute top-2 left-2 flex items-center space-x-1 bg-white px-2 py-1 rounded-full">
-                ${vegIndicator}
-                <span class="text-xs font-medium">${vegType.toUpperCase()}</span>
-            </div>
-        </div>
-        <div class="p-4">
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">${escapeHtml(item.item_name)}</h3>
-            <p class="text-gray-600 text-sm mb-3 line-clamp-2">${escapeHtml(item.description || 'Delicious food item')}</p>
-            <div class="flex items-center justify-between">
-                <span class="text-2xl font-bold text-orange-500">₹${parseFloat(item.price).toFixed(2)}</span>
-                <button onclick="addToCart(${item.id})" 
-                        class="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors duration-300 flex items-center space-x-2">
-                    <i data-lucide="plus" class="h-4 w-4"></i>
-                    <span>Add</span>
-                </button>
-            </div>
-        </div>
-    `;
-    
-    return card;
-}
-
-// Escape HTML to prevent XSS
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Add item to cart
-function addToCart(itemId) {
-    const item = menuItems.find(i => i.id === itemId);
-    if (!item) return;
-    
-    const existingItem = cart.find(i => i.id === itemId);
-    if (existingItem) {
-        existingItem.quantity += 1;
-    } else {
-        cart.push({
-            id: item.id,
-            name: item.item_name,
-            price: item.price,
-            quantity: 1
-        });
-    }
-    
-    updateCartCount();
-    showToast(`${item.item_name} added to cart!`);
-}
-
-// Remove item from cart
-function removeFromCart(itemId) {
-    cart = cart.filter(item => item.id !== itemId);
-    updateCartCount();
-    if (document.getElementById('cartView').style.display !== 'none') {
-        renderCartPage();
-    }
-}
-
-// Update quantity in cart
-function updateQuantity(itemId, change) {
-    const item = cart.find(i => i.id === itemId);
-    if (item) {
-        item.quantity += change;
-        if (item.quantity <= 0) {
-            removeFromCart(itemId);
-        } else {
-            updateCartCount();
-            if (document.getElementById('cartView').style.display !== 'none') {
-                renderCartPage();
-            }
-        }
-    }
-}
-
-// Update cart count in header
-function updateCartCount() {
-    const cartCount = document.getElementById('cartCount');
-    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-    
-    if (totalItems > 0) {
-        cartCount.textContent = totalItems;
-        cartCount.classList.remove('hidden');
-    } else {
-        cartCount.classList.add('hidden');
-    }
-}
-
-// Show cart page
-function showCartPage() {
-    if (cart.length === 0) {
-        showToast('Your cart is empty!', 'error');
-        return;
-    }
-    
-    document.getElementById('homeView').classList.add('hidden');
-    document.getElementById('cartView').classList.remove('hidden');
-    renderCartPage();
-}
-
-// Show home page
+// Show the main menu page
 function showHomePage() {
     document.getElementById('cartView').classList.add('hidden');
     document.getElementById('homeView').classList.remove('hidden');
 }
 
-// Render cart page
+// Show the cart page
+function showCartPage() {
+    if (cart.length === 0) {
+        showToast('Your cart is empty!', 'info');
+        return;
+    }
+    document.getElementById('homeView').classList.add('hidden');
+    document.getElementById('cartView').classList.remove('hidden');
+    renderCartPage();
+}
+
+// Render the filtered menu items on the page
+function renderMenu() {
+    const menuContainer = document.getElementById('menu-container');
+    menuContainer.innerHTML = ''; // Clear previous items
+
+    if (filteredMenuItems.length === 0) {
+        menuContainer.innerHTML = `
+            <div class="col-span-full text-center py-12">
+                <i data-lucide="search-x" class="mx-auto h-12 w-12 text-gray-400 mb-4"></i>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">No items found</h3>
+                <p class="text-gray-500">Try adjusting your search or filters.</p>
+            </div>`;
+    } else {
+        filteredMenuItems.forEach(item => {
+            const menuCard = createMenuCard(item);
+            menuContainer.appendChild(menuCard);
+        });
+    }
+
+    lucide.createIcons(); // Re-render icons for new elements
+}
+
+// Create a single menu card element
+function createMenuCard(item) {
+    const card = document.createElement('div');
+    card.className = 'bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300';
+
+    const vegType = (item.veg_nonveg || '').toLowerCase() === 'veg' ? 'veg' : 'non-veg';
+    const vegIndicatorClass = vegType === 'veg' ? 'bg-green-500' : 'bg-red-500';
+
+    card.innerHTML = `
+        <div class="relative">
+            <img src="https://placehold.co/300x200/f3f4f6/6b7280?text=${encodeURIComponent(item.item_name || 'Food')}"
+                 alt="${escapeHtml(item.item_name)}"
+                 class="w-full h-48 object-cover">
+            <div class="absolute top-2 left-2 flex items-center space-x-1 bg-white px-2 py-1 rounded-full text-xs font-medium">
+                <span class="w-3 h-3 ${vegIndicatorClass} rounded-sm"></span>
+                <span>${vegType.toUpperCase()}</span>
+            </div>
+        </div>
+        <div class="p-4 flex flex-col h-full">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">${escapeHtml(item.item_name)}</h3>
+            <p class="text-gray-600 text-sm mb-3 line-clamp-2 flex-grow">${escapeHtml(item.description || 'Delicious food item')}</p>
+            <div class="flex items-center justify-between mt-auto">
+                <span class="text-2xl font-bold text-orange-500">₹${parseFloat(item.price).toFixed(2)}</span>
+                <button onclick="addToCart(${item.id})"
+                        class="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors duration-300 flex items-center space-x-2">
+                    <i data-lucide="plus" class="h-4 w-4"></i>
+                    <span>Add</span>
+                </button>
+            </div>
+        </div>`;
+    return card;
+}
+
+// Render the contents of the cart page
 function renderCartPage() {
     const cartItemsContainer = document.getElementById('cart-page-items');
     const cartSummaryContainer = document.getElementById('cart-page-summary');
-    
-    // Render cart items
     cartItemsContainer.innerHTML = '';
-    
+
     if (cart.length === 0) {
-        cartItemsContainer.innerHTML = `
-            <div class="text-center py-12">
-                <i data-lucide="shopping-cart" class="mx-auto h-12 w-12 text-gray-400 mb-4"></i>
-                <h3 class="text-lg font-medium text-gray-900 mb-2">Your cart is empty</h3>
-                <button onclick="showHomePage()" class="text-orange-500 hover:text-orange-600">Continue shopping</button>
-            </div>
-        `;
-        lucide.createIcons();
+        showHomePage(); // If cart becomes empty, go back to menu
         return;
     }
-    
+
     cart.forEach(item => {
         const cartItem = document.createElement('div');
         cartItem.className = 'bg-white p-4 rounded-lg shadow-md';
@@ -300,16 +173,12 @@ function renderCartPage() {
             </div>
             <div class="mt-2 text-right">
                 <span class="font-semibold">₹${(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
-            </div>
-        `;
+            </div>`;
         cartItemsContainer.appendChild(cartItem);
     });
-    
-    // Render cart summary
-    const subtotal = cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
-    const deliveryFee = subtotal > 300 ? 0 : 40;
-    const total = subtotal + deliveryFee;
-    
+
+    // Render cart summary using the centralized calculation function
+    const { subtotal, deliveryFee, total } = calculateTotals();
     cartSummaryContainer.innerHTML = `
         <div class="flex justify-between">
             <span>Subtotal</span>
@@ -319,133 +188,243 @@ function renderCartPage() {
             <span>Delivery Fee</span>
             <span>${deliveryFee === 0 ? 'FREE' : '₹' + deliveryFee.toFixed(2)}</span>
         </div>
-        <div class="flex justify-between font-semibold text-lg border-t pt-3">
+        <div class="flex justify-between font-semibold text-lg border-t pt-3 mt-3">
             <span>Total</span>
             <span>₹${total.toFixed(2)}</span>
         </div>
-        ${subtotal <= 300 ? '<p class="text-sm text-gray-500 mt-2">Add ₹' + (300 - subtotal).toFixed(2) + ' more for free delivery!</p>' : ''}
-    `;
-    
-    lucide.createIcons();
+        ${subtotal < 300 ? `<p class="text-sm text-gray-500 mt-2">Add ₹${(300 - subtotal).toFixed(2)} more for free delivery!</p>` : ''}`;
+
+    lucide.createIcons(); // Re-render icons
 }
 
-// Process payment
-async function processPayment() {
+
+// =================================================================================
+// MENU FILTERING & SEARCH
+// =================================================================================
+
+// Apply all active filters and re-render the menu
+function applyFilters() {
+    filteredMenuItems = menuItems.filter(item => {
+        const categoryMatch = currentCategory === 'all' || item.category === currentCategory;
+        const vegMatch = currentVegFilter === 'all' || item.veg_nonveg === currentVegFilter;
+        const searchMatch = !currentSearchTerm ||
+            item.item_name.toLowerCase().includes(currentSearchTerm) ||
+            item.description.toLowerCase().includes(currentSearchTerm);
+        return categoryMatch && vegMatch && searchMatch;
+    });
+    renderMenu();
+}
+
+function handleSearch(e) {
+    currentSearchTerm = e.target.value.toLowerCase();
+    applyFilters();
+}
+
+function handleCategoryFilter(e) {
+    document.querySelectorAll('.category-filter').forEach(btn => {
+        btn.classList.remove('bg-orange-500', 'text-white');
+        btn.classList.add('bg-gray-200', 'text-gray-700');
+    });
+    e.currentTarget.classList.add('bg-orange-500', 'text-white');
+    e.currentTarget.classList.remove('bg-gray-200', 'text-gray-700');
+    currentCategory = e.currentTarget.getAttribute('data-category');
+    applyFilters();
+}
+
+function handleVegFilter(e) {
+    document.querySelectorAll('.veg-filter').forEach(btn => btn.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+    currentVegFilter = e.currentTarget.getAttribute('data-type');
+    applyFilters();
+}
+
+// =================================================================================
+// CART LOGIC
+// =================================================================================
+
+// Add an item to the cart
+function addToCart(itemId) {
+    const item = menuItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    const existingItem = cart.find(i => i.id === itemId);
+    if (existingItem) {
+        existingItem.quantity++;
+    } else {
+        cart.push({ id: item.id, name: item.item_name, price: item.price, quantity: 1 });
+    }
+
+    updateCartCount();
+    showToast(`${item.item_name} added to cart!`);
+}
+
+// Remove an item completely from the cart
+function removeFromCart(itemId) {
+    const item = cart.find(i => i.id === itemId);
+    cart = cart.filter(i => i.id !== itemId);
+    updateCartCount();
+    if (document.getElementById('cartView').classList.contains('hidden') === false) {
+        renderCartPage();
+    }
+    showToast(`${item.name} removed from cart.`, 'info');
+}
+
+// Update the quantity of a cart item
+function updateQuantity(itemId, change) {
+    const item = cart.find(i => i.id === itemId);
+    if (item) {
+        item.quantity += change;
+        if (item.quantity <= 0) {
+            removeFromCart(itemId); // Automatically remove if quantity is 0 or less
+        } else {
+            updateCartCount();
+            if (document.getElementById('cartView').classList.contains('hidden') === false) {
+                renderCartPage();
+            }
+        }
+    }
+}
+
+// Update the cart item count bubble in the header
+function updateCartCount() {
+    const cartCount = document.getElementById('cartCount');
+    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+    if (totalItems > 0) {
+        cartCount.textContent = totalItems;
+        cartCount.classList.remove('hidden');
+    } else {
+        cartCount.classList.add('hidden');
+    }
+}
+
+// Centralized function to calculate cart totals
+function calculateTotals() {
+    const subtotal = cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
+    const deliveryFee = subtotal >= 300 ? 0 : 40; // Free delivery for orders >= 300
+    const total = subtotal + deliveryFee;
+    return { subtotal, deliveryFee, total };
+}
+
+// =================================================================================
+// ORDER PROCESSING (CASH ON DELIVERY)
+// =================================================================================
+
+// 1. Validate form and start the order process
+async function processOrder() {
     const name = document.getElementById('customerNameCart').value.trim();
     const mobile = document.getElementById('customerMobileCart').value.trim();
     const address = document.getElementById('customerAddress').value.trim();
-    
+
+    // --- Validation ---
     if (!name || !mobile || !address) {
-        showToast('Please fill in all delivery details', 'error');
+        showToast('Please fill in all delivery details.', 'error');
         return;
     }
-    
     if (!/^[0-9]{10}$/.test(mobile)) {
-        showToast('Please enter a valid 10-digit mobile number', 'error');
+        showToast('Please enter a valid 10-digit mobile number.', 'error');
         return;
     }
-    
-    const subtotal = cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
-    const deliveryFee = subtotal > 300 ? 0 : 40;
-    const total = (subtotal + deliveryFee) * 100; // Amount in paise for Razorpay
-    
-    const options = {
-        "key": "rzp_test_1234567890", // Replace with your Razorpay Key ID
-        "amount": total,
-        "currency": "INR",
-        "name": "Vanita Lunch Home",
-        "description": "Food Order Payment",
-        "image": "/static/logo.png",
-        "handler": function (response) {
-            handlePaymentSuccess(response, {
-                name: name,
-                mobile: mobile,
-                address: address,
-                amount: total / 100
-            });
-        },
-        "prefill": {
-            "name": name,
-            "email": "",
-            "contact": mobile
-        },
-        "notes": {
-            "address": address
-        },
-        "theme": {
-            "color": "#f97316"
-        },
-        "modal": {
-            "ondismiss": function(){
-                showToast('Payment cancelled', 'error');
-            }
-        }
+
+    // --- Create a dummy payment response for Cash on Delivery ---
+    const dummyPaymentResponse = {
+        razorpay_payment_id: `cod_${new Date().getTime()}` // Unique ID for COD orders
     };
-    
-    const rzp = new Razorpay(options);
-    rzp.open();
+
+    const { total } = calculateTotals();
+
+    const customerDetails = {
+        name: name,
+        mobile: mobile,
+        address: address,
+        amount: total
+    };
+
+    // 2. Proceed to place the order on the backend
+    await placeOrderOnBackend(dummyPaymentResponse, customerDetails);
 }
 
-// Handle payment success
-async function handlePaymentSuccess(response, customerDetails) {
+// 2. Send the final order data to the backend API
+async function placeOrderOnBackend(paymentResponse, customerDetails) {
+    const { total } = calculateTotals();
+
+    // **CORRECTED**: This object structure now matches the backend API requirements
+    const orderData = {
+        customer_name: customerDetails.name,
+        customer_mobile: customerDetails.mobile,
+        customer_address: customerDetails.address,
+        items: cart, // The backend expects 'items'
+        payment_id: paymentResponse.razorpay_payment_id,
+        total_amount: total // The backend expects 'total_amount'
+    };
+
     try {
-        const orderData = {
-            name: customerDetails.name,
-            mobile: customerDetails.mobile,
-            address: customerDetails.address,
-            cart_items: cart,
-            payment_id: response.razorpay_payment_id,
-            amount: customerDetails.amount
-        };
-        
         const apiResponse = await fetch('/api/order', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(orderData)
         });
-        
+
         if (!apiResponse.ok) {
-            throw new Error('Failed to place order');
+            const errorData = await apiResponse.json();
+            throw new Error(errorData.error || 'Failed to place order on the server.');
         }
-        
+
         const result = await apiResponse.json();
-        
+
         if (result.success) {
             showToast('Order placed successfully! You will receive a confirmation call shortly.');
+            // Reset state and UI after successful order
             cart = [];
             updateCartCount();
             showHomePage();
-            
-            // Clear form
             document.getElementById('customerDetailsForm').reset();
         } else {
-            throw new Error(result.message || 'Failed to place order');
+            throw new Error(result.message || 'An unknown error occurred.');
         }
     } catch (error) {
         console.error('Error placing order:', error);
-        showToast('Order placed but there was an issue. Please contact us if needed.', 'error');
+        showToast(`Error: ${error.message}`, 'error');
     }
 }
 
-// Show toast notification
+
+// =================================================================================
+// UTILITY FUNCTIONS
+// =================================================================================
+
+// Display a toast notification
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
     const toastMessage = document.getElementById('toast-message');
-    
+    if (!toast || !toastMessage) return;
+
     toastMessage.textContent = message;
-    
-    // Set toast color based on type
+
+    // Reset classes
+    toast.className = 'fixed bottom-5 right-5 px-6 py-3 rounded-lg shadow-lg animate-pop';
+
     if (type === 'error') {
-        toast.className = 'fixed bottom-5 right-5 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg animate-pop';
+        toast.classList.add('bg-red-500', 'text-white');
+    } else if (type === 'info') {
+        toast.classList.add('bg-blue-500', 'text-white');
     } else {
-        toast.className = 'fixed bottom-5 right-5 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg animate-pop';
+        toast.classList.add('bg-green-500', 'text-white');
     }
-    
+
     toast.classList.remove('hidden');
-    
+
     setTimeout(() => {
         toast.classList.add('hidden');
     }, 4000);
+}
+
+// Sanitize text to prevent XSS attacks
+function escapeHtml(text) {
+    if (text === null || typeof text === 'undefined') {
+        return '';
+    }
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
