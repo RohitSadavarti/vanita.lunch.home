@@ -12,6 +12,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 from .models import MenuItem, Order, VlhAdmin
+from datetime import datetime, timedelta
 import json
 import uuid
 from decimal import Decimal
@@ -82,44 +83,26 @@ def logout_view(request):
 # =================================================================================
 
 @admin_required
-def dashboard(request):
+def dashboard_view(request):
     """Renders the main admin dashboard page."""
-    try:
-        recent_orders = Order.objects.order_by('-order_time')[:5]
-        context = {
-            'recent_orders': recent_orders,
-            'total_orders': Order.objects.count(),
-            'preparing_orders_count': Order.objects.filter(status='preparing').count(),
-            'ready_orders_count': Order.objects.filter(status='ready').count(),
-        }
-        return render(request, 'OrderMaster/dashboard.html', context)
-    except Exception as e:
-        logger.error(f"Dashboard error: {e}")
-        messages.error(request, 'Error loading dashboard.')
-        return render(request, 'OrderMaster/dashboard.html', {'recent_orders': [], 'total_orders': 0})
-
-@admin_required
-def order_management(request):
-    """Displays and manages current orders ('preparing' and 'ready')."""
-    try:
-        preparing_orders = Order.objects.filter(status='preparing').order_by('order_time')
-        ready_orders = Order.objects.filter(status='ready').order_by('-ready_time')
-        
-        # The parsed_items property is now handled in the model
-        context = {
-            'preparing_orders': preparing_orders,
-            'ready_orders': ready_orders,
-        }
-        return render(request, 'OrderMaster/order_management.html', context)
+    context = {
+        'total_orders': Order.objects.count(),
+        'preparing_orders_count': Order.objects.filter(status='preparing').count(),
+        'ready_orders_count': Order.objects.filter(status='ready').count(),
+        'menu_items_count': MenuItem.objects.count(),
+        'recent_orders': Order.objects.order_by('-created_at')[:5],
+    }
+    return render(request, 'dashboard.html', context)
     
-    except Exception as e:
-        logger.error(f"Order management error: {e}")
-        messages.error(request, 'Error loading orders.')
-        return render(request, 'OrderMaster/order_management.html', {
-            'preparing_orders': [],
-            'ready_orders': [],
-        })
-
+@admin_required
+def order_management_view(request):
+    """Displays and manages current orders."""
+    context = {
+        'preparing_orders': Order.objects.filter(status='preparing').order_by('created_at'),
+        'ready_orders': Order.objects.filter(status='ready').order_by('-created_at'),
+    }
+    return render(request, 'order_management.html', context)
+    
 @csrf_exempt
 @admin_required
 @require_POST
@@ -151,71 +134,48 @@ def update_order_status(request):
 # =================================================================================
 
 @admin_required
-def menu_management(request):
-    """Handles adding new menu items and displaying the list of all items."""
-    try:
-        if request.method == 'POST':
-            # Create a new menu item from form data
-            MenuItem.objects.create(
-                item_name=request.POST['item_name'],
-                description=request.POST['description'],
-                price=request.POST['price'],
-                category=request.POST['category'],
-                veg_nonveg=request.POST['veg_nonveg'],
-                meal_type=request.POST['meal_type'],
-                availability_time=request.POST['availability_time'],
-                image=request.FILES.get('image')
-            )
-            messages.success(request, 'Menu item added successfully!')
-            return redirect('menu_management')
-            
-        menu_items = MenuItem.objects.all().order_by('-created_at')
-        context = {'menu_items': menu_items}
-        return render(request, 'OrderMaster/menu_management.html', context)
-    
-    except Exception as e:
-        logger.error(f"Menu management error: {e}")
-        messages.error(request, 'Error managing menu items.')
-        return render(request, 'OrderMaster/menu_management.html', {'menu_items': []})
-
-@admin_required
-def edit_menu_item(request, item_id):
-    """Handles editing an existing menu item."""
-    try:
-        item = get_object_or_404(MenuItem, id=item_id)
-        if request.method == 'POST':
-            item.item_name = request.POST['item_name']
-            item.description = request.POST['description']
-            item.price = request.POST['price']
-            item.category = request.POST['category']
-            item.veg_nonveg = request.POST['veg_nonveg']
-            item.meal_type = request.POST['meal_type']
-            item.availability_time = request.POST['availability_time']
-            if 'image' in request.FILES:
-                item.image = request.FILES['image']
-            item.save()
-            messages.success(request, 'Menu item updated successfully!')
-            return redirect('menu_management')
-            
-        return render(request, 'OrderMaster/edit_menu_item.html', {'item': item})
-    
-    except Exception as e:
-        logger.error(f"Edit menu item error: {e}")
-        messages.error(request, 'Error editing menu item.')
+def menu_management_view(request):
+    """Handles adding and displaying menu items."""
+    if request.method == 'POST':
+        MenuItem.objects.create(
+            item_name=request.POST['item_name'], description=request.POST['description'],
+            price=request.POST['price'], category=request.POST['category'],
+            veg_nonveg=request.POST['veg_nonveg'], meal_type=request.POST['meal_type'],
+            availability_time=request.POST['availability_time'], image=request.FILES.get('image')
+        )
+        messages.success(request, 'Menu item added successfully!')
         return redirect('menu_management')
+        
+    context = {'menu_items': MenuItem.objects.all().order_by('-created_at')}
+    return render(request, 'menu_management.html', context)
 
 @admin_required
-@require_http_methods(["POST"])
-def delete_menu_item(request, item_id):
+def edit_menu_item_view(request, item_id):
+    """Handles editing an existing menu item."""
+    item = get_object_or_404(MenuItem, id=item_id)
+    if request.method == 'POST':
+        item.item_name = request.POST['item_name']
+        item.description = request.POST['description']
+        item.price = request.POST['price']
+        item.category = request.POST['category']
+        item.veg_nonveg = request.POST['veg_nonveg']
+        item.meal_type = request.POST['meal_type']
+        item.availability_time = request.POST['availability_time']
+        if 'image' in request.FILES:
+            item.image = request.FILES['image']
+        item.save()
+        messages.success(request, 'Menu item updated successfully!')
+        return redirect('menu_management')
+            
+    return render(request, 'edit_menu_item.html', {'item': item})
+
+@admin_required
+@require_POST
+def delete_menu_item_view(request, item_id):
     """Handles deleting a menu item."""
-    try:
-        item = get_object_or_404(MenuItem, id=item_id)
-        item.delete()
-        messages.success(request, 'Menu item deleted successfully!')
-    except Exception as e:
-        logger.error(f"Delete menu item error: {e}")
-        messages.error(request, 'Error deleting menu item.')
-    
+    item = get_object_or_404(MenuItem, id=item_id)
+    item.delete()
+    messages.success(request, 'Menu item deleted successfully!')
     return redirect('menu_management')
 
 # =================================================================================
@@ -343,24 +303,17 @@ def api_place_order(request):
 # =================================================================================
 
 @admin_required
-def analytics(request):
+def analytics_view(request):
     """Renders the analytics page."""
-    try:
-        # Add some basic analytics data
-        total_orders = Order.objects.count()
-        completed_orders = Order.objects.filter(status='completed').count()
-        total_revenue = sum(order.total_amount for order in Order.objects.filter(status='completed'))
-        
-        context = {
-            'total_orders': total_orders,
-            'completed_orders': completed_orders,
-            'total_revenue': total_revenue,
-            'pending_orders': Order.objects.filter(status__in=['preparing', 'ready']).count(),
-        }
-        return render(request, 'OrderMaster/analytics.html', context)
-    except Exception as e:
-        logger.error(f"Analytics error: {e}")
-        return render(request, 'OrderMaster/analytics.html', {})
+    completed_orders = Order.objects.filter(status='completed')
+    total_revenue = completed_orders.aggregate(total=Sum('total_amount'))['total'] or 0
+    context = {
+        'total_orders': Order.objects.count(),
+        'completed_orders': completed_orders.count(),
+        'total_revenue': total_revenue,
+        'pending_orders': Order.objects.filter(status__in=['preparing', 'ready']).count(),
+    }
+    return render(request, 'analytics.html', context)
 
 @admin_required
 def settings(request):
@@ -443,6 +396,7 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
 
 
 
