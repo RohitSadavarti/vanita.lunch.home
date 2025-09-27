@@ -1,38 +1,55 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
-from .models import MenuItem, Order
+from .models import MenuItem, Order, VlhAdmin
 import json
 
 
 def login_view(request):
     if request.method == 'POST':
-        username = request.POST['username']
+        mobile = request.POST['username']  # Using username field for mobile
         password = request.POST['password']
-        user = authenticate(request, username=username, password=password)
-        if user:
-            login(request, user)
-            return redirect('dashboard')
-        else:
-            messages.error(request, 'Invalid username or password')
+        
+        try:
+            # Check against your custom admin table
+            admin_user = VlhAdmin.objects.get(mobile=mobile)
+            if admin_user.check_password(password):
+                # Store admin info in session since we're not using Django's User model
+                request.session['admin_id'] = admin_user.id
+                request.session['admin_mobile'] = admin_user.mobile
+                request.session['is_authenticated'] = True
+                return redirect('dashboard')
+            else:
+                messages.error(request, 'Invalid mobile number or password')
+        except VlhAdmin.DoesNotExist:
+            messages.error(request, 'Invalid mobile number or password')
+    
     return render(request, 'OrderMaster/login.html')
 
 
 def logout_view(request):
-    logout(request)
+    # Clear custom session data
+    request.session.flush()
     return redirect('login')
 
 
-@login_required
+def admin_required(view_func):
+    """Custom decorator to check if admin is authenticated"""
+    def wrapper(request, *args, **kwargs):
+        if not request.session.get('is_authenticated'):
+            return redirect('login')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+@admin_required
 def dashboard(request):
     return render(request, 'OrderMaster/dashboard.html')
 
 
-@login_required
+@admin_required
 def order_management(request):
     preparing_orders = Order.objects.filter(status='preparing')
     ready_orders = Order.objects.filter(status='ready')
@@ -45,7 +62,7 @@ def order_management(request):
 
 
 @csrf_exempt
-@login_required
+@admin_required
 def update_order_status(request):
     if request.method == 'POST':
         data = json.loads(request.body)
@@ -66,7 +83,7 @@ def update_order_status(request):
     return JsonResponse({'success': False, 'error': 'Invalid request'})
 
 
-@login_required
+@admin_required
 def menu_management(request):
     if request.method == 'POST':
         item_name = request.POST['item_name']
@@ -98,7 +115,7 @@ def menu_management(request):
     return render(request, 'OrderMaster/menu_management.html', context)
 
 
-@login_required
+@admin_required
 def edit_menu_item(request, item_id):
     item = get_object_or_404(MenuItem, id=item_id)
     
@@ -122,7 +139,7 @@ def edit_menu_item(request, item_id):
     return render(request, 'OrderMaster/edit_menu_item.html', context)
 
 
-@login_required
+@admin_required
 def delete_menu_item(request, item_id):
     if request.method == 'POST':
         item = get_object_or_404(MenuItem, id=item_id)
