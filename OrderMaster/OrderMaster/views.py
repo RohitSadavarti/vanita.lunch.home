@@ -309,3 +309,14 @@ def api_order_status(request, order_id):
         
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+@admin_required
+def analytics(request):
+    """Renders the analytics page."""
+    return render(request, 'OrderMaster/analytics.html')
+
+
+@admin_required
+def settings(request):
+    """Renders the settings page."""
+    return render(request, 'OrderMaster/settings.html')
