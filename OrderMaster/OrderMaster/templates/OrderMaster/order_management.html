@@ -52,7 +52,7 @@
                     <div style="display:flex; align-items:center; gap: 0.5rem">
                          <div style="width: 2rem; height: 2rem; background-color: var(--primary); color: var(--primary-foreground); border-radius: 9999px; display:flex; align-items: center; justify-content:center; font-weight: 600;">A</div>
                          <a href="{% url 'logout' %}" class="btn" style="background: transparent; border: none; text-decoration: none;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                          </a>
                     </div>
                 </div>
@@ -71,7 +71,7 @@
                             </div>
                             <div class="card-body" id="preparing-orders">
                                 {% for order in preparing_orders %}
-                                <div class="card mb-3 order-card" data-order-id="{{ order.id }}">
+                                <div class="card mb-3 order-card" data-order-id="{{ order.id }}" data-order-time="{{ order.order_time|date:'c' }}">
                                     <div class="card-body">
                                         <div class="d-flex justify-content-between align-items-start mb-2">
                                             <h6 class="card-title mb-0">Order #{{ order.order_id }}</h6>
@@ -104,7 +104,7 @@
                                             <ul class="list-unstyled small mt-1">
                                                 {% if order.parsed_items.items %}
                                                     {% for item in order.parsed_items.items %}
-                                                    <li>• {{ item.quantity }}x {{ item.name }} - ₹{{ item.total|floatformat:2 }}</li>
+                                                    <li>• {{ item.quantity }}x {{ item.name }}</li>
                                                     {% endfor %}
                                                 {% else %}
                                                     <li class="text-muted">{{ order.items }}</li>
@@ -113,7 +113,9 @@
                                         </div>
                                         
                                         <div class="d-flex justify-content-between align-items-center mt-3">
-                                            <small class="text-muted">{{ order.order_time|timesince }} ago</small>
+                                            <small class="text-muted fw-bold">
+                                                <span class="order-timer">00:00</span>
+                                            </small>
                                             <button class="btn btn-success btn-sm move-to-ready" data-order-id="{{ order.id }}">
                                                 Mark as Ready
                                             </button>
@@ -172,7 +174,7 @@
                                             <ul class="list-unstyled small mt-1">
                                                 {% if order.parsed_items.items %}
                                                     {% for item in order.parsed_items.items %}
-                                                    <li>• {{ item.quantity }}x {{ item.name }} - ₹{{ item.total|floatformat:2 }}</li>
+                                                    <li>• {{ item.quantity }}x {{ item.name }}</li>
                                                     {% endfor %}
                                                 {% else %}
                                                     <li class="text-muted">{{ order.items }}</li>
@@ -208,44 +210,7 @@
         </div>
     </div>
 
-    <style>
-    .order-card {
-        border-left: 4px solid #007bff;
-        transition: transform 0.2s ease;
-    }
-
-    .order-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-
-    .bg-warning .text-white {
-        color: white !important;
-    }
-
-    .badge {
-        font-size: 0.75rem;
-    }
-
-    .btn-sm {
-        font-size: 0.8rem;
-        padding: 0.25rem 0.75rem;
-    }
-
-    @media (max-width: 768px) {
-        .row .col-md-6:not(:last-child) {
-            margin-bottom: 2rem;
-        }
-    }
-    </style>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{% static 'js/main.js' %}"></script>
-    <script>
-    // Auto-refresh orders every 30 seconds
-    setInterval(function() {
-        location.reload();
-    }, 30000);
-    </script>
 </body>
 </html>
