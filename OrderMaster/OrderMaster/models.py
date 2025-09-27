@@ -1,8 +1,12 @@
+# OrderMaster/models.py - Add this to your existing models
+
+import bcrypt
 from django.db import models
 from django.utils import timezone
 
 
 class MenuItem(models.Model):
+    # ... your existing MenuItem model code stays the same ...
     CATEGORY_CHOICES = [
         ('breakfast', 'Breakfast'),
         ('lunch', 'Lunch'),
@@ -41,6 +45,7 @@ class MenuItem(models.Model):
 
 
 class Order(models.Model):
+    # ... your existing Order model code stays the same ...
     STATUS_CHOICES = [
         ('preparing', 'Preparing'),
         ('ready', 'Ready'),
@@ -61,3 +66,20 @@ class Order(models.Model):
     class Meta:
         db_table = 'orders'
         ordering = ['-order_time']
+
+
+# Add this new model for your custom admin
+class VlhAdmin(models.Model):
+    mobile = models.CharField(max_length=10, unique=True)
+    password_hash = models.TextField()
+    created_at = models.DateTimeField(default=timezone.now)
+    
+    class Meta:
+        db_table = 'vlh_admin'
+    
+    def check_password(self, raw_password):
+        """Check if the provided password matches the stored hash"""
+        return bcrypt.checkpw(raw_password.encode('utf-8'), self.password_hash.encode('utf-8'))
+    
+    def __str__(self):
+        return self.mobile
