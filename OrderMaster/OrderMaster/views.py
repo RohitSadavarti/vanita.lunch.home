@@ -1,13 +1,24 @@
-# Add these views to your OrderMaster/views.py file
+# Add these to your existing OrderMaster/views.py file
+# Make sure to keep your existing imports and add these new ones
 
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
-from .models import MenuItem, Order
+from .models import MenuItem, Order, VlhAdmin
 import json
 import uuid
+
+# Keep your existing admin_required decorator
+def admin_required(view_func):
+    """Custom decorator to check if admin is authenticated"""
+    def wrapper(request, *args, **kwargs):
+        if not request.session.get('is_authenticated'):
+            return redirect('login')
+        return view_func(request, *args, **kwargs)
+    return wrapper
 
 def customer_home(request):
     """Render the customer ordering interface"""
