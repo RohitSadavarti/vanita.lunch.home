@@ -103,17 +103,22 @@ function renderMenu() {
     lucide.createIcons(); // Re-render icons for new elements
 }
 
+// vanitalunchhome/static/script.js
+
+// ... (keep all the existing code before this function)
+
 // Create a single menu card element
 function createMenuCard(item) {
     const card = document.createElement('div');
-    card.className = 'bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300';
+    card.className = 'bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 flex flex-col';
 
     const vegType = (item.veg_nonveg || '').toLowerCase() === 'veg' ? 'veg' : 'non-veg';
     const vegIndicatorClass = vegType === 'veg' ? 'bg-green-500' : 'bg-red-500';
+    const imageUrl = item.image || `https://placehold.co/300x200/f3f4f6/6b7280?text=${encodeURIComponent(item.item_name || 'Food')}`;
 
     card.innerHTML = `
         <div class="relative">
-            <img src="https://placehold.co/300x200/f3f4f6/6b7280?text=${encodeURIComponent(item.item_name || 'Food')}"
+            <img src="${imageUrl}"
                  alt="${escapeHtml(item.item_name)}"
                  class="w-full h-48 object-cover">
             <div class="absolute top-2 left-2 flex items-center space-x-1 bg-white px-2 py-1 rounded-full text-xs font-medium">
@@ -121,10 +126,11 @@ function createMenuCard(item) {
                 <span>${vegType.toUpperCase()}</span>
             </div>
         </div>
-        <div class="p-4 flex flex-col h-full">
+        <div class="p-4 flex flex-col flex-grow">
             <h3 class="text-lg font-semibold text-gray-900 mb-2">${escapeHtml(item.item_name)}</h3>
             <p class="text-gray-600 text-sm mb-3 line-clamp-2 flex-grow">${escapeHtml(item.description || 'Delicious food item')}</p>
-            <div class="flex items-center justify-between mt-auto">
+            
+            <div class="flex items-center justify-between mt-auto pt-4">
                 <span class="text-2xl font-bold text-orange-500">₹${parseFloat(item.price).toFixed(2)}</span>
                 <button onclick="addToCart(${item.id})"
                         class="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors duration-300 flex items-center space-x-2">
@@ -132,10 +138,12 @@ function createMenuCard(item) {
                     <span>Add</span>
                 </button>
             </div>
-        </div>`;
+        </div>
+    `;
     return card;
 }
 
+// ... (keep all the existing code after this function)
 // Render the contents of the cart page
 function renderCartPage() {
     const cartItemsContainer = document.getElementById('cart-page-items');
