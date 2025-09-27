@@ -27,9 +27,9 @@ class MenuItem(models.Model):
         ('beverage', 'Beverage'),
     ]
 
-    name = models.CharField(max_length=200)  # aligned with simple version
+    name = models.CharField(max_length=100)  # aligned with simple version
     description = models.TextField(blank=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.DecimalField(max_digits=8, decimal_places=2)
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
     veg_nonveg = models.CharField(max_length=10, choices=VEG_CHOICES)
     meal_type = models.CharField(max_length=20, choices=MEAL_TYPE_CHOICES)
@@ -88,3 +88,4 @@ class VlhAdmin(models.Model):
 
     def __str__(self):
         return self.mobile
+
