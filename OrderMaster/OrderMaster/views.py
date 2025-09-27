@@ -2,6 +2,10 @@
 # IMPORTS
 # =================================================================================
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
+from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.decorators import login_required
+
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -19,6 +23,28 @@ logger = logging.getLogger(__name__)
 # =================================================================================
 # DECORATORS & AUTHENTICATION
 # =================================================================================
+# Customer-facing views
+def customer_order_view(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        items = data.get('items')
+        customer_name = data.get('customer_name', 'Anonymous')
+        total_amount = data.get('total_amount')
+        order_id = str(uuid.uuid4()).split('-')[0].upper()
+        payment_id = data.get('payment_id', 'COD')
+
+        Order.objects.create(
+            order_id=order_id,
+            customer_name=customer_name,
+            items=items,
+            total_amount=total_amount,
+            payment_id=payment_id,
+            created_at=timezone.now()
+        )
+        return JsonResponse({'status': 'success', 'order_id': order_id})
+    
+    menu_items = MenuItem.objects.all()
+    return render(request, 'OrderMaster/customer_order.html', {'menu_items': menu_items})
 
 def admin_required(view_func):
     """
@@ -32,27 +58,20 @@ def admin_required(view_func):
         return view_func(request, *args, **kwargs)
     return wrapper
 
+# Admin Login/Logout
 def login_view(request):
-    """Handles the admin login functionality."""
     if request.method == 'POST':
-        mobile = request.POST.get('username')  # Using 'username' for mobile
-        password = request.POST.get('password')
-        
-        try:
-            # Authenticate against the custom VlhAdmin model
-            admin_user = VlhAdmin.objects.get(mobile=mobile)
-            if admin_user.check_password(password):
-                # Set session variables for custom authentication state
-                request.session['admin_id'] = admin_user.id
-                request.session['admin_mobile'] = admin_user.mobile
-                request.session['is_authenticated'] = True
+        form = AuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password')
+            user = authenticate(username=username, password=password)
+            if user is not None:
+                auth_login(request, user)
                 return redirect('dashboard')
-            else:
-                messages.error(request, 'Invalid mobile number or password.')
-        except VlhAdmin.DoesNotExist:
-            messages.error(request, 'Invalid mobile number or password.')
-            
-    return render(request, 'OrderMaster/login.html')
+    else:
+        form = AuthenticationForm()
+    return render(request, 'OrderMaster/login.html', {'form': form})
 
 def logout_view(request):
     """Clears the session to log the admin out."""
@@ -352,3 +371,4 @@ def analytics(request):
 def settings(request):
     """Renders the settings page."""
     return render(request, 'OrderMaster/settings.html')
+
