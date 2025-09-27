@@ -5,7 +5,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.decorators import login_required
-
+from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -25,42 +25,27 @@ logger = logging.getLogger(__name__)
 # =================================================================================
 # Customer-facing views
 def customer_order_view(request):
-    """
-    Renders the customer order page and handles order placement via POST request.
-    """
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            items = data.get('items')
-            customer_name = data.get('customer_name', 'Anonymous')
-            total_amount = data.get('total_amount')
-            
-            if not all([items, customer_name, total_amount]):
-                 return JsonResponse({'status': 'error', 'message': 'Missing data'}, status=400)
-
-            order = Order.objects.create(
+            Order.objects.create(
                 order_id=str(uuid.uuid4()).split('-')[0].upper(),
-                customer_name=customer_name,
-                items=items,
-                total_amount=total_amount,
+                customer_name=data.get('customer_name', 'Anonymous'),
+                items=data.get('items'),
+                total_amount=data.get('total_amount'),
                 payment_id=data.get('payment_id', 'COD'),
-                created_at=timezone.now()
+                created_at=timezone.now(),
+                status='Pending' # New orders are always 'Pending'
             )
-            return JsonResponse({'status': 'success', 'order_id': order.order_id})
-        except json.JSONDecodeError:
-            return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+            return JsonResponse({'status': 'success'})
         except Exception as e:
-            logger.error(f"Customer order placement error: {e}")
-            return JsonResponse({'status': 'error', 'message': 'Server error'}, status=500)
+            logger.error(f"Customer order error: {e}")
+            return JsonResponse({'status': 'error'}, status=500)
 
     menu_items = MenuItem.objects.all()
     return render(request, 'OrderMaster/customer_order.html', {'menu_items': menu_items})
 
 def admin_required(view_func):
-    """
-    Custom decorator to ensure that a user is an authenticated admin.
-    If not authenticated, they are redirected to the login page.
-    """
     def wrapper(request, *args, **kwargs):
         if not request.session.get('is_authenticated'):
             messages.warning(request, 'You must be logged in to view this page.')
@@ -70,11 +55,9 @@ def admin_required(view_func):
 
 # Admin Login/Logout
 def login_view(request):
-    """Handles the admin login with the custom VlhAdmin model."""
     if request.method == 'POST':
-        mobile = request.POST.get('username')  # The form uses 'username' for the mobile field
+        mobile = request.POST.get('username')
         password = request.POST.get('password')
-        
         try:
             admin_user = VlhAdmin.objects.get(mobile=mobile)
             if admin_user.check_password(password):
@@ -85,12 +68,10 @@ def login_view(request):
                 messages.error(request, 'Invalid mobile number or password.')
         except VlhAdmin.DoesNotExist:
             messages.error(request, 'Invalid mobile number or password.')
-            
     return render(request, 'OrderMaster/login.html')
-
+    
 @admin_required
 def logout_view(request):
-    """Clears the session to log the admin out."""
     request.session.flush()
     messages.info(request, 'You have been successfully logged out.')
     return redirect('login')
@@ -141,33 +122,30 @@ def order_management(request):
 
 @csrf_exempt
 @admin_required
-@require_http_methods(["POST"])
+@require_POST
 def update_order_status(request):
-    """API endpoint for admins to update the status of an order."""
+    """API to update an order's status, e.g., from 'Pending' to 'Ready'."""
     try:
         data = json.loads(request.body)
-        order_id = data.get('order_id')
+        order_pk = data.get('id')
         new_status = data.get('status')
 
-        if not all([order_id, new_status]):
-            return JsonResponse({'success': False, 'error': 'Missing order_id or status.'}, status=400)
+        if not all([order_pk, new_status]):
+            return JsonResponse({'success': False, 'error': 'Missing data'}, status=400)
 
-        order = get_object_or_404(Order, id=order_id)
+        order = get_object_or_404(Order, pk=order_pk)
         order.status = new_status
-        if new_status == 'ready':
+        
+        if new_status == 'Ready':
             order.ready_time = timezone.now()
         
         order.save()
-        return JsonResponse({'success': True, 'message': f'Order status updated to {new_status}.'})
-
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON data.'}, status=400)
+        return JsonResponse({'success': True})
     except Order.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Order not found.'}, status=404)
+        return JsonResponse({'success': False, 'error': 'Order not found'}, status=404)
     except Exception as e:
         logger.error(f"Update order status error: {e}")
-        return JsonResponse({'success': False, 'error': 'Server error occurred.'}, status=500)
-
+        return JsonResponse({'success': False, 'error': 'Server error'}, status=500)
 # =================================================================================
 # ADMIN MENU MANAGEMENT VIEWS
 # =================================================================================
@@ -390,14 +368,13 @@ def settings(request):
     return render(request, 'OrderMaster/settings.html')
 @admin_required
 def dashboard_view(request):
-    """Renders the main admin dashboard page."""
     return render(request, 'OrderMaster/dashboard.html')
+
 
 @admin_required
 def order_management_view(request):
-    """Renders the order management page which will be updated in real-time."""
     return render(request, 'OrderMaster/order_management.html')
-
+    
 @admin_required
 def menu_management_view(request):
     """Handles adding new menu items and displaying all items."""
@@ -466,5 +443,6 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
 
 
