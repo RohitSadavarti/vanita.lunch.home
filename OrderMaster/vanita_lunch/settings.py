@@ -119,3 +119,6 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.onrender.com',
     'https://admin-ab5o.onrender.com',  # Your specific Render URL
 ]
+
+# OrderMaster/vanita_lunch/settings.py
+STATICFILES_DIRS = [BASE_DIR / "static"]
