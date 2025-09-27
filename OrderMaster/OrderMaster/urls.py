@@ -1,4 +1,4 @@
-# Update your OrderMaster/urls.py file to include these new patterns:
+# OrderMaster/OrderMaster/urls.py
 
 from django.urls import path
 from . import views
@@ -14,6 +14,10 @@ urlpatterns = [
     path('menu/edit/<int:item_id>/', views.edit_menu_item, name='edit_menu_item'),
     path('menu/delete/<int:item_id>/', views.delete_menu_item, name='delete_menu_item'),
     path('api/update-order-status/', views.update_order_status, name='update_order_status'),
+
+    # Add these two new lines for Analytics and Settings
+    path('analytics/', views.analytics, name='analytics'),
+    path('settings/', views.settings, name='settings'),
     
     # New customer URLs
     path('order/', views.customer_home, name='customer_home'),
