@@ -7,11 +7,12 @@
     <title>Analytics - Vanita Lunch Home</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
     <div class="app-layout">
         <aside class="sidebar">
-             <nav class="sidebar-nav">
+            <nav class="sidebar-nav">
                 <a href="{% url 'dashboard' %}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
                     <span>Dashboard</span>
@@ -21,11 +22,11 @@
                     <span>Order Management</span>
                 </a>
                 <a href="{% url 'menu_management' %}">
-                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l16 0"/><path d="M4 12l16 0"/><path d="M4 18l16 0"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l16 0"/><path d="M4 12l16 0"/><path d="M4 18l16 0"/></svg>
                     <span>Menu Management</span>
                 </a>
                 <a href="{% url 'analytics' %}" class="active">
-                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
                     <span>Analytics</span>
                 </a>
                 <a href="{% url 'settings' %}">
@@ -34,8 +35,8 @@
                 </a>
             </nav>
         </aside>
-         <div style="width:100%">
-             <header class="admin-header">
+        <div style="width:100%">
+            <header class="admin-header">
                 <div class="header-brand">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="header-brand-icon"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
                     <div class="header-brand-text">
@@ -44,11 +45,11 @@
                     </div>
                 </div>
                 <div class="header-actions">
-                     <div class="connection-status">
+                    <div class="connection-status">
                          <div class="status-indicator status-connected"></div>
                          <span class="text-sm text-muted-foreground">Connected</span>
                     </div>
-                     <div style="display:flex; align-items:center; gap: 0.5rem">
+                    <div style="display:flex; align-items:center; gap: 0.5rem">
                          <div style="width: 2rem; height: 2rem; background-color: var(--primary); color: var(--primary-foreground); border-radius: 9999px; display:flex; align-items: center; justify-content:center; font-weight: 600;">A</div>
                          <a href="{% url 'logout' %}" class="btn" style="background: transparent; border: none; text-decoration: none;">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -57,47 +58,83 @@
                 </div>
             </header>
             <main class="main-content">
-                 <div class="card-title">
-                    <h2>Analytics Dashboard</h2>
-                    <p class="card-description">Restaurant performance insights</p>
+                <div class="card-title mb-4">
+                    <h2>Analytics</h2>
+                    <p class="card-description">Business insights and performance metrics</p>
                 </div>
-                <div class="grid grid-cols-2">
+
+                <!-- Analytics Cards -->
+                <div class="grid grid-cols-4 mb-8">
                     <div class="card">
                         <div class="card-content">
-                            <h3 class="text-lg font-semibold" style="margin-bottom: 1rem;">Daily Sales Trend</h3>
-                             <div style="height: 16rem; display: flex; align-items: center; justify-content: center;" class="text-muted-foreground">
-                                 <div class="text-center">
-                                     <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 0.5rem auto;"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-                                     <p>Sales chart will be displayed here</p>
-                                     <p class="text-sm" style="margin-top: 0.25rem;">Integrate with Chart.js or similar library</p>
+                            <div class="stats-card">
+                                <div class="stats-card-text">
+                                    <p>Total Orders</p>
+                                    <p>{{ total_orders|default:0 }}</p>
                                 </div>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-8 w-8 text-blue-500"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect width="8" height="4" x="8" y="2" rx="1"/></svg>
                             </div>
                         </div>
                     </div>
                     <div class="card">
-                         <div class="card-content">
-                            <h3 class="text-lg font-semibold" style="margin-bottom: 1rem;">Popular Menu Items</h3>
-                            <div class="space-y-4">
-                                <div class="flex items-center justify-between p-3 bg-background rounded-md border" style="padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.375rem;">
-                                    <div>#1 Dal Tadka</div>
-                                    <span>45 orders</span>
+                        <div class="card-content">
+                            <div class="stats-card">
+                                <div class="stats-card-text">
+                                    <p>Completed Orders</p>
+                                    <p>{{ completed_orders|default:0 }}</p>
                                 </div>
-                                 <div class="flex items-center justify-between p-3 bg-background rounded-md border" style="padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.375rem;">
-                                    <div>#2 Paneer Butter Masala</div>
-                                    <span>38 orders</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-8 w-8 text-green-500"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-content">
+                            <div class="stats-card">
+                                <div class="stats-card-text">
+                                    <p>Total Revenue</p>
+                                    <p>₹{{ total_revenue|default:0|floatformat:0 }}</p>
                                 </div>
-                                <div class="flex items-center justify-between p-3 bg-background rounded-md border" style="padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.375rem;">
-                                    <div>#3 Butter Roti</div>
-                                    <span>67 orders</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-8 w-8 text-yellow-500"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-content">
+                            <div class="stats-card">
+                                <div class="stats-card-text">
+                                    <p>Pending Orders</p>
+                                    <p>{{ pending_orders|default:0 }}</p>
                                 </div>
-                                 <div class="flex items-center justify-between p-3 bg-background rounded-md border" style="padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.375rem;">
-                                    <div>#4 Jeera Rice</div>
-                                    <span>29 orders</span>
-                                </div>
-                                 <div class="flex items-center justify-between p-3 bg-background rounded-md border" style="padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.375rem;">
-                                    <div>#5 Mixed Vegetable</div>
-                                    <span>24 orders</span>
-                                </div>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-8 w-8 text-yellow-500"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Analytics Content -->
+                <div class="card">
+                    <div class="card-content">
+                        <div class="card-title">
+                            <h3>Quick Statistics</h3>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Completion Rate:</strong> 
+                                {% if total_orders > 0 %}
+                                    {{ completed_orders|floatformat:0 }}/{{ total_orders }} ({{ completed_orders|mul:100|div:total_orders|floatformat:1 }}%)
+                                {% else %}
+                                    0%
+                                {% endif %}
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Average Order Value:</strong> 
+                                {% if completed_orders > 0 %}
+                                    ₹{{ total_revenue|div:completed_orders|floatformat:2 }}
+                                {% else %}
+                                    ₹0.00
+                                {% endif %}
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -105,5 +142,8 @@
             </main>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'js/main.js' %}"></script>
 </body>
 </html>
