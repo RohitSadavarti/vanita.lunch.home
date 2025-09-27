@@ -10,9 +10,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='order',
-            name='payment_id',
-            field=models.CharField(blank=True, default='COD', max_length=100),
-        ),
+        # migrations.AddField(
+        #     model_name='order',
+        #     name='payment_id',
+        #     field=models.CharField(blank=True, default='COD', max_length=100),
+        # ),
     ]
