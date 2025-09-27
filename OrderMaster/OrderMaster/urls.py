@@ -14,6 +14,7 @@ urlpatterns = [
     path('menu/', views.menu_management_view, name='menu_management'),
     path('menu/edit/<int:item_id>/', views.edit_menu_item_view, name='edit_menu_item'),
     path('menu/delete/<int:item_id>/', views.delete_menu_item_view, name='delete_menu_item'),
+    path('api/update_order_status/', views.update_order_status, name='update_order_status'), # <-- ADDED THIS
     path('analytics/', views.analytics_view, name='analytics'),
     path('settings/', views.settings_view, name='settings'),
     
@@ -30,4 +31,5 @@ urlpatterns = [
     # The line below was causing the error and has been removed, as the view no longer exists.
     # path('api/order-status/<str:order_id>/', views.api_order_status, name='api_order_status'),
 ]
+
 
