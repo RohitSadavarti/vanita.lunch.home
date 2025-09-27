@@ -12,7 +12,10 @@ let currentSearchTerm = '';
 
 // Initialize the application once the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
-    lucide.createIcons(); // Initialize icons
+    // This check ensures the lucide library is loaded before trying to use it.
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
     loadMenu();
     setupEventListeners();
 });
@@ -21,13 +24,13 @@ document.addEventListener('DOMContentLoaded', function() {
 // EVENT LISTENERS
 // =================================================================================
 
-// Centralized function to set up all event listeners
+// Centralized function to set up all event listeners for the page
 function setupEventListeners() {
     // Page navigation
     document.getElementById('cartBtn').addEventListener('click', showCartPage);
     document.getElementById('backToMenuBtn').addEventListener('click', showHomePage);
 
-    // Cart actions
+    // Main cart action
     document.getElementById('payNowBtn').addEventListener('click', processOrder);
 
     // Menu filtering and searching
@@ -64,13 +67,13 @@ async function loadMenu() {
 // UI RENDERING & PAGE NAVIGATION
 // =================================================================================
 
-// Show the main menu page
+// Show the main menu page and hide the cart
 function showHomePage() {
     document.getElementById('cartView').classList.add('hidden');
     document.getElementById('homeView').classList.remove('hidden');
 }
 
-// Show the cart page
+// Show the cart page and hide the menu
 function showCartPage() {
     if (cart.length === 0) {
         showToast('Your cart is empty!', 'info');
@@ -100,14 +103,12 @@ function renderMenu() {
         });
     }
 
-    lucide.createIcons(); // Re-render icons for new elements
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons(); // Re-render icons for new elements
+    }
 }
 
-// vanitalunchhome/static/script.js
-
-// ... (keep all the existing code before this function)
-
-// Create a single menu card element
+// Create a single menu card HTML element
 function createMenuCard(item) {
     const card = document.createElement('div');
     card.className = 'bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 flex flex-col';
@@ -143,15 +144,14 @@ function createMenuCard(item) {
     return card;
 }
 
-// ... (keep all the existing code after this function)
-// Render the contents of the cart page
+// Render the contents of the cart page, including items and summary
 function renderCartPage() {
     const cartItemsContainer = document.getElementById('cart-page-items');
     const cartSummaryContainer = document.getElementById('cart-page-summary');
     cartItemsContainer.innerHTML = '';
 
     if (cart.length === 0) {
-        showHomePage(); // If cart becomes empty, go back to menu
+        showHomePage(); // If cart becomes empty, go back to the menu
         return;
     }
 
@@ -185,7 +185,6 @@ function renderCartPage() {
         cartItemsContainer.appendChild(cartItem);
     });
 
-    // Render cart summary using the centralized calculation function
     const { subtotal, deliveryFee, total } = calculateTotals();
     cartSummaryContainer.innerHTML = `
         <div class="flex justify-between">
@@ -202,7 +201,9 @@ function renderCartPage() {
         </div>
         ${subtotal < 300 ? `<p class="text-sm text-gray-500 mt-2">Add ₹${(300 - subtotal).toFixed(2)} more for free delivery!</p>` : ''}`;
 
-    lucide.createIcons(); // Re-render icons
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
 }
 
 
@@ -210,7 +211,6 @@ function renderCartPage() {
 // MENU FILTERING & SEARCH
 // =================================================================================
 
-// Apply all active filters and re-render the menu
 function applyFilters() {
     filteredMenuItems = menuItems.filter(item => {
         const categoryMatch = currentCategory === 'all' || item.category === currentCategory;
@@ -250,7 +250,6 @@ function handleVegFilter(e) {
 // CART LOGIC
 // =================================================================================
 
-// Add an item to the cart
 function addToCart(itemId) {
     const item = menuItems.find(i => i.id === itemId);
     if (!item) return;
@@ -266,34 +265,33 @@ function addToCart(itemId) {
     showToast(`${item.item_name} added to cart!`);
 }
 
-// Remove an item completely from the cart
 function removeFromCart(itemId) {
     const item = cart.find(i => i.id === itemId);
+    if (!item) return;
+    
     cart = cart.filter(i => i.id !== itemId);
     updateCartCount();
-    if (document.getElementById('cartView').classList.contains('hidden') === false) {
+    if (!document.getElementById('cartView').classList.contains('hidden')) {
         renderCartPage();
     }
     showToast(`${item.name} removed from cart.`, 'info');
 }
 
-// Update the quantity of a cart item
 function updateQuantity(itemId, change) {
     const item = cart.find(i => i.id === itemId);
     if (item) {
         item.quantity += change;
         if (item.quantity <= 0) {
-            removeFromCart(itemId); // Automatically remove if quantity is 0 or less
+            removeFromCart(itemId);
         } else {
             updateCartCount();
-            if (document.getElementById('cartView').classList.contains('hidden') === false) {
+            if (!document.getElementById('cartView').classList.contains('hidden')) {
                 renderCartPage();
             }
         }
     }
 }
 
-// Update the cart item count bubble in the header
 function updateCartCount() {
     const cartCount = document.getElementById('cartCount');
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -306,10 +304,9 @@ function updateCartCount() {
     }
 }
 
-// Centralized function to calculate cart totals
 function calculateTotals() {
     const subtotal = cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
-    const deliveryFee = subtotal >= 300 ? 0 : 40; // Free delivery for orders >= 300
+    const deliveryFee = subtotal >= 300 ? 0 : 40;
     const total = subtotal + deliveryFee;
     return { subtotal, deliveryFee, total };
 }
@@ -318,13 +315,11 @@ function calculateTotals() {
 // ORDER PROCESSING (CASH ON DELIVERY)
 // =================================================================================
 
-// 1. Validate form and start the order process
 async function processOrder() {
     const name = document.getElementById('customerNameCart').value.trim();
     const mobile = document.getElementById('customerMobileCart').value.trim();
     const address = document.getElementById('customerAddress').value.trim();
 
-    // --- Validation ---
     if (!name || !mobile || !address) {
         showToast('Please fill in all delivery details.', 'error');
         return;
@@ -334,43 +329,28 @@ async function processOrder() {
         return;
     }
 
-    // --- Create a dummy payment response for Cash on Delivery ---
     const dummyPaymentResponse = {
-        razorpay_payment_id: `cod_${new Date().getTime()}` // Unique ID for COD orders
+        razorpay_payment_id: `cod_${new Date().getTime()}`
     };
 
     const { total } = calculateTotals();
+    const customerDetails = { name, mobile, address, amount: total };
 
-    const customerDetails = {
-        name: name,
-        mobile: mobile,
-        address: address,
-        amount: total
-    };
-
-    // 2. Proceed to place the order on the backend
     await placeOrderOnBackend(dummyPaymentResponse, customerDetails);
 }
 
-// vanitalunchhome/static/script.js
-
-// ... (keep all the existing code before this function)
-
-
-// 2. Send the final order data to the backend API
 async function placeOrderOnBackend(paymentResponse, customerDetails) {
-    // This object structure MUST match what the Flask backend (app.py) expects
+    // This object's keys must match the Flask backend (app.py)
     const orderData = {
-        name: customerDetails.name,                 // Correct key: 'name'
-        mobile: customerDetails.mobile,               // Correct key: 'mobile'
-        address: customerDetails.address,             // Correct key: 'address'
-        cart_items: cart,                           // Correct key: 'cart_items'
+        name: customerDetails.name,
+        mobile: customerDetails.mobile,
+        address: customerDetails.address,
+        cart_items: cart,
         payment_id: paymentResponse.razorpay_payment_id,
-        amount: customerDetails.amount              // The original code sent this
+        amount: customerDetails.amount
     };
 
     try {
-        // The API endpoint is /api/order as defined in your app.py
         const apiResponse = await fetch('/api/order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -386,7 +366,6 @@ async function placeOrderOnBackend(paymentResponse, customerDetails) {
 
         if (result.success) {
             showToast('Order placed successfully! You will receive a confirmation call shortly.');
-            // Reset state and UI after successful order
             cart = [];
             updateCartCount();
             showHomePage();
@@ -401,30 +380,24 @@ async function placeOrderOnBackend(paymentResponse, customerDetails) {
 }
 
 
-// ... (keep all the existing code after this function)
-
 // =================================================================================
 // UTILITY FUNCTIONS
 // =================================================================================
 
-// Display a toast notification
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
     const toastMessage = document.getElementById('toast-message');
     if (!toast || !toastMessage) return;
 
     toastMessage.textContent = message;
-
-    // Reset classes
-    toast.className = 'fixed bottom-5 right-5 px-6 py-3 rounded-lg shadow-lg animate-pop';
-
-    if (type === 'error') {
-        toast.classList.add('bg-red-500', 'text-white');
-    } else if (type === 'info') {
-        toast.classList.add('bg-blue-500', 'text-white');
-    } else {
-        toast.classList.add('bg-green-500', 'text-white');
-    }
+    
+    const colorClasses = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        info: 'bg-blue-500'
+    };
+    
+    toast.className = `fixed bottom-5 right-5 text-white px-6 py-3 rounded-lg shadow-lg animate-pop ${colorClasses[type] || colorClasses.success}`;
 
     toast.classList.remove('hidden');
 
@@ -433,7 +406,6 @@ function showToast(message, type = 'success') {
     }, 4000);
 }
 
-// Sanitize text to prevent XSS attacks
 function escapeHtml(text) {
     if (text === null || typeof text === 'undefined') {
         return '';
