@@ -11,34 +11,37 @@
 </head>
 <body>
     <div class="app-layout">
+        <!-- Sidebar -->
         <aside class="sidebar">
             <nav class="sidebar-nav">
                 <a href="{% url 'dashboard' %}">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" ...></svg>
                     <span>Dashboard</span>
                 </a>
                 <a href="{% url 'order_management' %}" class="active">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect width="8" height="4" x="8" y="2" rx="1"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" ...></svg>
                     <span>Order Management</span>
                 </a>
                 <a href="{% url 'menu_management' %}">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l16 0"/><path d="M4 12l16 0"/><path d="M4 18l16 0"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" ...></svg>
                     <span>Menu Management</span>
                 </a>
                 <a href="{% url 'analytics' %}">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" ...></svg>
                     <span>Analytics</span>
                 </a>
                 <a href="{% url 'settings' %}">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2.12l-.15.1a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1 0-2.12l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" ...></svg>
                     <span>Settings</span>
                 </a>
             </nav>
         </aside>
+
         <div style="width:100%">
+            <!-- Header -->
             <header class="admin-header">
                 <div class="header-brand">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="header-brand-icon"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" ...></svg>
                     <div class="header-brand-text">
                         <h1>Vanita Lunch Home</h1>
                         <p>Admin Portal</p>
@@ -46,24 +49,28 @@
                 </div>
                 <div class="header-actions">
                     <div class="connection-status">
-                         <div class="status-indicator status-connected"></div>
-                         <span class="text-sm text-muted-foreground">Connected</span>
+                        <div class="status-indicator status-connected"></div>
+                        <span class="text-sm text-muted-foreground">Connected</span>
                     </div>
                     <div style="display:flex; align-items:center; gap: 0.5rem">
-                         <div style="width: 2rem; height: 2rem; background-color: var(--primary); color: var(--primary-foreground); border-radius: 9999px; display:flex; align-items: center; justify-content:center; font-weight: 600;">A</div>
-                         <a href="{% url 'logout' %}" class="btn" style="background: transparent; border: none; text-decoration: none;">
-                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                         </a>
+                        <div style="width: 2rem; height: 2rem; background-color: var(--primary); color: var(--primary-foreground); border-radius: 9999px; display:flex; align-items: center; justify-content:center; font-weight: 600;">A</div>
+                        <a href="{% url 'logout' %}" class="btn" style="background: transparent; border: none; text-decoration: none;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" ...></svg>
+                        </a>
                     </div>
                 </div>
             </header>
+
+            <!-- Main Content -->
             <main class="main-content">
                 <div class="card-title mb-4">
                     <h2>Order Management</h2>
                     <p class="card-description">Manage incoming and ready orders</p>
                 </div>
 
+                <!-- Preparing & Ready Orders -->
                 <div class="row">
+                    <!-- Preparing Orders -->
                     <div class="col-md-6">
                         <div class="card">
                             <div class="card-header bg-warning">
@@ -77,7 +84,6 @@
                                             <h6 class="card-title mb-0">Order #{{ order.order_id }}</h6>
                                             <span class="badge bg-warning text-dark">{{ order.status|title }}</span>
                                         </div>
-                                        
                                         <div class="row">
                                             <div class="col-md-6">
                                                 <p class="card-text mb-1">
@@ -98,7 +104,6 @@
                                                 {% endif %}
                                             </div>
                                         </div>
-                                        
                                         <div class="mt-2">
                                             <strong>Items:</strong>
                                             <ul class="list-unstyled small mt-1">
@@ -111,7 +116,6 @@
                                                 {% endif %}
                                             </ul>
                                         </div>
-                                        
                                         <div class="d-flex justify-content-between align-items-center mt-3">
                                             <small class="text-muted fw-bold">
                                                 <span class="order-timer">00:00</span>
@@ -131,6 +135,7 @@
                         </div>
                     </div>
 
+                    <!-- Ready Orders -->
                     <div class="col-md-6">
                         <div class="card">
                             <div class="card-header bg-success">
@@ -144,7 +149,6 @@
                                             <h6 class="card-title mb-0">Order #{{ order.order_id }}</h6>
                                             <span class="badge bg-success">{{ order.status|title }}</span>
                                         </div>
-                                        
                                         <div class="row">
                                             <div class="col-md-6">
                                                 <p class="card-text mb-1">
@@ -168,7 +172,6 @@
                                                 {% endif %}
                                             </div>
                                         </div>
-                                        
                                         <div class="mt-2">
                                             <strong>Items:</strong>
                                             <ul class="list-unstyled small mt-1">
@@ -181,7 +184,6 @@
                                                 {% endif %}
                                             </ul>
                                         </div>
-                                        
                                         <div class="d-flex justify-content-between align-items-center mt-3">
                                             <small class="text-muted">Ready for {{ order.ready_time|timesince }}</small>
                                             <div>
@@ -206,11 +208,85 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Live Order Table -->
+                <div class="card mt-5">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">Live Orders (Auto Refresh)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container">
+                            <table class="table table-bordered order-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Order ID</th>
+                                        <th>Customer Name</th>
+                                        <th>Items</th>
+                                        <th>Total Amount</th>
+                                        <th>Status</th>
+                                        <th>Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="orders-tbody">
+                                    <tr>
+                                        <td colspan="6" style="text-align: center;">Loading orders...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </main>
         </div>
     </div>
 
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{% static 'js/main.js' %}"></script>
+
+    <!-- Live Orders JS -->
+    <script>
+        function fetchOrders() {
+            fetch("{% url 'get_orders_api' %}")
+                .then(response => response.json())
+                .then(data => {
+                    let ordersTbody = document.getElementById('orders-tbody');
+                    ordersTbody.innerHTML = '';
+                    if (data.orders.length === 0) {
+                        ordersTbody.innerHTML = '<tr><td colspan="6" class="text-center">No orders found.</td></tr>';
+                        return;
+                    }
+                    data.orders.forEach(order => {
+                        let itemsHtml = '<ul>';
+                        if (typeof order.items === 'object') {
+                            for (const item in order.items) {
+                                itemsHtml += `<li>${item}: ${order.items[item]}</li>`;
+                            }
+                        } else {
+                            itemsHtml += `<li>${order.items}</li>`;
+                        }
+                        itemsHtml += '</ul>';
+                        let row = `
+                            <tr>
+                                <td>${order.order_id}</td>
+                                <td>${order.customer_name}</td>
+                                <td>${itemsHtml}</td>
+                                <td>₹${order.total_amount}</td>
+                                <td><span class="status status-${order.status.toLowerCase()}">${order.status}</span></td>
+                                <td>${order.created_at}</td>
+                            </tr>
+                        `;
+                        ordersTbody.innerHTML += row;
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching orders:', error);
+                    document.getElementById('orders-tbody').innerHTML =
+                        '<tr><td colspan="6" class="text-center text-danger">Could not load orders.</td></tr>';
+                });
+        }
+        document.addEventListener('DOMContentLoaded', fetchOrders);
+        setInterval(fetchOrders, 5000);
+    </script>
 </body>
 </html>
