@@ -6,6 +6,7 @@ from django.db import models
 from django.utils import timezone
 
 class MenuItem(models.Model):
+    # ... (rest of the MenuItem class is correct) ...
     CATEGORY_CHOICES = [
         ('breakfast', 'Breakfast'),
         ('lunch', 'Lunch'),
@@ -23,7 +24,6 @@ class MenuItem(models.Model):
         ('dessert', 'Dessert'),
         ('beverage', 'Beverage'),
     ]
-
     item_name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=8, decimal_places=2)
@@ -53,7 +53,8 @@ class Order(models.Model):
     order_id = models.CharField(max_length=50, unique=True)
     customer_name = models.CharField(max_length=200)
     items = models.JSONField()
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    # CORRECTED FIELD NAME
+    total_price = models.DecimalField(max_digits=10, decimal_places=2) 
     payment_id = models.CharField(max_length=100, blank=True, default='COD')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
     created_at = models.DateTimeField(default=timezone.now)
@@ -68,6 +69,7 @@ class Order(models.Model):
 
 
 class VlhAdmin(models.Model):
+    # ... (rest of the VlhAdmin class is correct) ...
     mobile = models.CharField(max_length=10, unique=True)
     password_hash = models.TextField()
     created_at = models.DateTimeField(default=timezone.now)
