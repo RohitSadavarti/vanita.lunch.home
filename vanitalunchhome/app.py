@@ -5,6 +5,7 @@ from flask_cors import CORS
 from functools import wraps
 from datetime import datetime
 import json
+import random # <--- Import the random module
 
 app = Flask(__name__)
 # Configure CORS - allow all origins for development, restrict in production
@@ -117,11 +118,15 @@ def place_order():
         discount = 0  # No discount for now
         total_price = subtotal - discount
         
+        # --- GENERATE RANDOM ORDER ID ---
+        order_id = str(random.randint(10000000, 99999999))
+
         # Insert single order record with validated items
         cur.execute("""
-            INSERT INTO orders (customer_name, customer_mobile, items, subtotal, discount, total_price, status, payment_id, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO orders (order_id, customer_name, customer_mobile, items, subtotal, discount, total_price, status, payment_id, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
+            order_id, # <--- Add the new order_id
             name,
             mobile,
             json.dumps(validated_items),
