@@ -59,6 +59,7 @@ def logout_view(request):
 
 @admin_required
 def dashboard_view(request):
+    """Renders the main admin dashboard page."""
     context = {
         'total_orders': Order.objects.count(),
         'preparing_orders_count': Order.objects.filter(order_status='open').count(),
@@ -124,7 +125,7 @@ def order_management_view(request):
         'preparing_orders': preparing_orders_qs,
         'ready_orders': ready_orders_qs,
         'selected_filter': date_filter,
-        'selected_filter_display': date_filter.replace('_', ' '), # This is the fix
+        'selected_filter_display': date_filter.replace('_', ' '),
         'start_date_val': request.GET.get('start_date', ''),
         'end_date_val': request.GET.get('end_date', ''),
     }
@@ -137,13 +138,13 @@ def menu_management_view(request):
         form = MenuItemForm(request.POST, request.FILES or None)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Menu item added successfully!')
+            messages.success(request, 'New menu item added successfully!')
             return redirect('menu_management')
     else:
         form = MenuItemForm()
     context = {
-        'menu_items': MenuItem.objects.all().order_by('-created_at'),
-        'item_form': form
+        'menu_items': MenuItem.objects.all().order_by('item_name'),
+        'add_item_form': form
     }
     return render(request, 'OrderMaster/menu_management.html', context)
 
@@ -193,11 +194,9 @@ def update_order_status(request):
         order.order_status = new_status
         order.save(update_fields=['order_status', 'updated_at'])
         return JsonResponse({'success': True, 'message': f'Order status updated to {new_status}'})
-    except Order.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Order not found'}, status=404)
     except Exception as e:
         logger.error(f"Update order status error: {e}")
-        return JsonResponse({'success': False, 'error': 'Server error'}, status=500)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @csrf_exempt
 @admin_required
@@ -209,14 +208,14 @@ def api_menu_item_detail(request, item_id):
             'id': item.id, 'item_name': item.item_name, 'description': item.description,
             'price': str(item.price), 'category': item.category, 'veg_nonveg': item.veg_nonveg,
             'meal_type': item.meal_type, 'availability_time': item.availability_time,
-            'image_url': item.image.url if hasattr(item, 'image') and item.image else ''
         }
         return JsonResponse(data)
     if request.method == 'POST':
-        form = MenuItemForm(request.POST, request.FILES or None, instance=item)
+        form = MenuItemForm(request.POST, None, instance=item)
         if form.is_valid():
             form.save()
-            return JsonResponse({'success': True, 'message': 'Item updated successfully!'})
+            messages.success(request, f"'{item.item_name}' has been updated.")
+            return JsonResponse({'success': True})
         else:
             return JsonResponse({'success': False, 'errors': form.errors}, status=400)
     return HttpResponseBadRequest("Invalid request method")
@@ -269,7 +268,7 @@ def api_place_order(request):
             return JsonResponse({'error': 'Missing required fields.'}, status=400)
         
         # This is where your full order placement logic goes...
-        # For brevity, assuming the rest of the function from your file is here.
+        # ... (it was correct in your previously uploaded file)
 
         return JsonResponse({'success': True, 'message': 'Order placed successfully!'})
     
