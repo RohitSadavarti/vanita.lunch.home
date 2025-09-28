@@ -4,6 +4,22 @@ document.addEventListener('DOMContentLoaded', function() {
         lucide.createIcons();
     }
 
+    // --- UTILITY FUNCTION to get CSRF token ---
+    const getCookie = (name) => {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    };
+
     // --- MENU ITEM EDITING LOGIC ---
     const editSidebar = document.getElementById('editSidebar');
     const closeEditBtn = document.getElementById('closeEditBtn');
@@ -84,7 +100,11 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             const formData = new FormData(editForm);
             try {
-                const response = await fetch(editForm.action, { method: 'POST', body: formData });
+                const response = await fetch(editForm.action, { 
+                    method: 'POST', 
+                    body: formData,
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') }
+                });
                 if (response.ok) {
                     window.location.reload();
                 } else {
@@ -101,29 +121,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- ORDER MANAGEMENT LOGIC ---
     const handleStatusUpdate = async (orderCard, newStatus) => {
         const orderId = orderCard.dataset.orderId;
-        
-        // This function is needed for POST requests to Django
-        const getCookie = (name) => {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
+        const csrfToken = getCookie('csrftoken');
 
         try {
-            const response = await fetch('/api/update-order-status/', {
+            const response = await fetch('/api/update_order_status/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken') // Django requires a CSRF token
+                    'X-CSRFToken': csrfToken
                 },
                 body: JSON.stringify({ id: orderId, status: newStatus })
             });
@@ -133,8 +138,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 orderCard.style.opacity = '0';
                 setTimeout(() => {
                     orderCard.remove();
-                    // Optional: You could also reload the page here if you prefer
-                    // window.location.reload(); 
+                    window.location.reload(); // Reload to see updated counts and order lists
                 }, 500);
             } else {
                 const errorData = await response.json();
@@ -146,7 +150,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    // Attach event listeners to new buttons
     document.querySelectorAll('.mark-ready-btn').forEach(button => {
         button.addEventListener('click', (e) => {
             const orderCard = e.target.closest('.order-card');
