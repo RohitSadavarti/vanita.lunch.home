@@ -69,40 +69,42 @@
         </div>
 
         <main class="container mx-auto p-4 sm:p-6 lg:p-8">
+
             <div id="homeView">
-                 <div class="mb-6">
-                     <div class="flex flex-wrap gap-3 justify-center">
-                         <button class="category-filter active px-4 py-2 rounded-full bg-orange-500 text-white font-medium" data-category="all">All Items</button>
-                         <button class="category-filter px-4 py-2 rounded-full bg-gray-200 text-gray-700 font-medium hover:bg-gray-300" data-category="breakfast">Breakfast</button>
-                         <button class="category-filter px-4 py-2 rounded-full bg-gray-200 text-gray-700 font-medium hover:bg-gray-300" data-category="lunch">Lunch</button>
-                         <button class="category-filter px-4 py-2 rounded-full bg-gray-200 text-gray-700 font-medium hover:bg-gray-300" data-category="dinner">Dinner</button>
-                         <button class="category-filter px-4 py-2 rounded-full bg-gray-200 text-gray-700 font-medium hover:bg-gray-300" data-category="snacks">Snacks</button>
-                     </div>
-                 </div>
+                <div class="mb-6">
+                    <div class="flex flex-wrap gap-3 justify-center">
+                        <button class="category-filter active px-4 py-2 rounded-full bg-orange-500 text-white font-medium" data-category="all">All Items</button>
+                        <button class="category-filter px-4 py-2 rounded-full bg-gray-200 text-gray-700 font-medium hover:bg-gray-300" data-category="breakfast">Breakfast</button>
+                        <button class="category-filter px-4 py-2 rounded-full bg-gray-200 text-gray-700 font-medium hover:bg-gray-300" data-category="lunch">Lunch</button>
+                        <button class="category-filter px-4 py-2 rounded-full bg-gray-200 text-gray-700 font-medium hover:bg-gray-300" data-category="dinner">Dinner</button>
+                        <button class="category-filter px-4 py-2 rounded-full bg-gray-200 text-gray-700 font-medium hover:bg-gray-300" data-category="snacks">Snacks</button>
+                    </div>
+                </div>
 
-                 <div class="mb-6 flex justify-center space-x-4">
-                     <button class="veg-filter active flex items-center space-x-2 px-4 py-2 rounded-lg bg-green-100 text-green-800 font-medium" data-type="all">
-                         <span class="w-3 h-3 border-2 border-green-600"></span>
-                         <span>All</span>
-                     </button>
-                     <button class="veg-filter flex items-center space-x-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-medium hover:bg-green-100" data-type="veg">
-                         <span class="w-3 h-3 bg-green-500 rounded-sm"></span>
-                         <span>Veg</span>
-                     </button>
-                     <button class="veg-filter flex items-center space-x-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-medium hover:bg-red-100" data-type="non-veg">
-                         <span class="w-3 h-3 bg-red-500 rounded-sm"></span>
-                         <span>Non-Veg</span>
-                     </button>
-                 </div>
+                <div class="mb-6 flex justify-center space-x-4">
+                    <button class="veg-filter active flex items-center space-x-2 px-4 py-2 rounded-lg bg-green-100 text-green-800 font-medium" data-type="all">
+                        <span class="w-3 h-3 border-2 border-green-600"></span>
+                        <span>All</span>
+                    </button>
+                    <button class="veg-filter flex items-center space-x-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-medium hover:bg-green-100" data-type="veg">
+                        <span class="w-3 h-3 bg-green-500 rounded-sm"></span>
+                        <span>Veg</span>
+                    </button>
+                    <button class="veg-filter flex items-center space-x-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-medium hover:bg-red-100" data-type="non-veg">
+                        <span class="w-3 h-3 bg-red-500 rounded-sm"></span>
+                        <span>Non-Veg</span>
+                    </button>
+                </div>
 
-                 <div class="text-center mb-8">
-                     <h2 class="text-3xl font-bold tracking-tight text-gray-900">Today's Menu</h2>
-                     <p class="mt-2 text-lg text-gray-600">Authentic flavors, cooked with love.</p>
-                 </div>
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold tracking-tight text-gray-900">Today's Menu</h2>
+                    <p class="mt-2 text-lg text-gray-600">Authentic flavors, cooked with love.</p>
+                </div>
 
-                 <div id="menu-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                 </div>
+                <div id="menu-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                </div>
             </div>
+
         </main>
     </div>
 
@@ -129,24 +131,25 @@
                     </div>
                     <div class="border-t pt-4">
                         <h4 class="font-semibold mb-2">Delivery Details</h4>
-                        <form id="customerDetailsForm" class="space-y-3">
+                        <form id="customerForm" class="space-y-3">
                             <div>
                                 <label for="customerNameCart" class="sr-only">Name</label>
                                 <input type="text" id="customerNameCart" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-500" placeholder="Name">
                             </div>
+
                             <div>
                                 <label for="customerMobileCart" class="sr-only">Mobile Number</label>
                                 <div class="flex space-x-2">
-                                    <input type="tel" id="customerMobileCart" required pattern="[0-9]{10}" class="flex-grow w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-500" placeholder="10-digit Mobile Number">
-                                    <button type="button" id="sendOtpBtn" class="bg-gray-200 text-gray-700 font-semibold px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors text-sm whitespace-nowrap">Send OTP</button>
+                                     <input type="tel" id="customerMobileCart" required pattern="[0-9]{10}" class="flex-grow w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-500" placeholder="10-digit Mobile">
+                                     <button type="button" id="sendOtpBtn" class="bg-gray-200 text-gray-700 font-semibold px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors text-sm whitespace-nowrap">Send OTP</button>
                                 </div>
                             </div>
                             <div id="otp-container" class="hidden">
-                                <label for="customerOtp" class="sr-only">OTP</label>
-                                <input type="text" id="customerOtp" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-500" placeholder="Enter 6-digit OTP">
-                                <p id="otpMessage" class="text-xs text-gray-500 mt-1"></p>
+                                 <label for="customerOtp" class="sr-only">OTP</label>
+                                 <input type="text" id="customerOtp" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-500" placeholder="Enter 6-digit OTP">
+                                 <p id="otpMessage" class="text-xs text-gray-500 mt-1"></p>
                             </div>
-                             <div>
+                            <div>
                                 <label for="customerAddress" class="sr-only">Address</label>
                                 <textarea id="customerAddress" required rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-500" placeholder="Address"></textarea>
                             </div>
@@ -162,7 +165,7 @@
     </div>
 
     <div id="toast" class="hidden fixed bottom-5 right-5 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg animate-pop">
-        <p id="toast-message"></p>
+         <p id="toast-message"></p>
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
