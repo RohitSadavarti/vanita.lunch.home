@@ -3,15 +3,16 @@
 # =================================================================================
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
-from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 from .models import MenuItem, Order, VlhAdmin
+from .forms import MenuItemForm # Import the form
 from datetime import datetime, timedelta
 import json
 import uuid
@@ -40,6 +41,8 @@ def admin_required(view_func):
 
 # Admin Login/Logout
 def login_view(request):
+    if request.session.get('is_authenticated'):
+        return redirect('dashboard')
     if request.method == 'POST':
         mobile = request.POST.get('username')
         password = request.POST.get('password')
@@ -70,8 +73,8 @@ def dashboard_view(request):
     """Renders the main admin dashboard page."""
     context = {
         'total_orders': Order.objects.count(),
-        'preparing_orders_count': Order.objects.filter(status='preparing').count(),
-        'ready_orders_count': Order.objects.filter(status='ready').count(),
+        'preparing_orders_count': Order.objects.filter(status='Preparing').count(),
+        'ready_orders_count': Order.objects.filter(status='Ready').count(),
         'menu_items_count': MenuItem.objects.count(),
         'recent_orders': Order.objects.order_by('-created_at')[:5],
     }
@@ -81,8 +84,8 @@ def dashboard_view(request):
 def order_management_view(request):
     """Displays and manages current orders."""
     context = {
-        'preparing_orders': Order.objects.filter(status='preparing').order_by('created_at'),
-        'ready_orders': Order.objects.filter(status='ready').order_by('-created_at'),
+        'preparing_orders': Order.objects.filter(status='Preparing').order_by('created_at'),
+        'ready_orders': Order.objects.filter(status='Ready').order_by('-created_at'),
     }
     return render(request, 'OrderMaster/order_management.html', context)
     
@@ -90,7 +93,7 @@ def order_management_view(request):
 @admin_required
 @require_POST
 def update_order_status(request):
-    """API to update an order's status, e.g., from 'Pending' to 'Ready'."""
+    """API to update an order's status."""
     try:
         data = json.loads(request.body)
         order_pk = data.get('id')
@@ -112,6 +115,7 @@ def update_order_status(request):
     except Exception as e:
         logger.error(f"Update order status error: {e}")
         return JsonResponse({'success': False, 'error': 'Server error'}, status=500)
+
 # =================================================================================
 # ADMIN MENU MANAGEMENT VIEWS
 # =================================================================================
@@ -120,37 +124,19 @@ def update_order_status(request):
 def menu_management_view(request):
     """Handles adding and displaying menu items."""
     if request.method == 'POST':
-        MenuItem.objects.create(
-            item_name=request.POST['item_name'], description=request.POST['description'],
-            price=request.POST['price'], category=request.POST['category'],
-            veg_nonveg=request.POST['veg_nonveg'], meal_type=request.POST['meal_type'],
-            availability_time=request.POST['availability_time'], image=request.FILES.get('image')
-        )
-        messages.success(request, 'Menu item added successfully!')
-        return redirect('menu_management')
+        form = MenuItemForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Menu item added successfully!')
+            return redirect('menu_management')
+    else:
+        form = MenuItemForm()
         
-    context = {'menu_items': MenuItem.objects.all().order_by('-created_at')}
+    context = {
+        'menu_items': MenuItem.objects.all().order_by('-created_at'),
+        'item_form': form  # Pass the form to the template
+    }
     return render(request, 'OrderMaster/menu_management.html', context)
-
-@admin_required
-def edit_menu_item_view(request, item_id):
-    """Handles editing an existing menu item."""
-    item = get_object_or_404(MenuItem, id=item_id)
-    if request.method == 'POST':
-        item.item_name = request.POST['item_name']
-        item.description = request.POST['description']
-        item.price = request.POST['price']
-        item.category = request.POST['category']
-        item.veg_nonveg = request.POST['veg_nonveg']
-        item.meal_type = request.POST['meal_type']
-        item.availability_time = request.POST['availability_time']
-        if 'image' in request.FILES:
-            item.image = request.FILES['image']
-        item.save()
-        messages.success(request, 'Menu item updated successfully!')
-        return redirect('menu_management')
-            
-    return render(request, 'OrderMaster/edit_menu_item.html', {'item': item})
 
 @admin_required
 @require_POST
@@ -160,6 +146,43 @@ def delete_menu_item_view(request, item_id):
     item.delete()
     messages.success(request, 'Menu item deleted successfully!')
     return redirect('menu_management')
+
+# --- THIS IS THE MISSING FUNCTION ---
+@csrf_exempt
+@admin_required
+def api_menu_item_detail(request, item_id):
+    """
+    API endpoint to get or update a specific menu item.
+    """
+    try:
+        item = get_object_or_404(MenuItem, id=item_id)
+    except MenuItem.DoesNotExist:
+        return JsonResponse({'error': 'Item not found'}, status=404)
+
+    if request.method == 'GET':
+        data = {
+            'id': item.id,
+            'item_name': item.item_name,
+            'description': item.description,
+            'price': str(item.price),
+            'category': item.category,
+            'veg_nonveg': item.veg_nonveg,
+            'meal_type': item.meal_type,
+            'availability_time': item.availability_time,
+            'image_url': item.image.url if item.image else ''
+        }
+        return JsonResponse(data)
+
+    if request.method == 'POST':
+        form = MenuItemForm(request.POST, request.FILES, instance=item)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"'{item.item_name}' has been updated successfully.")
+            return JsonResponse({'success': True, 'message': 'Item updated successfully!'})
+        else:
+            return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+    
+    return HttpResponseBadRequest("Invalid request method")
 
 # =================================================================================
 # CUSTOMER-FACING VIEWS & API ENDPOINTS
@@ -178,7 +201,6 @@ def api_menu_items(request):
             'veg_nonveg', 'meal_type', 'availability_time', 'image'
         ).order_by('category', 'item_name')
         
-        # Convert Decimal to float for JSON serialization
         items_list = [
             {**item, 'price': float(item['price'])} for item in menu_items
         ]
@@ -258,7 +280,7 @@ def api_place_order(request):
             items=json.dumps(order_details_json),
             total_amount=final_total_server,
             payment_id=data.get('payment_id', 'COD'),
-            status='preparing'
+            status='Preparing'
         )
         
         return JsonResponse({'success': True, 'order_id': order_id, 'message': 'Order placed successfully!'})
@@ -276,13 +298,13 @@ def api_place_order(request):
 @admin_required
 def analytics_view(request):
     """Renders the analytics page."""
-    completed_orders = Order.objects.filter(status='completed')
-    total_revenue = completed_orders.aggregate(total=Sum('total_amount'))['total'] or 0
+    completed_orders = Order.objects.filter(status='Completed')
+    total_revenue = completed_orders.aggregate(total=models.Sum('total_amount'))['total'] or 0
     context = {
         'total_orders': Order.objects.count(),
         'completed_orders': completed_orders.count(),
         'total_revenue': total_revenue,
-        'pending_orders': Order.objects.filter(status__in=['preparing', 'ready']).count(),
+        'pending_orders': Order.objects.filter(status__in=['Preparing', 'Ready']).count(),
     }
     return render(request, 'OrderMaster/analytics.html', context)
 
@@ -301,10 +323,11 @@ def get_orders_api(request):
     try:
         orders = Order.objects.all().order_by('-created_at')[:20]
         data = [{
+            'id': order.id,
             'order_id': order.order_id,
             'customer_name': order.customer_name,
             'items': order.items,
-            'total_amount': order.total_amount,
+            'total_amount': float(order.total_amount),
             'status': order.status,
             'created_at': order.created_at.strftime('%b %d, %Y, %I:%M %p')
         } for order in orders]
