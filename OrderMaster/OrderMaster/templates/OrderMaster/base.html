@@ -31,6 +31,7 @@
 
     <script>
         // ACTION REQUIRED: Get this config object from your Firebase project settings
+        // Project Settings > General > Your Apps > Web App
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
             authDomain: "YOUR_AUTH_DOMAIN",
@@ -48,37 +49,37 @@
         const messaging = firebase.messaging();
 
         function requestNotificationPermission() {
-            console.log('Requesting notification permission...');
             Notification.requestPermission().then((permission) => {
                 if (permission === 'granted') {
                     console.log('Notification permission granted.');
                     
-                    // Get the token
+                    // ACTION REQUIRED: Get this key from your Firebase project console
+                    // Project Settings > Cloud Messaging > Web configuration > Web Push certificates
                     messaging.getToken({ vapidKey: 'YOUR_FIREBASE_WEB_PUSH_CERTIFICATE_KEY' })
                         .then((currentToken) => {
                             if (currentToken) {
                                 console.log('FCM Token:', currentToken);
                             } else {
-                                console.log('No registration token available. Request permission to generate one.');
+                                console.log('Could not get token. Please request permission.');
                             }
                         }).catch((err) => {
-                            console.log('An error occurred while retrieving token. ', err);
+                            console.log('An error occurred while retrieving token: ', err);
                         });
                 } else {
-                    console.log('Unable to get permission to notify.');
+                    console.log('Notification permission denied.');
                 }
             });
         }
         
-        // Listen for messages when the page is in the foreground
+        // Listen for messages when the page is active
         messaging.onMessage((payload) => {
-            console.log('Message received. ', payload);
-            alert(`New Order:\n${payload.notification.title}\n${payload.notification.body}`);
+            console.log('Foreground message received: ', payload);
+            // You can replace this with a more sophisticated toast notification
+            alert(`New Order Received!\n${payload.notification.body}`);
         });
 
         // Request permission as soon as the page loads
         requestNotificationPermission();
-
     </script>
     </body>
 </html>
