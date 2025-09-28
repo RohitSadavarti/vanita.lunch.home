@@ -30,7 +30,6 @@ def admin_required(view_func):
 
 # Your existing login/logout views go here...
 def login_view(request):
-    # Your existing login logic
     if request.session.get('is_authenticated'):
         return redirect('dashboard')
     if request.method == 'POST':
@@ -61,7 +60,6 @@ def logout_view(request):
 
 @admin_required
 def dashboard_view(request):
-    """Renders the main admin dashboard page."""
     context = {
         'total_orders': Order.objects.count(),
         'preparing_orders_count': Order.objects.filter(order_status='open').count(),
@@ -70,7 +68,7 @@ def dashboard_view(request):
         'recent_orders': Order.objects.order_by('-created_at')[:5],
     }
     return render(request, 'OrderMaster/dashboard.html', context)
-
+    
 @admin_required
 def order_management_view(request):
     """Displays and manages current orders with date filtering."""
@@ -130,15 +128,31 @@ def order_management_view(request):
             order.items_list = []
 
     context = {
-        'preparing_orders': preparing_orders_qs,
-        'ready_orders': ready_orders_qs,
-        'selected_filter': date_filter,
-        'start_date_val': request.GET.get('start_date', ''),
-        'end_date_val': request.GET.get('end_date', ''),
+        'preparing_orders': Order.objects.filter(order_status='open').order_by('created_at'),
+        'ready_orders': Order.objects.filter(order_status='ready').order_by('-created_at'),
     }
     return render(request, 'OrderMaster/order_management.html', context)
-
+    
 # ... (rest of your page-rendering views like menu_management, analytics, etc.) ...
+
+
+
+@admin_required
+def menu_management_view(request):
+    """Handles adding and displaying menu items."""
+    if request.method == 'POST':
+        form = MenuItemForm(request.POST, request.FILES or None)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Menu item added successfully!')
+            return redirect('menu_management')
+    else:
+        form = MenuItemForm()
+    context = {
+        'menu_items': MenuItem.objects.all().order_by('-created_at'),
+        'item_form': form
+    }
+    return render(request, 'OrderMaster/menu_management.html', context)
 
 # =================================================================================
 # API ENDPOINTS
@@ -193,3 +207,4 @@ def get_orders_api(request):
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
 
 # ... (The rest of your API views like api_menu_item_detail, etc.) ...
+
