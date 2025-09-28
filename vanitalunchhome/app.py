@@ -2,32 +2,24 @@ import os
 import psycopg2
 from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
-from functools import wraps
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
-import random # <--- Import the random module
-# --- Firebase Imports ---
+import random
 import firebase_admin
 from firebase_admin import credentials, messaging
 
-# --- Initialize Firebase Admin SDK ---
-# Make sure the JSON file is in the same directory
+# Initialize Firebase Admin SDK
 try:
     cred = credentials.Certificate("vanita-lunch-home-firebase-adminsdk-fbsvc-00e35c3c2b.json")
-    firebase_admin.initialize_app(cred)
+    if not firebase_admin._apps:
+        firebase_admin.initialize_app(cred)
     print("Firebase Admin SDK initialized successfully.")
 except Exception as e:
     print(f"Error initializing Firebase Admin SDK: {e}")
 
-
 app = Flask(__name__)
-# Configure CORS - allow all origins for development, restrict in production
-CORS(app, origins=['*'])  # Replace with your actual domain in production
+CORS(app, origins=['*'])
 
-# Remove admin functionality - no longer needed
-otp_storage = {}
-
-# Database connection function
 def get_db_connection():
     conn = psycopg2.connect(
         host=os.environ.get('DB_HOST'),
@@ -39,18 +31,15 @@ def get_db_connection():
     )
     return conn
 
-# Route to serve the main page
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# API endpoint to get menu items
 @app.route('/api/menu', methods=['GET'])
 def get_menu():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        # --- FIX: Added image_url to the SELECT statement ---
         cur.execute("SELECT id, item_name, description, CAST(price AS FLOAT) as price, category, veg_nonveg, meal_type, availability_time, image_url FROM menu_items ORDER BY category, item_name")
         menu_items = cur.fetchall()
         column_names = [desc[0] for desc in cur.description]
@@ -61,28 +50,9 @@ def get_menu():
     except Exception as e:
         print(f"Error in get_menu: {str(e)}")
         return jsonify({'error': 'Failed to load menu'}), 500
-        
-@app.route('/api/send-otp', methods=['POST'])
-def send_otp():
-    data = request.get_json()
-    mobile = data.get('mobile')
 
-    if not mobile or not (mobile.isdigit() and len(mobile) == 10):
-        return jsonify({'success': False, 'error': 'Invalid mobile number.'}), 400
+# --- The /api/send-otp route has been completely removed ---
 
-    otp = str(random.randint(100000, 999999))
-    expiration_time = datetime.now() + timedelta(minutes=5) # OTP is valid for 5 minutes
-
-    otp_storage[mobile] = {'otp': otp, 'expires_at': expiration_time}
-    
-    print(f"=====================================")
-    print(f"OTP for {mobile} is: {otp}")
-    print(f"=====================================")
-
-    return jsonify({'success': True, 'message': 'OTP sent successfully.'})
-
-
-# API endpoint to place an order
 @app.route('/api/order', methods=['POST'])
 def place_order():
     conn = None
@@ -94,31 +64,20 @@ def place_order():
         mobile = data.get('mobile', '').strip()
         address = data.get('address', '').strip()
         cart_items = data.get('cart_items', [])
-        otp_received = data.get('otp', '').strip()
 
-        if not all([name, mobile, address, cart_items, otp_received]):
+        # --- Simplified validation: OTP is no longer required ---
+        if not all([name, mobile, address, cart_items]):
             return jsonify({'success': False, 'error': 'Missing required fields'}), 400
         
-        if mobile not in otp_storage:
-            return jsonify({'success': False, 'error': 'Please request an OTP first.'}), 400
-        
-        stored_otp_data = otp_storage[mobile]
-        if datetime.now() > stored_otp_data['expires_at']:
-            del otp_storage[mobile]
-            return jsonify({'success': False, 'error': 'OTP has expired. Please request a new one.'}), 400
-            
-        if stored_otp_data['otp'] != otp_received:
-            return jsonify({'success': False, 'error': 'Invalid OTP.'}), 400
-        
-        del otp_storage[mobile]
+        # --- All OTP verification logic has been removed ---
 
         conn = get_db_connection()
         cur = conn.cursor()
         
-         validated_items = []
+        validated_items = []
         subtotal = 0
         
-        for cart_item in data.get('cart_items', []):
+        for cart_item in cart_items:
             item_id = cart_item.get('id')
             quantity = int(cart_item.get('quantity', 0))
             if not item_id or quantity <= 0:
@@ -140,7 +99,7 @@ def place_order():
                 'quantity': quantity,
                 'total': item_total
             })
-
+        
         total_price = subtotal
         order_id = str(random.randint(10000000, 99999999))
 
@@ -153,6 +112,7 @@ def place_order():
         ))
         
         conn.commit()
+
         try:
             message = messaging.Message(
                 notification=messaging.Notification(
@@ -161,12 +121,11 @@ def place_order():
                 ),
                 topic='new_orders'
             )
-            # Send a message to the devices subscribed to the provided topic.
             response = messaging.send(message)
             print('Successfully sent notification:', response)
         except Exception as e:
             print(f"Error sending Firebase notification: {e}")
-        
+
         return jsonify({'success': True, 'message': f'Order placed successfully! Your Order ID is: {order_id}'})
         
     except Exception as e:
@@ -176,37 +135,6 @@ def place_order():
     finally:
         if cur: cur.close()
         if conn: conn.close()
-
-# API endpoint to get order status (for customer)
-@app.route('/api/order-status/<order_id>', methods=['GET'])
-def get_order_status(order_id):
-    conn = None
-    cur = None
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT id, status, created_at, total_price FROM orders WHERE id = %s", (order_id,))
-        order = cur.fetchone()
-        
-        if not order:
-            return jsonify({'error': 'Order not found'}), 404
-        
-        order_data = {
-            'id': order[0],
-            'status': order[1],
-            'created_at': order[2].strftime('%Y-%m-%d %H:%M:%S'),
-            'total_price': float(order[3])
-        }
-        
-        return jsonify(order_data)
-    except Exception as e:
-        print(f"Error in get_order_status: {str(e)}")
-        return jsonify({'error': 'Failed to get order status'}), 500
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
