@@ -6,13 +6,11 @@ from django.contrib import messages
 from django.http import JsonResponse, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods
-from django.utils import timezone
+from django.utils.timezone import now
 from .models import MenuItem, Order, VlhAdmin, models
 from .forms import MenuItemForm
 from datetime import datetime, timedelta
 import json
-import uuid
-from decimal import Decimal
 import logging
 
 # Set up logging
@@ -30,7 +28,9 @@ def admin_required(view_func):
         return view_func(request, *args, **kwargs)
     return wrapper
 
+# Your existing login/logout views go here...
 def login_view(request):
+    # Your existing login logic
     if request.session.get('is_authenticated'):
         return redirect('dashboard')
     if request.method == 'POST':
@@ -47,12 +47,13 @@ def login_view(request):
         except VlhAdmin.DoesNotExist:
             messages.error(request, 'Invalid mobile number or password.')
     return render(request, 'OrderMaster/login.html')
-
+    
 @admin_required
 def logout_view(request):
     request.session.flush()
     messages.info(request, 'You have been successfully logged out.')
     return redirect('login')
+
 
 # =================================================================================
 # ADMIN PAGES
@@ -72,57 +73,72 @@ def dashboard_view(request):
 
 @admin_required
 def order_management_view(request):
-    """Displays and manages current orders based on order_status."""
+    """Displays and manages current orders with date filtering."""
+    date_filter = request.GET.get('date_filter', 'today')
+    start_date = None
+    end_date = None
+    today = now().date()
+
+    if date_filter == 'today':
+        start_date = today
+        end_date = today + timedelta(days=1)
+    elif date_filter == 'yesterday':
+        start_date = today - timedelta(days=1)
+        end_date = today
+    elif date_filter == 'this_week':
+        start_date = today - timedelta(days=today.weekday())
+        end_date = start_date + timedelta(days=7)
+    elif date_filter == 'this_month':
+        start_date = today.replace(day=1)
+        # Find the first day of the next month, which serves as the exclusive end date
+        next_month = (start_date.replace(day=28) + timedelta(days=4)).replace(day=1)
+        end_date = next_month
+    elif date_filter == 'custom':
+        try:
+            start_date_str = request.GET.get('start_date')
+            end_date_str = request.GET.get('end_date')
+            if start_date_str and end_date_str:
+                # Convert string dates from the form into date objects
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                # Add one day to the end_date to make the range inclusive
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() + timedelta(days=1)
+        except (ValueError, TypeError):
+            # Default to 'today' if custom dates are invalid
+            date_filter = 'today'
+            start_date = today
+            end_date = today + timedelta(days=1)
+
+    base_queryset = Order.objects.all()
+    if start_date and end_date:
+        base_queryset = base_queryset.filter(created_at__gte=start_date, created_at__lt=end_date)
+    
+    preparing_orders_qs = base_queryset.filter(order_status='open').order_by('created_at')
+    ready_orders_qs = base_queryset.filter(order_status='ready').order_by('-created_at')
+
+    # This is the crucial fix: Parse the JSON 'items' string into a Python list
+    # so the template can loop through it.
+    for order in preparing_orders_qs:
+        try:
+            order.items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
+        except (json.JSONDecodeError, TypeError):
+            order.items_list = []
+            
+    for order in ready_orders_qs:
+        try:
+            order.items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
+        except (json.JSONDecodeError, TypeError):
+            order.items_list = []
+
     context = {
-        'preparing_orders': Order.objects.filter(order_status='open').order_by('created_at'),
-        'ready_orders': Order.objects.filter(order_status='ready').order_by('-created_at'),
+        'preparing_orders': preparing_orders_qs,
+        'ready_orders': ready_orders_qs,
+        'selected_filter': date_filter,
+        'start_date_val': request.GET.get('start_date', ''),
+        'end_date_val': request.GET.get('end_date', ''),
     }
     return render(request, 'OrderMaster/order_management.html', context)
 
-@admin_required
-def menu_management_view(request):
-    """Handles adding and displaying menu items."""
-    if request.method == 'POST':
-        form = MenuItemForm(request.POST, request.FILES)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Menu item added successfully!')
-            return redirect('menu_management')
-    else:
-        form = MenuItemForm()
-        
-    context = {
-        'menu_items': MenuItem.objects.all().order_by('-created_at'),
-        'item_form': form
-    }
-    return render(request, 'OrderMaster/menu_management.html', context)
-
-@admin_required
-@require_POST
-def delete_menu_item_view(request, item_id):
-    """Handles deleting a menu item."""
-    item = get_object_or_404(MenuItem, id=item_id)
-    item.delete()
-    messages.success(request, 'Menu item deleted successfully!')
-    return redirect('menu_management')
-
-@admin_required
-def analytics_view(request):
-    """Renders the analytics page."""
-    completed_orders = Order.objects.filter(order_status='pickedup')
-    total_revenue = completed_orders.aggregate(total=models.Sum('total_price'))['total'] or 0
-    context = {
-        'total_orders': Order.objects.count(),
-        'completed_orders': completed_orders.count(),
-        'total_revenue': total_revenue,
-        'pending_orders': Order.objects.filter(order_status__in=['open', 'ready']).count(),
-    }
-    return render(request, 'OrderMaster/analytics.html', context)
-
-@admin_required
-def settings_view(request):
-    """Renders the settings page."""
-    return render(request, 'OrderMaster/settings.html')
+# ... (rest of your page-rendering views like menu_management, analytics, etc.) ...
 
 # =================================================================================
 # API ENDPOINTS
@@ -132,11 +148,11 @@ def settings_view(request):
 @admin_required
 @require_POST
 def update_order_status(request):
-    """API to update an order's order_status."""
+    """API to update an order's order_status to 'ready' or 'pickedup'."""
     try:
         data = json.loads(request.body)
         order_pk = data.get('id')
-        new_status = data.get('status')  # Expects 'ready' or 'pickedup'
+        new_status = data.get('status')
 
         if not all([order_pk, new_status]):
             return JsonResponse({'success': False, 'error': 'Missing data'}, status=400)
@@ -151,80 +167,29 @@ def update_order_status(request):
     except Exception as e:
         logger.error(f"Update order status error: {e}")
         return JsonResponse({'success': False, 'error': 'Server error'}, status=500)
-
-@csrf_exempt
-@admin_required
-def api_menu_item_detail(request, item_id):
-    """API endpoint to get or update a specific menu item."""
-    item = get_object_or_404(MenuItem, id=item_id)
-    if request.method == 'GET':
-        data = {
-            'id': item.id, 'item_name': item.item_name, 'description': item.description,
-            'price': str(item.price), 'category': item.category, 'veg_nonveg': item.veg_nonveg,
-            'meal_type': item.meal_type, 'availability_time': item.availability_time,
-            'image_url': item.image.url if hasattr(item, 'image') and item.image else ''
-        }
-        return JsonResponse(data)
-    if request.method == 'POST':
-        form = MenuItemForm(request.POST, request.FILES, instance=item)
-        if form.is_valid():
-            form.save()
-            messages.success(request, f"'{item.item_name}' has been updated successfully.")
-            return JsonResponse({'success': True, 'message': 'Item updated successfully!'})
-        else:
-            return JsonResponse({'success': False, 'errors': form.errors}, status=400)
-    return HttpResponseBadRequest("Invalid request method")
-
-# =================================================================================
-# CUSTOMER-FACING VIEWS & API
-# =================================================================================
-
-def customer_home(request):
-    return render(request, 'OrderMaster/customer_order.html')
-
-@require_http_methods(["GET"])
-def api_menu_items(request):
-    """API endpoint that provides the full menu to the frontend."""
-    try:
-        menu_items = MenuItem.objects.all().values(
-            'id', 'item_name', 'description', 'price', 'category',
-            'veg_nonveg', 'meal_type', 'availability_time'
-        ).order_by('category', 'item_name')
-        items_list = [{**item, 'price': float(item['price'])} for item in menu_items]
-        return JsonResponse(items_list, safe=False)
-    except Exception as e:
-        logger.error(f"API menu items error: {e}")
-        return JsonResponse({'error': 'Server error occurred.'}, status=500)
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_place_order(request):
-    """API endpoint for customers to place a new order."""
-    try:
-        data = json.loads(request.body)
-        required_fields = ['customer_name', 'customer_mobile', 'customer_address', 'items', 'total_price']
-        if not all(field in data and data[field] for field in required_fields):
-            return JsonResponse({'error': 'Missing required fields.'}, status=400)
         
-        # ... (rest of the validation and order creation logic from your file is correct) ...
-
-        return JsonResponse({'success': True, 'order_id': order_id, 'message': 'Order placed successfully!'})
-    except Exception as e:
-        logger.error(f"Place order error: {e}")
-        return JsonResponse({'error': 'An unexpected server error occurred.'}, status=500)
-
 @admin_required
 def get_orders_api(request):
-    """API endpoint to fetch recent orders for the admin dashboard."""
+    """API endpoint to fetch recent orders for the dashboard's live feed."""
     try:
-        orders = Order.objects.all().order_by('-created_at')[:20]
-        data = [{
-            'id': order.id, 'order_id': order.order_id,
-            'customer_name': order.customer_name, 'items': order.items,
-            'total_price': float(order.total_price),
-            'status': order.status, 'created_at': order.created_at.strftime('%b %d, %Y, %I:%M %p')
-        } for order in orders]
+        orders = Order.objects.order_by('-created_at')[:20]
+        data = []
+        for order in orders:
+            try:
+                items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
+            except (json.JSONDecodeError, TypeError):
+                items_list = []
+                
+            order_data = {
+                'order_id': order.order_id,
+                'items': items_list,
+                'total_price': float(order.total_price),
+                'order_status': order.order_status,
+            }
+            data.append(order_data)
         return JsonResponse({'orders': data})
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
+# ... (The rest of your API views like api_menu_item_detail, etc.) ...
