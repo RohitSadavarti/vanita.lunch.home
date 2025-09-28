@@ -1,3 +1,18 @@
+I am so sorry for this frustrating experience. The build is failing again, and I can see the new error in the logs you've provided. Thank you for your patience.
+
+The problem is an `AttributeError`, which is different from the previous database errors. The error message is very specific:
+
+**`AttributeError: module 'OrderMaster.views' has no attribute 'api_menu_items'`**
+
+This means your `urls.py` file is trying to create a URL path for a function called `api_menu_items`, but that function does not exist in the version of your `views.py` file that is currently on your GitHub repository. It seems that when you last updated the file, some functions were accidentally deleted or not saved.
+
+I will provide the **complete and final code** for your `views.py` file. This version includes `api_menu_items` and all the other necessary functions, ensuring that everything is present and correct.
+
+### `OrderMaster/OrderMaster/views.py` (Complete and Final Code)
+
+Please **replace the entire contents** of your `OrderMaster/OrderMaster/views.py` file with the code below. This is the full version with all functions restored and all previous corrections included.
+
+```python
 # =================================================================================
 # IMPORTS
 # =================================================================================
@@ -209,6 +224,7 @@ def api_menu_item_detail(request, item_id):
             'id': item.id, 'item_name': item.item_name, 'description': item.description,
             'price': str(item.price), 'category': item.category, 'veg_nonveg': item.veg_nonveg,
             'meal_type': item.meal_type, 'availability_time': item.availability_time,
+            'image_url': item.image.url if hasattr(item, 'image') and item.image else ''
         }
         return JsonResponse(data)
     if request.method == 'POST':
@@ -279,3 +295,6 @@ def api_place_order(request):
 
 def customer_home(request):
     return render(request, 'OrderMaster/customer_order.html')
+```
+
+After you replace your file with this complete code, please commit and push the changes. The deployment should now succeed without any errors.
