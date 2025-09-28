@@ -27,7 +27,8 @@ class MenuItem(models.Model):
         ('beverage', 'Beverage'),
     ]
 
-    name = models.CharField(max_length=100)  # aligned with simple version
+    # This is the corrected field name
+    item_name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=8, decimal_places=2)
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
@@ -38,7 +39,7 @@ class MenuItem(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
-        return self.name
+        return self.item_name # Use the corrected name here too
 
     class Meta:
         db_table = 'menu_items'
@@ -55,7 +56,7 @@ class Order(models.Model):
 
     order_id = models.CharField(max_length=50, unique=True)
     customer_name = models.CharField(max_length=200)
-    items = models.JSONField()  # ✅ use JSONField directly instead of TextField
+    items = models.JSONField()
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_id = models.CharField(max_length=100, blank=True, default='COD')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
@@ -88,5 +89,3 @@ class VlhAdmin(models.Model):
 
     def __str__(self):
         return self.mobile
-
-
