@@ -125,9 +125,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        // ============================================================
-        // ORDER BOARD LOGIC
-        // ============================================================
         function createOrderCard(order, isPreparing) {
             let itemsHtml = '<ul>';
             for (const item in order.items) {
@@ -202,9 +199,6 @@
             setInterval(fetchAndDisplayOrders, 10000);
         });
 
-        // ============================================================
-        // LIVE ORDERS TABLE
-        // ============================================================
         function fetchOrders() {
             fetch("{% url 'get_orders_api' %}")
                 .then(res => res.json())
