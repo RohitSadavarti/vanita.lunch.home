@@ -34,6 +34,10 @@ class Order(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     order_status = models.CharField(max_length=50, default='open')
+    
+    # --- ADDED MISSING FIELDS TO MATCH YOUR DATABASE ---
+    ready_time = models.DateTimeField(blank=True, null=True)
+    pickup_time = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
         return f"Order {self.order_id} - {self.customer_name}"
