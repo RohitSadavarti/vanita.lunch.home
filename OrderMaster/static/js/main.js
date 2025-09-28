@@ -1,106 +1,138 @@
-// JavaScript for Vanita Lunch Order Master
-
 document.addEventListener('DOMContentLoaded', function() {
-    
-    // Handle order status updates
-    const moveToReadyButtons = document.querySelectorAll('.move-to-ready');
-    const markCompletedButtons = document.querySelectorAll('.mark-completed');
-    
-    moveToReadyButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const orderId = this.getAttribute('data-order-id');
-            updateOrderStatus(orderId, 'ready', this);
-        });
-    });
-    
-    markCompletedButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const orderId = this.getAttribute('data-order-id');
-            updateOrderStatus(orderId, 'completed', this);
-        });
-    });
-    
-    function updateOrderStatus(orderId, status, button) {
-        // Show loading state
-        const originalText = button.textContent;
-        button.textContent = 'Updating...';
-        button.disabled = true;
-        
-        // Get CSRF token
-        const csrfToken = getCookie('csrftoken');
-        
-        fetch('/api/update-order-status/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify({
-                order_id: orderId,
-                status: status
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Remove the order card or reload the page
-                const orderCard = button.closest('.order-card');
-                orderCard.style.transition = 'opacity 0.3s';
-                orderCard.style.opacity = '0';
-                setTimeout(() => {
-                    location.reload(); // Reload to update both sections
-                }, 300);
-            } else {
-                alert('Error updating order status: ' + (data.error || 'Unknown error'));
-                button.textContent = originalText;
-                button.disabled = false;
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error updating order status');
-            button.textContent = originalText;
-            button.disabled = false;
-        });
+    // Icons
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
     }
-    
-    // Function to get CSRF token from cookies
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
+
+    // Sidebar elements
+    const editSidebar = document.getElementById('editSidebar');
+    const closeEditBtn = document.getElementById('closeEditBtn');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const editForm = document.getElementById('editForm');
+    const editButtons = document.querySelectorAll('.edit-btn');
+
+    // Function to open the sidebar
+    const openSidebar = () => {
+        editSidebar.classList.add('open');
+        sidebarOverlay.classList.add('open');
+    };
+
+    // Function to close the sidebar
+    const closeSidebar = () => {
+        editSidebar.classList.remove('open');
+        sidebarOverlay.classList.remove('open');
+    };
+
+    // Populate select options
+    const populateSelect = (selectElement, choices) => {
+        selectElement.innerHTML = '';
+        for (const [value, display] of Object.entries(choices)) {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = display;
+            selectElement.appendChild(option);
         }
-        return cookieValue;
-    }
-    
-    // Auto-dismiss alerts after 5 seconds
-    const alerts = document.querySelectorAll('.alert');
-    alerts.forEach(alert => {
-        setTimeout(() => {
-            if (alert && alert.parentNode) {
-                alert.remove();
+    };
+
+    // Attach event listeners to all edit buttons
+    editButtons.forEach(button => {
+        button.addEventListener('click', async () => {
+            const itemId = button.dataset.itemId;
+            
+            // Fetch item data from the new API endpoint
+            try {
+                const response = await fetch(`/api/menu-item/${itemId}/`);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const item = await response.json();
+
+                // Populate the form fields in the sidebar
+                document.getElementById('edit-item-id').value = item.id;
+                document.getElementById('edit-item_name').value = item.item_name;
+                document.getElementById('edit-description').value = item.description;
+                document.getElementById('edit-price').value = item.price;
+                document.getElementById('edit-availability_time').value = item.availability_time;
+
+                // Populate and set selected options for dropdowns
+                // Note: You might need to pass the choices from your Django view to the template
+                const categorySelect = document.getElementById('edit-category');
+                const vegSelect = document.getElementById('edit-veg_nonveg');
+                const mealTypeSelect = document.getElementById('edit-meal_type');
+
+                // Assuming you have access to choices (e.g., from a global JS variable set in the template)
+                // For demonstration, I'll use placeholders. Replace these with actual choices.
+                const categoryChoices = {'breakfast': 'Breakfast', 'lunch': 'Lunch', 'dinner': 'Dinner', 'snacks': 'Snacks', 'beverages': 'Beverages'};
+                const vegChoices = {'veg': 'Vegetarian', 'non_veg': 'Non-Vegetarian'};
+                const mealTypeChoices = {'main_course': 'Main Course', 'starter': 'Starter', 'dessert': 'Dessert', 'beverage': 'Beverage'};
+                
+                populateSelect(categorySelect, categoryChoices);
+                populateSelect(vegSelect, vegChoices);
+                populateSelect(mealTypeSelect, mealTypeChoices);
+                
+                categorySelect.value = item.category;
+                vegSelect.value = item.veg_nonveg;
+                mealTypeSelect.value = item.meal_type;
+
+                // Display the current image
+                const currentImage = document.getElementById('current-image');
+                if (item.image_url) {
+                    currentImage.src = item.image_url;
+                    currentImage.style.display = 'block';
+                } else {
+                    currentImage.style.display = 'none';
+                }
+
+                // Set the form's action URL
+                editForm.action = `/api/menu-item/${itemId}/`;
+
+                // Open the sidebar
+                openSidebar();
+
+            } catch (error) {
+                console.error('Failed to fetch menu item:', error);
+                alert('Could not load item details. Please try again.');
             }
-        }, 5000);
+        });
     });
-    
-    // Form validation for menu items
-    const menuForm = document.querySelector('form[enctype="multipart/form-data"]');
-    if (menuForm) {
-        menuForm.addEventListener('submit', function(e) {
-            const price = document.getElementById('price').value;
-            if (price <= 0) {
-                e.preventDefault();
-                alert('Price must be greater than 0');
-                return false;
+
+    // Event listener for the close button
+    if (closeEditBtn) {
+        closeEditBtn.addEventListener('click', closeSidebar);
+    }
+
+    // Event listener for the overlay
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', closeSidebar);
+    }
+
+    // Handle form submission
+    if (editForm) {
+        editForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(editForm);
+            const actionUrl = editForm.action;
+
+            try {
+                const response = await fetch(actionUrl, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        // CSRF token is already in the form data
+                    },
+                });
+
+                if (response.ok) {
+                    // Reload the page to see changes
+                    window.location.reload();
+                } else {
+                    const errorData = await response.json();
+                    alert(`Error: ${errorData.error || 'Could not update item.'}`);
+                }
+            } catch (error) {
+                console.error('Failed to submit form:', error);
+                alert('An error occurred. Please try again.');
             }
         });
     }
-    
 });
