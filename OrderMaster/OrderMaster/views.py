@@ -69,6 +69,7 @@ def logout_view(request):
 # =================================================================================
 
 @admin_required
+@admin_required
 def dashboard_view(request):
     """Renders the main admin dashboard page."""
     context = {
@@ -79,7 +80,7 @@ def dashboard_view(request):
         'recent_orders': Order.objects.order_by('-created_at')[:5],
     }
     return render(request, 'OrderMaster/dashboard.html', context)
-    
+     
 @admin_required
 def order_management_view(request):
     """Displays and manages current orders."""
@@ -217,7 +218,7 @@ def api_place_order(request):
     try:
         data = json.loads(request.body)
         
-        required_fields = ['customer_name', 'customer_mobile', 'customer_address', 'items', 'total_amount']
+        required_fields = ['customer_name', 'customer_mobile', 'customer_address', 'items', 'total_price']
         if not all(field in data and data[field] for field in required_fields):
             return JsonResponse({'error': 'Missing required fields.'}, status=400)
         
@@ -261,7 +262,7 @@ def api_place_order(request):
         delivery_fee = Decimal('0.00') if calculated_subtotal >= 300 else Decimal('40.00')
         final_total_server = calculated_subtotal + delivery_fee
         
-        if abs(final_total_server - Decimal(str(data['total_amount']))) > Decimal('0.01'):
+        if abs(final_total_server - Decimal(str(data['total_price']))) > Decimal('0.01'):
             return JsonResponse({'error': 'Total amount mismatch. Please try again.'}, status=400)
         
         order_id = f"VLH{timezone.now().strftime('%y%m%d%H%M')}{str(uuid.uuid4())[:4].upper()}"
@@ -278,7 +279,7 @@ def api_place_order(request):
             order_id=order_id,
             customer_name=data['customer_name'],
             items=json.dumps(order_details_json),
-            total_amount=final_total_server,
+            total_price=final_total_server,
             payment_id=data.get('payment_id', 'COD'),
             status='Preparing'
         )
@@ -299,7 +300,7 @@ def api_place_order(request):
 def analytics_view(request):
     """Renders the analytics page."""
     completed_orders = Order.objects.filter(status='Completed')
-    total_revenue = completed_orders.aggregate(total=models.Sum('total_amount'))['total'] or 0
+    total_revenue = completed_orders.aggregate(total=models.Sum('total_price'))['total'] or 0
     context = {
         'total_orders': Order.objects.count(),
         'completed_orders': completed_orders.count(),
@@ -327,7 +328,7 @@ def get_orders_api(request):
             'order_id': order.order_id,
             'customer_name': order.customer_name,
             'items': order.items,
-            'total_amount': float(order.total_amount),
+            'total_price': float(order.total_price),
             'status': order.status,
             'created_at': order.created_at.strftime('%b %d, %Y, %I:%M %p')
         } for order in orders]
@@ -335,3 +336,4 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
