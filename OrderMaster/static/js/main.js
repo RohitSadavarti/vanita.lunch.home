@@ -20,105 +20,78 @@ document.addEventListener('DOMContentLoaded', function() {
         return cookieValue;
     };
 
-    // --- MENU ITEM EDITING LOGIC ---
-    const editSidebar = document.getElementById('editSidebar');
-    const closeEditBtn = document.getElementById('closeEditBtn');
-    const sidebarOverlay = document.getElementById('sidebar-overlay');
-    const editForm = document.getElementById('editForm');
-    const editButtons = document.querySelectorAll('.edit-btn');
-
-    const openEditSidebar = () => {
-        if (editSidebar) editSidebar.classList.add('open');
-        if (sidebarOverlay) sidebarOverlay.classList.add('open');
-    };
-
-    const closeEditSidebar = () => {
-        if (editSidebar) editSidebar.classList.remove('open');
-        if (sidebarOverlay) sidebarOverlay.classList.remove('open');
-    };
-    
-    const populateSelect = (selectElement, choices, selectedValue) => {
-        if (!selectElement) return;
-        selectElement.innerHTML = '';
-        for (const [value, display] of Object.entries(choices)) {
-            const option = document.createElement('option');
-            option.value = value;
-            option.textContent = display;
-            if (value === selectedValue) {
-                option.selected = true;
-            }
-            selectElement.appendChild(option);
-        }
-    };
-
-    editButtons.forEach(button => {
-        button.addEventListener('click', async () => {
-            const itemId = button.dataset.itemId;
+    // --- LIVE ORDER REFRESH LOGIC (DASHBOARD) ---
+    const liveOrdersContainer = document.getElementById('live-orders');
+    if (liveOrdersContainer) {
+        const fetchOrders = async () => {
             try {
-                const response = await fetch(`/api/menu-item/${itemId}/`);
-                if (!response.ok) throw new Error('Failed to fetch item details.');
-                
-                const item = await response.json();
+                const response = await fetch('/api/get_orders/');
+                if (!response.ok) return;
+                const data = await response.json();
 
-                // Populate form
-                document.getElementById('edit-item_name').value = item.item_name;
-                document.getElementById('edit-description').value = item.description;
-                document.getElementById('edit-price').value = item.price;
-                document.getElementById('edit-availability_time').value = item.availability_time;
+                const ordersHtml = data.orders.map(order => {
+                    const itemsSummary = order.items.length > 0 ? `${order.items.length}: ${order.items[0].name}` : 'No items';
+                    return `
+                        <div class="live-order-item">
+                            <p>ID(${order.order_id}), Items(${itemsSummary}), Amount(₹${order.total_price})</p>
+                            <div class="status ${order.order_status}">${order.order_status}</div>
+                        </div>
+                    `;
+                }).join('');
 
-                const categoryChoices = {'breakfast': 'Breakfast', 'lunch': 'Lunch', 'thali': 'Thali', 'main_course': 'Main Course', 'bread': 'Bread', 'dessert_beverage': 'Dessert & Beverage'};
-                const vegChoices = {'veg': 'Vegetarian', 'non_veg': 'Non-Vegetarian', 'beverage': 'Beverage'};
-                const mealTypeChoices = {'regular': 'Regular', 'dessert': 'Dessert', 'thali': 'Thali', 'beverage': 'Beverage'};
-                
-                populateSelect(document.getElementById('edit-category'), categoryChoices, item.category);
-                populateSelect(document.getElementById('edit-veg_nonveg'), vegChoices, item.veg_nonveg);
-                populateSelect(document.getElementById('edit-meal_type'), mealTypeChoices, item.meal_type);
-
-                const currentImage = document.getElementById('current-image');
-                if (item.image_url) {
-                    currentImage.src = item.image_url;
-                    currentImage.style.display = 'block';
-                } else {
-                    currentImage.style.display = 'none';
-                }
-
-                editForm.action = `/api/menu-item/${itemId}/`;
-                openEditSidebar();
-
+                liveOrdersContainer.innerHTML = ordersHtml;
             } catch (error) {
-                console.error('Error fetching menu item:', error);
-                alert('Could not load item details.');
+                console.error("Error fetching live orders:", error);
             }
+        };
+
+        // Fetch orders immediately and then every 10 seconds
+        fetchOrders();
+        setInterval(fetchOrders, 10000);
+    }
+    
+    // --- ORDER MANAGEMENT PAGE LOGIC ---
+    
+    // 1. Collapse/Expand Section Logic
+    document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(button => {
+        button.addEventListener('click', function() {
+            const icon = this.querySelector('i');
+            const isExpanded = this.getAttribute('aria-expanded') === 'true';
+            // Note: Bootstrap handles the toggling, we just handle the icon state change.
+            // The state is checked *before* the toggle happens.
+            if (isExpanded) {
+                icon.setAttribute('data-lucide', 'chevron-down');
+            } else {
+                icon.setAttribute('data-lucide', 'chevron-up');
+            }
+            lucide.createIcons();
         });
     });
 
-    if (closeEditBtn) closeEditBtn.addEventListener('click', closeEditSidebar);
-    if (sidebarOverlay) sidebarOverlay.addEventListener('click', closeEditSidebar);
+    // 2. Date Filter Logic
+    const customDateBtn = document.getElementById('customDateBtn');
+    const customDateRangeDiv = document.getElementById('customDateRange');
 
-    if (editForm) {
-        editForm.addEventListener('submit', async (e) => {
+    if (customDateBtn && customDateRangeDiv) {
+        // Initialize date pickers
+        flatpickr("#startDate", { altInput: true, altFormat: "F j, Y", dateFormat: "Y-m-d" });
+        flatpickr("#endDate", { altInput: true, altFormat: "F j, Y", dateFormat: "Y-m-d" });
+
+        customDateBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            const formData = new FormData(editForm);
-            try {
-                const response = await fetch(editForm.action, { 
-                    method: 'POST', 
-                    body: formData,
-                    headers: { 'X-CSRFToken': getCookie('csrftoken') }
-                });
-                if (response.ok) {
-                    window.location.reload();
-                } else {
-                    const errorData = await response.json();
-                    alert(`Error: ${errorData.error || 'Could not update item.'}`);
-                }
-            } catch (error) {
-                console.error('Form submission error:', error);
-                alert('An error occurred while saving.');
-            }
+            customDateRangeDiv.classList.toggle('d-none');
+            customDateRangeDiv.classList.toggle('d-flex');
         });
+
+        // If custom filter was selected on page load, show the inputs
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('date_filter') === 'custom') {
+            customDateRangeDiv.classList.remove('d-none');
+            customDateRangeDiv.classList.add('d-flex');
+        }
     }
 
-    // --- ORDER MANAGEMENT LOGIC ---
+    // 3. Order Status Update Logic
     const handleStatusUpdate = async (orderCard, newStatus) => {
         const orderId = orderCard.dataset.orderId;
         const csrfToken = getCookie('csrftoken');
@@ -138,7 +111,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 orderCard.style.opacity = '0';
                 setTimeout(() => {
                     orderCard.remove();
-                    window.location.reload(); // Reload to see updated counts and order lists
+                    // Reload the page to see updated counts and move the order if necessary
+                    window.location.reload(); 
                 }, 500);
             } else {
                 const errorData = await response.json();
@@ -163,4 +137,5 @@ document.addEventListener('DOMContentLoaded', function() {
             handleStatusUpdate(orderCard, 'pickedup');
         });
     });
+
 });
