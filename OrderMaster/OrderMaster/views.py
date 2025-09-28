@@ -114,10 +114,10 @@ def order_management_view(request):
     if start_date and end_date:
         base_queryset = base_queryset.filter(created_at__gte=start_date, created_at__lt=end_date)
     
-    # Sort all querysets by most recent first
+    # Correctly sort each category of orders
     preparing_orders_qs = base_queryset.filter(order_status='open').order_by('-created_at')
-    ready_orders_qs = base_queryset.filter(order_status='ready').order_by('-created_at')
-    pickedup_orders_qs = base_queryset.filter(order_status='pickedup').order_by('-created_at')
+    ready_orders_qs = base_queryset.filter(order_status='ready').order_by('-ready_time')
+    pickedup_orders_qs = base_queryset.filter(order_status='pickedup').order_by('-pickup_time')
 
     # Parse the JSON 'items' string into a Python list for the template
     for order_list in [preparing_orders_qs, ready_orders_qs, pickedup_orders_qs]:
@@ -155,6 +155,7 @@ def menu_management_view(request):
         'active_page': 'menu_management',
     }
     return render(request, 'OrderMaster/menu_management.html', context)
+
 
 @admin_required
 @require_POST
@@ -283,5 +284,6 @@ def api_place_order(request):
 
 def customer_home(request):
     return render(request, 'OrderMaster/customer_order.html')
+
 
 
