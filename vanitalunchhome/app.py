@@ -5,10 +5,12 @@ from flask_cors import CORS
 from datetime import datetime, timedelta
 import json
 import random
+
+# --- Firebase Imports ---
 import firebase_admin
 from firebase_admin import credentials, messaging
 
-# Initialize Firebase Admin SDK
+# --- Securely Initialize Firebase Admin SDK from Environment Variable ---
 try:
     # Render stores JSON environment variables as a string, so we need to parse it
     firebase_key_json = os.environ.get('FIREBASE_KEY')
@@ -20,9 +22,12 @@ try:
             firebase_admin.initialize_app(cred)
         print("Firebase Admin SDK initialized successfully.")
     else:
-        print("WARNING: FIREBASE_KEY environment variable not found. Firebase notifications are disabled.")
+        # If the key is not found, print a warning instead of crashing
+        print("WARNING: FIREBASE_KEY environment variable not found. Firebase notifications will be disabled.")
 except Exception as e:
-    print(f"Error initializing Firebase Admin SDK from environment variable: {e}")
+    print(f"Error initializing Firebase Admin SDK: {e}")
+    # Also print a warning here to prevent a crash
+    print("WARNING: Firebase could not be initialized. Notifications will be disabled.")
 
 
 app = Flask(__name__)
@@ -59,8 +64,6 @@ def get_menu():
         print(f"Error in get_menu: {str(e)}")
         return jsonify({'error': 'Failed to load menu'}), 500
 
-# --- The /api/send-otp route has been completely removed ---
-
 @app.route('/api/order', methods=['POST'])
 def place_order():
     conn = None
@@ -79,32 +82,46 @@ def place_order():
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # ... (Database logic to create the order remains the same) ...
         validated_items = []
         subtotal = 0
         
         for cart_item in cart_items:
             item_id = cart_item.get('id')
             quantity = int(cart_item.get('quantity', 0))
+            if not item_id or quantity <= 0:
+                return jsonify({'error': 'Invalid item or quantity'}), 400
+            
             cur.execute("SELECT id, item_name, price FROM menu_items WHERE id = %s", (item_id,))
             menu_item = cur.fetchone()
+            if not menu_item:
+                return jsonify({'error': f'Menu item with ID {item_id} not found'}), 400
+            
             actual_price = float(menu_item[2])
             item_total = actual_price * quantity
             subtotal += item_total
-            validated_items.append({ 'id': item_id, 'name': menu_item[1], 'price': actual_price, 'quantity': quantity })
+            
+            validated_items.append({
+                'id': menu_item[0],
+                'name': menu_item[1],
+                'price': actual_price,
+                'quantity': quantity,
+                'total': item_total
+            })
         
         total_price = subtotal
         order_id = str(random.randint(10000000, 99999999))
 
         cur.execute("""
-            INSERT INTO orders (order_id, customer_name, customer_mobile, items, subtotal, total_price, status, payment_method, order_status, created_at, updated_at)
+            INSERT INTO orders (order_id, customer_name, customer_mobile, items, subtotal, total_price, status, payment_method, created_at, updated_at, order_status)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
-            order_id, name, mobile, json.dumps(validated_items), subtotal, total_price, 'confirmed', 'Cash', 'open', datetime.now(), datetime.now()
+            order_id, name, mobile, json.dumps(validated_items), subtotal, total_price, 
+            'confirmed', 'Cash', datetime.now(), datetime.now(), 'open'
         ))
+        
         conn.commit()
 
-        # --- SEND FIREBASE NOTIFICATION ---
+        # --- Send Firebase notification only if Firebase is initialized ---
         if firebase_admin._apps:
             try:
                 message = messaging.Message(
@@ -112,10 +129,10 @@ def place_order():
                         title='New Order Received!',
                         body=f'Order #{order_id} from {name} for ₹{total_price:.2f} has been placed.'
                     ),
-                    topic='new_orders' # Send to the 'new_orders' topic
+                    topic='new_orders'
                 )
                 response = messaging.send(message)
-                print('Successfully sent Firebase notification:', response)
+                print('Successfully sent notification:', response)
             except Exception as e:
                 print(f"Error sending Firebase notification: {e}")
 
