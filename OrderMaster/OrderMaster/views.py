@@ -261,9 +261,7 @@ def api_menu_items(request):
     try:
         menu_items = MenuItem.objects.all().values(
             'id', 'item_name', 'description', 'price', 'category',
-            'veg_nonveg', 'meal_type', 'availability_time',
-            # --- ADDED: Include image_url in the API response ---
-            'image_url'
+            'veg_nonveg', 'meal_type', 'availability_time', 'image_url'
         ).order_by('category', 'item_name')
         items_list = [{**item, 'price': float(item['price'])} for item in menu_items]
         return JsonResponse(items_list, safe=False)
@@ -320,4 +318,5 @@ def api_place_order(request):
 def customer_home(request):
     return render(request, 'OrderMaster/customer_order.html')
     
+
 
