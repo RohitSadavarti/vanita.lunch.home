@@ -11,7 +11,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
-from .models import MenuItem, Order, VlhAdmin  # Corrected this line
+from .models import MenuItem, Order, VlhAdmin
 from datetime import datetime, timedelta
 import json
 import uuid
@@ -24,25 +24,9 @@ logger = logging.getLogger(__name__)
 # =================================================================================
 # DECORATORS & AUTHENTICATION
 # =================================================================================
-# Customer-facing views
-def customer_order_view(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            Order.objects.create(
-                order_id=str(uuid.uuid4()).split('-')[0].upper(),
-                customer_name=data.get('customer_name', 'Anonymous'),
-                items=data.get('items'),
-                total_amount=data.get('total_amount'),
-                payment_id=data.get('payment_id', 'COD'),
-                created_at=timezone.now(),
-                status='Pending' # New orders are always 'Pending'
-            )
-            return JsonResponse({'status': 'success'})
-        except Exception as e:
-            logger.error(f"Customer order error: {e}")
-            return JsonResponse({'status': 'error'}, status=500)
 
+def customer_order_view(request):
+    """Serves the main customer-facing order page."""
     menu_items = MenuItem.objects.all()
     return render(request, 'OrderMaster/customer_order.html', {'menu_items': menu_items})
 
@@ -77,7 +61,6 @@ def logout_view(request):
     messages.info(request, 'You have been successfully logged out.')
     return redirect('login')
 
-
 # =================================================================================
 # ADMIN DASHBOARD & ORDER MANAGEMENT VIEWS
 # =================================================================================
@@ -92,7 +75,7 @@ def dashboard_view(request):
         'menu_items_count': MenuItem.objects.count(),
         'recent_orders': Order.objects.order_by('-created_at')[:5],
     }
-    return render(request, 'dashboard.html', context)
+    return render(request, 'OrderMaster/dashboard.html', context)
     
 @admin_required
 def order_management_view(request):
@@ -101,7 +84,7 @@ def order_management_view(request):
         'preparing_orders': Order.objects.filter(status='preparing').order_by('created_at'),
         'ready_orders': Order.objects.filter(status='ready').order_by('-created_at'),
     }
-    return render(request, 'order_management.html', context)
+    return render(request, 'OrderMaster/order_management.html', context)
     
 @csrf_exempt
 @admin_required
@@ -147,7 +130,7 @@ def menu_management_view(request):
         return redirect('menu_management')
         
     context = {'menu_items': MenuItem.objects.all().order_by('-created_at')}
-    return render(request, 'menu_management.html', context)
+    return render(request, 'OrderMaster/menu_management.html', context)
 
 @admin_required
 def edit_menu_item_view(request, item_id):
@@ -167,7 +150,7 @@ def edit_menu_item_view(request, item_id):
         messages.success(request, 'Menu item updated successfully!')
         return redirect('menu_management')
             
-    return render(request, 'edit_menu_item.html', {'item': item})
+    return render(request, 'OrderMaster/edit_menu_item.html', {'item': item})
 
 @admin_required
 @require_POST
@@ -208,24 +191,18 @@ def api_menu_items(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_place_order(request):
-    """
-    API endpoint for customers to place a new order.
-    This is now compatible with the cash-on-delivery JavaScript.
-    """
+    """API endpoint for customers to place a new order."""
     try:
         data = json.loads(request.body)
         
-        # --- 1. Validate required fields from frontend ---
         required_fields = ['customer_name', 'customer_mobile', 'customer_address', 'items', 'total_amount']
         if not all(field in data and data[field] for field in required_fields):
             return JsonResponse({'error': 'Missing required fields.'}, status=400)
         
-        # --- 2. Sanitize and validate customer data ---
         mobile = data['customer_mobile']
         if not (mobile.isdigit() and len(mobile) == 10):
             return JsonResponse({'error': 'Invalid 10-digit mobile number format.'}, status=400)
             
-        # Handle items - check if it's already parsed or needs parsing
         items = data['items']
         if isinstance(items, str):
             try:
@@ -236,7 +213,6 @@ def api_place_order(request):
         if not isinstance(items, list) or not items:
             return JsonResponse({'error': 'Cart items are missing or invalid.'}, status=400)
 
-        # --- 3. Server-side calculation to prevent price tampering ---
         calculated_subtotal = Decimal('0.00')
         validated_items_for_db = []
         
@@ -244,8 +220,7 @@ def api_place_order(request):
             try:
                 menu_item = MenuItem.objects.get(id=item['id'])
                 quantity = int(item['quantity'])
-                if quantity <= 0: 
-                    continue # Skip items with zero or negative quantity
+                if quantity <= 0: continue
                 
                 item_total = menu_item.price * quantity
                 calculated_subtotal += item_total
@@ -261,18 +236,14 @@ def api_place_order(request):
             except (KeyError, ValueError, TypeError):
                 return JsonResponse({'error': 'Invalid data format in cart items.'}, status=400)
 
-        # --- 4. Calculate delivery fee and final total ---
         delivery_fee = Decimal('0.00') if calculated_subtotal >= 300 else Decimal('40.00')
         final_total_server = calculated_subtotal + delivery_fee
         
-        # Compare with the total submitted from the client
         if abs(final_total_server - Decimal(str(data['total_amount']))) > Decimal('0.01'):
             return JsonResponse({'error': 'Total amount mismatch. Please try again.'}, status=400)
         
-        # --- 5. Create and save the order ---
         order_id = f"VLH{timezone.now().strftime('%y%m%d%H%M')}{str(uuid.uuid4())[:4].upper()}"
         
-        # Structure the data to be saved in the JSON 'items' field
         order_details_json = {
             'customer_mobile': mobile,
             'customer_address': data['customer_address'],
@@ -313,62 +284,7 @@ def analytics_view(request):
         'total_revenue': total_revenue,
         'pending_orders': Order.objects.filter(status__in=['preparing', 'ready']).count(),
     }
-    return render(request, 'analytics.html', context)
-
-@admin_required
-def settings(request):
-    """Renders the settings page."""
-    return render(request, 'OrderMaster/settings.html')
-@admin_required
-def dashboard_view(request):
-    return render(request, 'OrderMaster/dashboard.html')
-
-
-@admin_required
-def order_management_view(request):
-    return render(request, 'OrderMaster/order_management.html')
-    
-@admin_required
-def menu_management_view(request):
-    """Handles adding new menu items and displaying all items."""
-    if request.method == 'POST':
-        MenuItem.objects.create(
-            name=request.POST['name'],
-            price=request.POST['price'],
-            image=request.FILES.get('image')
-        )
-        messages.success(request, 'Menu item added successfully!')
-        return redirect('menu_management')
-    
-    menu_items = MenuItem.objects.all()
-    return render(request, 'OrderMaster/menu_management.html', {'menu_items': menu_items})
-
-@admin_required
-def edit_menu_item_view(request, item_id):
-    """Handles editing an existing menu item."""
-    item = get_object_or_404(MenuItem, id=item_id)
-    if request.method == 'POST':
-        item.name = request.POST.get('name')
-        item.price = request.POST.get('price')
-        if 'image' in request.FILES:
-            item.image = request.FILES.get('image')
-        item.save()
-        messages.success(request, 'Menu item updated successfully!')
-        return redirect('menu_management')
-    return render(request, 'OrderMaster/edit_menu_item.html', {'item': item})
-
-@admin_required
-def delete_menu_item_view(request, item_id):
-    """Handles deleting a menu item."""
-    item = get_object_or_404(MenuItem, id=item_id)
-    item.delete()
-    messages.success(request, 'Menu item deleted successfully!')
-    return redirect('menu_management')
-
-@admin_required
-def analytics_view(request):
-    """Renders the analytics page."""
-    return render(request, 'OrderMaster/analytics.html')
+    return render(request, 'OrderMaster/analytics.html', context)
 
 @admin_required
 def settings_view(request):
