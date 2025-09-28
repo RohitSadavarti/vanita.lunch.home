@@ -1,11 +1,8 @@
 /* General Body and Font Styles */
 body {
     font-family: 'Inter', sans-serif;
-    background-color: hsl(0 0% 100%);
-    color: hsl(222.2 84% 4.9%);
-    margin: 0;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    background-color: #f8f9fa;
+    color: #343a40;
 }
 
 :root {
@@ -485,7 +482,6 @@ body {
     color: white;
     font-weight: 500;
 }
-
 /* Header Styles */
 .admin-header {
     background-color: white;
@@ -599,7 +595,7 @@ body {
 .sidebar-body {
     padding: 1.5rem;
     overflow-y: auto;
-    height: calc(100% - 120px); /* Adjust based on header/footer height */
+    height: calc(100% - 120px);
 }
 
 .sidebar-footer {
@@ -810,4 +806,5 @@ body {
     justify-content: flex-end;
     gap: 0.5rem;
 }
+
 
