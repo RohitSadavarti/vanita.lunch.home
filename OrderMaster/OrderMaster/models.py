@@ -3,6 +3,7 @@
 from django.db import models
 from django.utils import timezone
 import bcrypt
+import random
 
 class MenuItem(models.Model):
     item_name = models.CharField(max_length=100)
@@ -21,7 +22,7 @@ class MenuItem(models.Model):
 
 
 class Order(models.Model):
-    order_id = models.CharField(max_length=50, unique=True)
+    order_id = models.CharField(max_length=50, unique=True, blank=True)
     customer_name = models.CharField(max_length=200)
     customer_mobile = models.CharField(max_length=15)
     items = models.JSONField()
@@ -38,6 +39,11 @@ class Order(models.Model):
     # --- ADDED MISSING FIELDS TO MATCH YOUR DATABASE ---
     ready_time = models.DateTimeField(blank=True, null=True)
     pickup_time = models.DateTimeField(blank=True, null=True)
+
+    def save(self, *args, **kwargs):
+        if not self.order_id:
+            self.order_id = str(random.randint(10000000, 99999999))
+        super(Order, self).save(*args, **kwargs)
 
     def __str__(self):
         return f"Order {self.order_id} - {self.customer_name}"
