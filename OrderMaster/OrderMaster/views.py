@@ -114,7 +114,7 @@ def order_management_view(request):
     if start_date and end_date:
         base_queryset = base_queryset.filter(created_at__gte=start_date, created_at__lt=end_date)
     
-    # Correctly sort each category of orders
+    # Correctly sort each category of orders by most recent first
     preparing_orders_qs = base_queryset.filter(order_status='open').order_by('-created_at')
     ready_orders_qs = base_queryset.filter(order_status='ready').order_by('-ready_time')
     pickedup_orders_qs = base_queryset.filter(order_status='pickedup').order_by('-pickup_time')
@@ -155,7 +155,6 @@ def menu_management_view(request):
         'active_page': 'menu_management',
     }
     return render(request, 'OrderMaster/menu_management.html', context)
-
 
 @admin_required
 @require_POST
@@ -204,7 +203,12 @@ def update_order_status(request):
             return JsonResponse({'success': False, 'error': 'Missing data'}, status=400)
         order = get_object_or_404(Order, pk=order_pk)
         order.order_status = new_status
-        order.save(update_fields=['order_status', 'updated_at'])
+        # Set the timestamp when the status changes
+        if new_status == 'ready':
+            order.ready_time = now()
+        elif new_status == 'pickedup':
+            order.pickup_time = now()
+        order.save()
         return JsonResponse({'success': True, 'message': f'Order status updated to {new_status}'})
     except Exception as e:
         logger.error(f"Update order status error: {e}")
@@ -256,6 +260,7 @@ def get_orders_api(request):
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
 
 
+
 @require_http_methods(["GET"])
 def api_menu_items(request):
     """API endpoint that provides the full menu to the customer frontend."""
@@ -284,6 +289,7 @@ def api_place_order(request):
 
 def customer_home(request):
     return render(request, 'OrderMaster/customer_order.html')
+
 
 
 
