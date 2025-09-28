@@ -10,13 +10,13 @@ urlpatterns = [
     path('dashboard/', views.dashboard_view, name='dashboard'),
     path('orders/', views.order_management_view, name='order_management'),
     path('menu/', views.menu_management_view, name='menu_management'),
-    path('menu/edit/<int:item_id>/', views.edit_menu_item_view, name='edit_menu_item'),
     path('menu/delete/<int:item_id>/', views.delete_menu_item_view, name='delete_menu_item'),
     path('analytics/', views.analytics_view, name='analytics'),
     path('settings/', views.settings_view, name='settings'),
     
     
     # API URLs
+    path('api/menu-item/<int:item_id>/', views.api_menu_item_detail, name='api_menu_item_detail'), # New URL
     path('api/update-order-status/', views.update_order_status, name='update_order_status'),
     path('api/menu-items/', views.api_menu_items, name='api_menu_items'),
     path('api/place-order/', views.api_place_order, name='api_place_order'),
