@@ -6,6 +6,19 @@ from functools import wraps
 from datetime import datetime
 import json
 import random # <--- Import the random module
+# --- Firebase Imports ---
+import firebase_admin
+from firebase_admin import credentials, messaging
+
+# --- Initialize Firebase Admin SDK ---
+# Make sure the JSON file is in the same directory
+try:
+    cred = credentials.Certificate("vanita-lunch-home-firebase-adminsdk-fbsvc-00e35c3c2b.json")
+    firebase_admin.initialize_app(cred)
+    print("Firebase Admin SDK initialized successfully.")
+except Exception as e:
+    print(f"Error initializing Firebase Admin SDK: {e}")
+
 
 app = Flask(__name__)
 # Configure CORS - allow all origins for development, restrict in production
@@ -102,10 +115,10 @@ def place_order():
         conn = get_db_connection()
         cur = conn.cursor()
         
-        validated_items = []
+         validated_items = []
         subtotal = 0
         
-        for cart_item in cart_items:
+        for cart_item in data.get('cart_items', []):
             item_id = cart_item.get('id')
             quantity = int(cart_item.get('quantity', 0))
             if not item_id or quantity <= 0:
@@ -127,7 +140,7 @@ def place_order():
                 'quantity': quantity,
                 'total': item_total
             })
-        
+
         total_price = subtotal
         order_id = str(random.randint(10000000, 99999999))
 
@@ -140,6 +153,20 @@ def place_order():
         ))
         
         conn.commit()
+        try:
+            message = messaging.Message(
+                notification=messaging.Notification(
+                    title='New Order Received!',
+                    body=f'Order #{order_id} from {name} for ₹{total_price:.2f} has been placed.'
+                ),
+                topic='new_orders'
+            )
+            # Send a message to the devices subscribed to the provided topic.
+            response = messaging.send(message)
+            print('Successfully sent notification:', response)
+        except Exception as e:
+            print(f"Error sending Firebase notification: {e}")
+        
         return jsonify({'success': True, 'message': f'Order placed successfully! Your Order ID is: {order_id}'})
         
     except Exception as e:
