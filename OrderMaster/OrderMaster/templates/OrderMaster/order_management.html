@@ -9,7 +9,7 @@
         <form method="GET" action="{% url 'order_management' %}" id="dateFilterForm" class="d-flex align-items-center gap-2">
             <div class="dropdown">
                 <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="dateFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    Filter: <span class="text-capitalize fw-bold">{{ selected_filter_display }}</span>
+                    Showing: <span class="fw-bold">{{ date_display_str }}</span>
                 </button>
                 <ul class="dropdown-menu" aria-labelledby="dateFilterDropdown">
                     <li><button class="dropdown-item" type="submit" name="date_filter" value="today">Today</button></li>
@@ -23,14 +23,15 @@
             
             <div id="customDateRange" class="{% if selected_filter != 'custom' %}d-none{% else %}d-flex{% endif %} align-items-center gap-2">
                 <input type="hidden" name="date_filter" value="custom">
-                <input type="text" class="form-control" name="start_date" id="startDate" placeholder="Start Date" value="{{ start_date_val }}">
-                <input type="text" class="form-control" name="end_date" id="endDate" placeholder="End Date" value="{{ end_date_val }}">
-                <button class="btn btn-primary" type="submit">Apply</button>
+                <input type="text" class="form-control form-control-sm" name="start_date" id="startDate" placeholder="Start Date" value="{{ start_date_val }}">
+                <input type="text" class="form-control form-control-sm" name="end_date" id="endDate" placeholder="End Date" value="{{ end_date_val }}">
+                <button class="btn btn-primary btn-sm" type="submit">Apply</button>
             </div>
         </form>
     </div>
 
     <div class="row">
+        <!-- Preparing Orders -->
         <div class="col-lg-6 mb-4">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -40,22 +41,21 @@
                     </button>
                 </div>
                 <div class="collapse show" id="preparingOrdersCollapse">
-                    <div class="card-body order-list">
+                    <div class="card-body order-list-container">
                         {% for order in preparing_orders %}
                         <div class="order-card" data-order-id="{{ order.id }}">
-                            <div class="order-card-header">
-                                <strong>Order #{{ order.order_id }}</strong>
-                                <span>{{ order.customer_name }}</span>
-                            </div>
-                            <div class="order-card-body">
-                                <ul>
+                            <div class="order-details">
+                                <div class="order-info">
+                                    <strong>#{{ order.order_id }}</strong> - <span>{{ order.customer_name }}</span>
+                                </div>
+                                <ul class="order-items-list">
                                     {% for item in order.items_list %}
                                         <li>{{ item.quantity }} x {{ item.name }}</li>
                                     {% endfor %}
                                 </ul>
+                                <div class="order-total">Total: ₹{{ order.total_price }}</div>
                             </div>
-                            <div class="order-card-footer">
-                                <span>Total: ₹{{ order.total_price }}</span>
+                            <div class="order-actions">
                                 <button class="btn btn-warning btn-sm mark-ready-btn">Mark Ready</button>
                             </div>
                         </div>
@@ -67,6 +67,7 @@
             </div>
         </div>
 
+        <!-- Ready Orders -->
         <div class="col-lg-6 mb-4">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -76,22 +77,21 @@
                     </button>
                 </div>
                 <div class="collapse show" id="readyOrdersCollapse">
-                    <div class="card-body order-list">
+                    <div class="card-body order-list-container">
                         {% for order in ready_orders %}
                         <div class="order-card" data-order-id="{{ order.id }}">
-                            <div class="order-card-header">
-                                <strong>Order #{{ order.order_id }}</strong>
-                                <span>{{ order.customer_name }}</span>
-                            </div>
-                            <div class="order-card-body">
-                                <ul>
+                            <div class="order-details">
+                                <div class="order-info">
+                                    <strong>#{{ order.order_id }}</strong> - <span>{{ order.customer_name }}</span>
+                                </div>
+                                <ul class="order-items-list">
                                     {% for item in order.items_list %}
                                         <li>{{ item.quantity }} x {{ item.name }}</li>
                                     {% endfor %}
                                 </ul>
+                                <div class="order-total">Total: ₹{{ order.total_price }}</div>
                             </div>
-                            <div class="order-card-footer">
-                                <span>Total: ₹{{ order.total_price }}</span>
+                            <div class="order-actions">
                                 <button class="btn btn-success btn-sm mark-pickedup-btn">Picked Up</button>
                             </div>
                         </div>
