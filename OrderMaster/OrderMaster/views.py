@@ -59,7 +59,6 @@ def logout_view(request):
 
 @admin_required
 def dashboard_view(request):
-    """Renders the main admin dashboard page."""
     context = {
         'total_orders': Order.objects.count(),
         'preparing_orders_count': Order.objects.filter(order_status='open').count(),
@@ -125,6 +124,7 @@ def order_management_view(request):
         'preparing_orders': preparing_orders_qs,
         'ready_orders': ready_orders_qs,
         'selected_filter': date_filter,
+        'selected_filter_display': date_filter.replace('_', ' '), # This is the fix
         'start_date_val': request.GET.get('start_date', ''),
         'end_date_val': request.GET.get('end_date', ''),
     }
@@ -269,9 +269,8 @@ def api_place_order(request):
             return JsonResponse({'error': 'Missing required fields.'}, status=400)
         
         # This is where your full order placement logic goes...
-        # ... (it was correct in your previously uploaded file)
+        # For brevity, assuming the rest of the function from your file is here.
 
-        # For brevity, assuming the rest of the function is here and correct
         return JsonResponse({'success': True, 'message': 'Order placed successfully!'})
     
     except Exception as e:
