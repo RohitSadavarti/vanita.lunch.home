@@ -80,20 +80,28 @@ def order_management_view(request):
     }
     return render(request, 'OrderMaster/order_management.html', context)
 
+# ... (imports and other functions are correct) ...
+
 @csrf_exempt
 @admin_required
 @require_POST
 def update_order_status(request):
+    """API to update an order's status."""
     try:
         data = json.loads(request.body)
         order_pk = data.get('id')
         new_status = data.get('status')
+
         if not all([order_pk, new_status]):
             return JsonResponse({'success': False, 'error': 'Missing data'}, status=400)
+
         order = get_object_or_404(Order, pk=order_pk)
         order.status = new_status
-        if new_status == 'Ready':
-            order.ready_time = timezone.now()
+        
+        # The line below was causing an error and has been removed.
+        # if new_status == 'Ready':
+        #     order.ready_time = timezone.now() 
+        
         order.save()
         return JsonResponse({'success': True})
     except Order.DoesNotExist:
@@ -102,6 +110,7 @@ def update_order_status(request):
         logger.error(f"Update order status error: {e}")
         return JsonResponse({'success': False, 'error': 'Server error'}, status=500)
 
+# ... (rest of the file is correct) ...
 @admin_required
 def menu_management_view(request):
     if request.method == 'POST':
@@ -284,3 +293,4 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
