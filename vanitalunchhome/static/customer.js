@@ -133,7 +133,7 @@ function removeFromCart(itemId) {
     showToast(`${itemName} removed from cart`, 'warning');
 }
 
-// Update cart display - FIXED for CSS classes
+// Update cart display
 function updateCartDisplay() {
     const cartCount = document.getElementById('cartCount');
     const cartItems = document.getElementById('cartItems');
@@ -142,19 +142,17 @@ function updateCartDisplay() {
 
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-    // Update cart count badge - FIXED
+    // Update cart count badge
     if (totalItems > 0) {
         cartCount.textContent = totalItems;
-        cartCount.classList.remove('d-none', 'hidden'); // Handle both classes
-        cartCount.style.display = 'flex';
+        cartCount.classList.remove('d-none');
     } else {
         cartCount.classList.add('d-none');
-        cartCount.style.display = 'none';
     }
 
     // Update cart items
     if (cart.length === 0) {
-        cartItems.innerHTML = '<p class="text-gray-500 text-center py-4" id="emptyCartMessage">Your cart is empty</p>';
+        cartItems.innerHTML = '<p class="text-muted text-center py-4" id="emptyCartMessage">Your cart is empty</p>';
         cartSummary.innerHTML = '';
         proceedBtn.classList.add('d-none');
         return;
@@ -166,21 +164,19 @@ function updateCartDisplay() {
     cart.forEach(item => {
         const itemTotal = parseFloat(item.price) * item.quantity;
         cartHTML += `
-            <div class="cart-item py-3">
-                <div class="flex justify-between items-start mb-2">
-                    <div class="flex-1">
-                        <h6 class="font-medium text-gray-900">${item.name}</h6>
-                        <p class="text-sm text-gray-600">₹${parseFloat(item.price).toFixed(2)} × ${item.quantity}</p>
+            <div class="cart-item py-2 border-bottom">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-0">${item.name}</h6>
+                        <small class="text-muted">₹${parseFloat(item.price).toFixed(2)} x ${item.quantity}</small>
                     </div>
-                    <div class="font-bold text-gray-900">₹${itemTotal.toFixed(2)}</div>
+                    <div class="fw-bold">₹${itemTotal.toFixed(2)}</div>
                 </div>
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-2">
-                        <button class="quantity-btn" onclick="updateQuantity(${item.id}, -1)">−</button>
-                        <span class="w-8 text-center">${item.quantity}</span>
-                        <button class="quantity-btn" onclick="updateQuantity(${item.id}, 1)">+</button>
-                    </div>
-                    <button class="text-sm text-red-600 hover:text-red-800" onclick="removeFromCart(${item.id})">Remove</button>
+                <div class="d-flex align-items-center mt-2">
+                     <button class="btn btn-sm btn-outline-secondary" onclick="updateQuantity(${item.id}, -1)">-</button>
+                     <span class="mx-2">${item.quantity}</span>
+                     <button class="btn btn-sm btn-outline-secondary" onclick="updateQuantity(${item.id}, 1)">+</button>
+                    <button class="btn btn-sm btn-outline-danger ms-auto" onclick="removeFromCart(${item.id})">Remove</button>
                 </div>
             </div>
         `;
@@ -190,19 +186,19 @@ function updateCartDisplay() {
 
     // Update summary
     const subtotal = cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
-    // No delivery charges
-    const total = subtotal;
+    const deliveryFee = subtotal >= 300 ? 0 : 40;
+    const total = subtotal + deliveryFee;
 
     cartSummary.innerHTML = `
-        <div class="flex justify-between">
+        <div class="d-flex justify-content-between">
             <span>Subtotal</span>
             <span>₹${subtotal.toFixed(2)}</span>
         </div>
-        <div class="flex justify-between">
+        <div class="d-flex justify-content-between">
             <span>Delivery Fee</span>
-            <span>FREE</span>
+            <span>${deliveryFee === 0 ? 'FREE' : '₹' + deliveryFee.toFixed(2)}</span>
         </div>
-        <div class="flex justify-between font-bold text-lg">
+        <div class="d-flex justify-content-between fw-bold mt-2">
             <span>Total</span>
             <span>₹${total.toFixed(2)}</span>
         </div>
@@ -260,8 +256,8 @@ async function handleOrderSubmit(e) {
     }
 
     const subtotal = cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
-    // No delivery charges
-    const totalAmount = subtotal;
+    const deliveryFee = subtotal >= 300 ? 0 : 40;
+    const totalAmount = subtotal + deliveryFee;
 
     const orderData = {
         customer_name: customerName,
@@ -334,29 +330,27 @@ function loadCartFromStorage() {
     }
 }
 
-// Show toast notification - SIMPLIFIED
+// Show toast notification using Bootstrap Toast
 function showToast(message, type = 'success') {
-    // Create a simple toast if Bootstrap is not available
-    const toast = document.getElementById('toast');
-    if (!toast) {
-        console.log(message); // Fallback
-        return;
-    }
-
+    const toastEl = document.getElementById('toast');
     const toastBody = document.getElementById('toastMessage');
     const toastTitle = document.getElementById('toastTitle');
 
-    if (toastTitle) toastTitle.textContent = type.charAt(0).toUpperCase() + type.slice(1);
-    if (toastBody) toastBody.textContent = message;
+    toastTitle.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+    toastBody.textContent = message;
 
-    // Simple show/hide without Bootstrap dependency
-    toast.style.display = 'block';
-    toast.classList.remove('d-none', 'hidden');
-    
-    setTimeout(() => {
-        toast.style.display = 'none';
-        toast.classList.add('d-none');
-    }, 3000);
+    // Add color classes based on type
+    toastEl.className = 'toast';
+    if (type === 'success') {
+        toastEl.classList.add('bg-success', 'text-white');
+    } else if (type === 'error') {
+        toastEl.classList.add('bg-danger', 'text-white');
+    } else if (type === 'warning') {
+        toastEl.classList.add('bg-warning', 'text-dark');
+    }
+
+    const toast = new bootstrap.Toast(toastEl);
+    toast.show();
 }
 
 // Get CSRF token for Django
