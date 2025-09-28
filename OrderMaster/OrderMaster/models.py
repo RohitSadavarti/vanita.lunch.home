@@ -4,31 +4,13 @@ from django.db import models
 from django.utils import timezone
 import bcrypt
 
-# ... (MenuItem class is correct) ...
 class MenuItem(models.Model):
-    CATEGORY_CHOICES = [
-        ('breakfast', 'Breakfast'),
-        ('lunch', 'Lunch'),
-        ('dinner', 'Dinner'),
-        ('snacks', 'Snacks'),
-        ('beverages', 'Beverages'),
-    ]
-    VEG_CHOICES = [
-        ('veg', 'Vegetarian'),
-        ('non_veg', 'Non-Vegetarian'),
-    ]
-    MEAL_TYPE_CHOICES = [
-        ('main_course', 'Main Course'),
-        ('starter', 'Starter'),
-        ('dessert', 'Dessert'),
-        ('beverage', 'Beverage'),
-    ]
     item_name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=8, decimal_places=2)
-    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
-    veg_nonveg = models.CharField(max_length=10, choices=VEG_CHOICES)
-    meal_type = models.CharField(max_length=20, choices=MEAL_TYPE_CHOICES)
+    category = models.CharField(max_length=20)
+    veg_nonveg = models.CharField(max_length=10)
+    meal_type = models.CharField(max_length=20)
     availability_time = models.CharField(max_length=100, blank=True)
     image = models.ImageField(upload_to='menu_images/', blank=True, null=True)
     created_at = models.DateTimeField(default=timezone.now)
@@ -40,22 +22,20 @@ class MenuItem(models.Model):
 
 
 class Order(models.Model):
-    STATUS_CHOICES = [
-        ('Pending', 'Pending'),
-        ('Preparing', 'Preparing'),
-        ('Ready', 'Ready'),
-        ('Completed', 'Completed'),
-        ('Cancelled', 'Cancelled'),
-    ]
     order_id = models.CharField(max_length=50, unique=True)
     customer_name = models.CharField(max_length=200)
+    customer_mobile = models.CharField(max_length=15) # Added from your SQL
     items = models.JSONField()
-    # CORRECTED FIELD
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2) # Added from your SQL
+    discount = models.DecimalField(max_digits=10, decimal_places=2) # Added from your SQL
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
-    payment_id = models.CharField(max_length=100, blank=True, default='COD')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    status = models.CharField(max_length=20, default='confirmed')
+    payment_method = models.CharField(max_length=50, default='Cash') # Added from your SQL
+    payment_id = models.CharField(max_length=100, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
-    ready_time = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True) # Added from your SQL
+    order_status = models.CharField(max_length=20, default='open') # Added from your SQL
+    # The 'ready_time' field has been removed as it does not exist in your SQL table.
 
     def __str__(self):
         return f"Order {self.order_id} - {self.customer_name}"
@@ -63,7 +43,7 @@ class Order(models.Model):
         db_table = 'orders'
         ordering = ['-created_at']
 
-# ... (VlhAdmin class is correct) ...
+
 class VlhAdmin(models.Model):
     mobile = models.CharField(max_length=10, unique=True)
     password_hash = models.TextField()
