@@ -74,34 +74,41 @@ def dashboard_view(request):
 def order_management_view(request):
     """Displays and manages current orders with date filtering."""
     date_filter = request.GET.get('date_filter', 'today')
-    start_date = None
-    end_date = None
+    start_date, end_date = None, None
     today = now().date()
+    date_display_str = "Today"
 
     if date_filter == 'today':
         start_date = today
         end_date = today + timedelta(days=1)
+        date_display_str = start_date.strftime('%b %d, %Y')
     elif date_filter == 'yesterday':
         start_date = today - timedelta(days=1)
         end_date = today
+        date_display_str = start_date.strftime('%b %d, %Y')
     elif date_filter == 'this_week':
         start_date = today - timedelta(days=today.weekday())
         end_date = start_date + timedelta(days=7)
+        date_display_str = f"{start_date.strftime('%b %d')} - { (end_date - timedelta(days=1)).strftime('%b %d, %Y')}"
     elif date_filter == 'this_month':
         start_date = today.replace(day=1)
         next_month = (start_date.replace(day=28) + timedelta(days=4)).replace(day=1)
         end_date = next_month
+        date_display_str = start_date.strftime('%B %Y')
     elif date_filter == 'custom':
+        start_date_str = request.GET.get('start_date')
+        end_date_str = request.GET.get('end_date')
+        date_display_str = "Custom Range"
         try:
-            start_date_str = request.GET.get('start_date')
-            end_date_str = request.GET.get('end_date')
             if start_date_str and end_date_str:
                 start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
                 end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() + timedelta(days=1)
+                date_display_str = f"{start_date.strftime('%b %d')} - { (end_date - timedelta(days=1)).strftime('%b %d, %Y')}"
         except (ValueError, TypeError):
             date_filter = 'today'
             start_date = today
             end_date = today + timedelta(days=1)
+            date_display_str = start_date.strftime('%b %d, %Y')
 
     base_queryset = Order.objects.all()
     if start_date and end_date:
@@ -109,24 +116,21 @@ def order_management_view(request):
     
     preparing_orders_qs = base_queryset.filter(order_status='open').order_by('created_at')
     ready_orders_qs = base_queryset.filter(order_status='ready').order_by('-created_at')
+    pickedup_orders_qs = base_queryset.filter(order_status='pickedup').order_by('-created_at')
 
-    for order in preparing_orders_qs:
-        try:
-            order.items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
-        except (json.JSONDecodeError, TypeError):
-            order.items_list = []
-            
-    for order in ready_orders_qs:
-        try:
-            order.items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
-        except (json.JSONDecodeError, TypeError):
-            order.items_list = []
+    for order_list in [preparing_orders_qs, ready_orders_qs, pickedup_orders_qs]:
+        for order in order_list:
+            try:
+                order.items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
+            except (json.JSONDecodeError, TypeError):
+                order.items_list = []
 
     context = {
         'preparing_orders': preparing_orders_qs,
         'ready_orders': ready_orders_qs,
+        'pickedup_orders': pickedup_orders_qs,
         'selected_filter': date_filter,
-        'selected_filter_display': date_filter.replace('_', ' '),
+        'date_display_str': date_display_str,
         'start_date_val': request.GET.get('start_date', ''),
         'end_date_val': request.GET.get('end_date', ''),
         'active_page': 'order_management',
@@ -135,7 +139,6 @@ def order_management_view(request):
 
 @admin_required
 def menu_management_view(request):
-    """Handles adding and displaying menu items."""
     if request.method == 'POST':
         form = MenuItemForm(request.POST, request.FILES or None)
         if form.is_valid():
@@ -154,7 +157,6 @@ def menu_management_view(request):
 @admin_required
 @require_POST
 def delete_menu_item_view(request, item_id):
-    """Handles deleting a menu item."""
     item = get_object_or_404(MenuItem, id=item_id)
     item.delete()
     messages.success(request, 'Menu item deleted successfully!')
@@ -250,6 +252,8 @@ def get_orders_api(request):
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
 
+# ... (customer-facing API views like api_menu_items, api_place_order, etc.) ...
+
 @require_http_methods(["GET"])
 def api_menu_items(request):
     """API endpoint that provides the full menu to the customer frontend."""
@@ -278,3 +282,4 @@ def api_place_order(request):
 
 def customer_home(request):
     return render(request, 'OrderMaster/customer_order.html')
+
