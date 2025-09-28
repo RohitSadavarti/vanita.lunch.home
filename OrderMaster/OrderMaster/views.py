@@ -217,17 +217,20 @@ def api_menu_item_detail(request, item_id):
             'id': item.id, 'item_name': item.item_name, 'description': item.description,
             'price': str(item.price), 'category': item.category, 'veg_nonveg': item.veg_nonveg,
             'meal_type': item.meal_type, 'availability_time': item.availability_time,
+            # --- ADDED: Include image_url in the API response ---
+            'image_url': item.image_url,
         }
         return JsonResponse(data)
     if request.method == 'POST':
-        form = MenuItemForm(request.POST, None, instance=item)
+        # Use the form to handle validation
+        form = MenuItemForm(request.POST, instance=item)
         if form.is_valid():
             form.save()
-            messages.success(request, f"'{item.item_name}' has been updated.")
-            return JsonResponse({'success': True})
+            return JsonResponse({'success': True, 'message': 'Item updated successfully.'})
         else:
-            return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+            return JsonResponse({'success': False, 'errors': form.errors.as_json()}, status=400)
     return HttpResponseBadRequest("Invalid request method")
+
 
 @admin_required
 def get_orders_api(request):
@@ -258,7 +261,9 @@ def api_menu_items(request):
     try:
         menu_items = MenuItem.objects.all().values(
             'id', 'item_name', 'description', 'price', 'category',
-            'veg_nonveg', 'meal_type', 'availability_time'
+            'veg_nonveg', 'meal_type', 'availability_time',
+            # --- ADDED: Include image_url in the API response ---
+            'image_url'
         ).order_by('category', 'item_name')
         items_list = [{**item, 'price': float(item['price'])} for item in menu_items]
         return JsonResponse(items_list, safe=False)
@@ -315,3 +320,4 @@ def api_place_order(request):
 def customer_home(request):
     return render(request, 'OrderMaster/customer_order.html')
     
+
