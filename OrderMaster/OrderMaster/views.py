@@ -1,402 +1,223 @@
-# =================================================================================
-# IMPORTS
-# =================================================================================
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST
-from django.contrib import messages
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
+from django.db.models import Sum, Count
 from django.utils import timezone
-from .models import MenuItem, Order, VlhAdmin
-from datetime import datetime, timedelta
+from .models import Order, OrderItem, MenuItems
 import json
-import uuid
-from decimal import Decimal
-import logging
+from django.contrib import messages
+from datetime import timedelta
+from django.core.files.storage import FileSystemStorage
+from django.conf import settings
+import os
 
-# Set up logging
-logger = logging.getLogger(__name__)
-
-# =================================================================================
-# DECORATORS & AUTHENTICATION
-# =================================================================================
-# Customer-facing views
-def customer_order_view(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            Order.objects.create(
-                order_id=str(uuid.uuid4()).split('-')[0].upper(),
-                customer_name=data.get('customer_name', 'Anonymous'),
-                items=data.get('items'),
-                total_amount=data.get('total_amount'),
-                payment_id=data.get('payment_id', 'COD'),
-                created_at=timezone.now(),
-                status='Pending' # New orders are always 'Pending'
-            )
-            return JsonResponse({'status': 'success'})
-        except Exception as e:
-            logger.error(f"Customer order error: {e}")
-            return JsonResponse({'status': 'error'}, status=500)
-
-    menu_items = MenuItem.objects.all()
-    return render(request, 'OrderMaster/customer_order.html', {'menu_items': menu_items})
-
+# Custom decorator to check for admin user
 def admin_required(view_func):
     def wrapper(request, *args, **kwargs):
-        if not request.session.get('is_authenticated'):
-            messages.warning(request, 'You must be logged in to view this page.')
-            return redirect('login')
+        if not request.user.is_superuser:
+            return redirect('login') # Or some 'access-denied' page
         return view_func(request, *args, **kwargs)
     return wrapper
 
-# Admin Login/Logout
+# Authentication views
 def login_view(request):
     if request.method == 'POST':
-        mobile = request.POST.get('username')
-        password = request.POST.get('password')
-        try:
-            admin_user = VlhAdmin.objects.get(mobile=mobile)
-            if admin_user.check_password(password):
-                request.session['is_authenticated'] = True
-                request.session['admin_mobile'] = admin_user.mobile
+        form = AuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password')
+            user = authenticate(username=username, password=password)
+            if user is not None:
+                login(request, user)
                 return redirect('dashboard')
             else:
-                messages.error(request, 'Invalid mobile number or password.')
-        except VlhAdmin.DoesNotExist:
-            messages.error(request, 'Invalid mobile number or password.')
-    return render(request, 'OrderMaster/login.html')
-    
-@admin_required
+                messages.error(request,"Invalid username or password.")
+        else:
+            messages.error(request,"Invalid username or password.")
+    form = AuthenticationForm()
+    return render(request, 'OrderMaster/login.html', {'form': form})
+
 def logout_view(request):
-    request.session.flush()
-    messages.info(request, 'You have been successfully logged out.')
+    logout(request)
     return redirect('login')
 
 
-# =================================================================================
-# ADMIN DASHBOARD & ORDER MANAGEMENT VIEWS
-# =================================================================================
-
+# Dashboard and Management Views
 @admin_required
 def dashboard_view(request):
-    """Renders the main admin dashboard page."""
-    context = {
-        'total_orders': Order.objects.count(),
-        'preparing_orders_count': Order.objects.filter(status='preparing').count(),
-        'ready_orders_count': Order.objects.filter(status='ready').count(),
-        'menu_items_count': MenuItem.objects.count(),
-        'recent_orders': Order.objects.order_by('-created_at')[:5],
-    }
-    return render(request, 'dashboard.html', context)
+    today = timezone.now().date()
+    start_of_week = today - timedelta(days=today.weekday())
+    start_of_month = today.replace(day=1)
+
+    # Key Metrics
+    total_revenue = Order.objects.aggregate(Sum('amount'))['amount__sum'] or 0
+    total_orders = Order.objects.count()
     
-@admin_required
-def order_management_view(request):
-    """Displays and manages current orders."""
-    context = {
-        'preparing_orders': Order.objects.filter(status='preparing').order_by('created_at'),
-        'ready_orders': Order.objects.filter(status='ready').order_by('-created_at'),
-    }
-    return render(request, 'order_management.html', context)
+    # Metrics for today
+    revenue_today = Order.objects.filter(created_at__date=today).aggregate(Sum('amount'))['amount__sum'] or 0
+    orders_today = Order.objects.filter(created_at__date=today).count()
     
-@csrf_exempt
-@admin_required
-@require_POST
-def update_order_status(request):
-    """API to update an order's status, e.g., from 'Pending' to 'Ready'."""
-    try:
-        data = json.loads(request.body)
-        order_pk = data.get('id')
-        new_status = data.get('status')
+    # Recent Orders
+    recent_orders = Order.objects.order_by('-created_at')[:10]
 
-        if not all([order_pk, new_status]):
-            return JsonResponse({'success': False, 'error': 'Missing data'}, status=400)
+    # Top Selling Items (Example: based on quantity sold)
+    top_items = OrderItem.objects.values('item_name').annotate(total_sold=Sum('quantity')).order_by('-total_sold')[:5]
 
-        order = get_object_or_404(Order, pk=order_pk)
-        order.status = new_status
-        
-        if new_status == 'Ready':
-            order.ready_time = timezone.now()
-        
-        order.save()
-        return JsonResponse({'success': True})
-    except Order.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Order not found'}, status=404)
-    except Exception as e:
-        logger.error(f"Update order status error: {e}")
-        return JsonResponse({'success': False, 'error': 'Server error'}, status=500)
-# =================================================================================
-# ADMIN MENU MANAGEMENT VIEWS
-# =================================================================================
-
-@admin_required
-def menu_management_view(request):
-    """Handles adding and displaying menu items."""
-    if request.method == 'POST':
-        MenuItem.objects.create(
-            item_name=request.POST['item_name'], description=request.POST['description'],
-            price=request.POST['price'], category=request.POST['category'],
-            veg_nonveg=request.POST['veg_nonveg'], meal_type=request.POST['meal_type'],
-            availability_time=request.POST['availability_time'], image=request.FILES.get('image')
-        )
-        messages.success(request, 'Menu item added successfully!')
-        return redirect('menu_management')
-        
-    context = {'menu_items': MenuItem.objects.all().order_by('-created_at')}
-    return render(request, 'menu_management.html', context)
-
-@admin_required
-def edit_menu_item_view(request, item_id):
-    """Handles editing an existing menu item."""
-    item = get_object_or_404(MenuItem, id=item_id)
-    if request.method == 'POST':
-        item.item_name = request.POST['item_name']
-        item.description = request.POST['description']
-        item.price = request.POST['price']
-        item.category = request.POST['category']
-        item.veg_nonveg = request.POST['veg_nonveg']
-        item.meal_type = request.POST['meal_type']
-        item.availability_time = request.POST['availability_time']
-        if 'image' in request.FILES:
-            item.image = request.FILES['image']
-        item.save()
-        messages.success(request, 'Menu item updated successfully!')
-        return redirect('menu_management')
-            
-    return render(request, 'edit_menu_item.html', {'item': item})
-
-@admin_required
-@require_POST
-def delete_menu_item_view(request, item_id):
-    """Handles deleting a menu item."""
-    item = get_object_or_404(MenuItem, id=item_id)
-    item.delete()
-    messages.success(request, 'Menu item deleted successfully!')
-    return redirect('menu_management')
-
-# =================================================================================
-# CUSTOMER-FACING VIEWS & API ENDPOINTS
-# =================================================================================
-
-def customer_home(request):
-    """Renders the main customer ordering page."""
-    return render(request, 'OrderMaster/customer_order.html')
-
-@require_http_methods(["GET"])
-def api_menu_items(request):
-    """API endpoint that provides the full menu to the frontend."""
-    try:
-        menu_items = MenuItem.objects.all().values(
-            'id', 'item_name', 'description', 'price', 'category', 
-            'veg_nonveg', 'meal_type', 'availability_time', 'image'
-        ).order_by('category', 'item_name')
-        
-        # Convert Decimal to float for JSON serialization
-        items_list = [
-            {**item, 'price': float(item['price'])} for item in menu_items
-        ]
-        
-        return JsonResponse(items_list, safe=False)
-    except Exception as e:
-        logger.error(f"API menu items error: {e}")
-        return JsonResponse({'error': 'Server error occurred.'}, status=500)
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_place_order(request):
-    """
-    API endpoint for customers to place a new order.
-    This is now compatible with the cash-on-delivery JavaScript.
-    """
-    try:
-        data = json.loads(request.body)
-        
-        # --- 1. Validate required fields from frontend ---
-        required_fields = ['customer_name', 'customer_mobile', 'customer_address', 'items', 'total_amount']
-        if not all(field in data and data[field] for field in required_fields):
-            return JsonResponse({'error': 'Missing required fields.'}, status=400)
-        
-        # --- 2. Sanitize and validate customer data ---
-        mobile = data['customer_mobile']
-        if not (mobile.isdigit() and len(mobile) == 10):
-            return JsonResponse({'error': 'Invalid 10-digit mobile number format.'}, status=400)
-            
-        # Handle items - check if it's already parsed or needs parsing
-        items = data['items']
-        if isinstance(items, str):
-            try:
-                items = json.loads(items)
-            except json.JSONDecodeError:
-                return JsonResponse({'error': 'Invalid items format.'}, status=400)
-        
-        if not isinstance(items, list) or not items:
-            return JsonResponse({'error': 'Cart items are missing or invalid.'}, status=400)
-
-        # --- 3. Server-side calculation to prevent price tampering ---
-        calculated_subtotal = Decimal('0.00')
-        validated_items_for_db = []
-        
-        for item in items:
-            try:
-                menu_item = MenuItem.objects.get(id=item['id'])
-                quantity = int(item['quantity'])
-                if quantity <= 0: 
-                    continue # Skip items with zero or negative quantity
-                
-                item_total = menu_item.price * quantity
-                calculated_subtotal += item_total
-                
-                validated_items_for_db.append({
-                    'id': menu_item.id,
-                    'name': menu_item.item_name,
-                    'price': float(menu_item.price),
-                    'quantity': quantity,
-                })
-            except MenuItem.DoesNotExist:
-                return JsonResponse({'error': f'Invalid menu item ID: {item.get("id")}.'}, status=400)
-            except (KeyError, ValueError, TypeError):
-                return JsonResponse({'error': 'Invalid data format in cart items.'}, status=400)
-
-        # --- 4. Calculate delivery fee and final total ---
-        delivery_fee = Decimal('0.00') if calculated_subtotal >= 300 else Decimal('40.00')
-        final_total_server = calculated_subtotal + delivery_fee
-        
-        # Compare with the total submitted from the client
-        if abs(final_total_server - Decimal(str(data['total_amount']))) > Decimal('0.01'):
-            return JsonResponse({'error': 'Total amount mismatch. Please try again.'}, status=400)
-        
-        # --- 5. Create and save the order ---
-        order_id = f"VLH{timezone.now().strftime('%y%m%d%H%M')}{str(uuid.uuid4())[:4].upper()}"
-        
-        # Structure the data to be saved in the JSON 'items' field
-        order_details_json = {
-            'customer_mobile': mobile,
-            'customer_address': data['customer_address'],
-            'items': validated_items_for_db,
-            'delivery_fee': float(delivery_fee),
-            'subtotal': float(calculated_subtotal)
-        }
-        
-        Order.objects.create(
-            order_id=order_id,
-            customer_name=data['customer_name'],
-            items=json.dumps(order_details_json),
-            total_amount=final_total_server,
-            payment_id=data.get('payment_id', 'COD'),
-            status='preparing'
-        )
-        
-        return JsonResponse({'success': True, 'order_id': order_id, 'message': 'Order placed successfully!'})
-        
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON data in request body.'}, status=400)
-    except Exception as e:
-        logger.error(f"Place order error: {e}")
-        return JsonResponse({'error': 'An unexpected server error occurred.'}, status=500)
-
-# =================================================================================
-# OTHER PAGES (Analytics, Settings, etc.)
-# =================================================================================
-
-@admin_required
-def analytics_view(request):
-    """Renders the analytics page."""
-    completed_orders = Order.objects.filter(status='completed')
-    total_revenue = completed_orders.aggregate(total=Sum('total_amount'))['total'] or 0
     context = {
-        'total_orders': Order.objects.count(),
-        'completed_orders': completed_orders.count(),
         'total_revenue': total_revenue,
-        'pending_orders': Order.objects.filter(status__in=['preparing', 'ready']).count(),
+        'total_orders': total_orders,
+        'revenue_today': revenue_today,
+        'orders_today': orders_today,
+        'recent_orders': recent_orders,
+        'top_items': top_items
     }
-    return render(request, 'analytics.html', context)
-
-@admin_required
-def settings(request):
-    """Renders the settings page."""
-    return render(request, 'OrderMaster/settings.html')
-@admin_required
-def dashboard_view(request):
-    return render(request, 'OrderMaster/dashboard.html')
-
+    return render(request, 'OrderMaster/dashboard.html', context)
 
 @admin_required
 def order_management_view(request):
-    return render(request, 'OrderMaster/order_management.html')
-    
+    orders = Order.objects.all().order_by('-created_at')
+    return render(request, 'OrderMaster/order_management.html', {'orders': orders})
+
 @admin_required
 def menu_management_view(request):
-    """Handles adding new menu items and displaying all items."""
     if request.method == 'POST':
-        MenuItem.objects.create(
-            name=request.POST['name'],
-            price=request.POST['price'],
-            image=request.FILES.get('image')
-        )
-        messages.success(request, 'Menu item added successfully!')
-        return redirect('menu_management')
-    
-    menu_items = MenuItem.objects.all()
+        item_name = request.POST.get('item_name')
+        description = request.POST.get('description')
+        price = request.POST.get('price')
+        category = request.POST.get('category')
+        veg_nonveg = request.POST.get('veg_nonveg')
+        image = request.FILES.get('image')
+
+        # Basic validation
+        if not all([item_name, price, category, veg_nonveg]):
+            messages.error(request, "Please fill all required fields.")
+        else:
+            try:
+                menu_item = MenuItems(
+                    item_name=item_name,
+                    description=description,
+                    price=price,
+                    category=category,
+                    veg_nonveg=veg_nonveg
+                )
+                if image:
+                    menu_item.image = image
+                
+                menu_item.save()
+                messages.success(request, f"'{item_name}' has been added successfully.")
+                return redirect('menu_management')
+            except Exception as e:
+                messages.error(request, f"An error occurred: {e}")
+
+    # Corrected line is here
+    menu_items = MenuItems.objects.all().order_by('item_name') 
     return render(request, 'OrderMaster/menu_management.html', {'menu_items': menu_items})
 
+
 @admin_required
 def edit_menu_item_view(request, item_id):
-    """Handles editing an existing menu item."""
-    item = get_object_or_404(MenuItem, id=item_id)
+    item = get_object_or_404(MenuItems, id=item_id)
     if request.method == 'POST':
-        item.name = request.POST.get('name')
+        item.item_name = request.POST.get('item_name')
+        item.description = request.POST.get('description')
         item.price = request.POST.get('price')
-        if 'image' in request.FILES:
+        item.category = request.POST.get('category')
+        item.veg_nonveg = request.POST.get('veg_nonveg')
+
+        if request.FILES.get('image'):
+            # Delete old image if it exists
+            if item.image:
+                if os.path.exists(item.image.path):
+                    os.remove(item.image.path)
             item.image = request.FILES.get('image')
+
         item.save()
-        messages.success(request, 'Menu item updated successfully!')
+        messages.success(request, "Item updated successfully.")
         return redirect('menu_management')
+        
     return render(request, 'OrderMaster/edit_menu_item.html', {'item': item})
+
 
 @admin_required
 def delete_menu_item_view(request, item_id):
-    """Handles deleting a menu item."""
-    item = get_object_or_404(MenuItem, id=item_id)
-    item.delete()
-    messages.success(request, 'Menu item deleted successfully!')
+    if request.method == 'POST':
+        item = get_object_or_404(MenuItems, id=item_id)
+        # Optional: Delete the image file from storage
+        if item.image:
+            if os.path.exists(item.image.path):
+                os.remove(item.image.path)
+        item.delete()
+        messages.success(request, "Item deleted successfully.")
     return redirect('menu_management')
 
 @admin_required
 def analytics_view(request):
-    """Renders the analytics page."""
     return render(request, 'OrderMaster/analytics.html')
 
 @admin_required
 def settings_view(request):
-    """Renders the settings page."""
     return render(request, 'OrderMaster/settings.html')
 
-# =================================================================================
-# API FOR REAL-TIME UPDATES
-# =================================================================================
 
-@admin_required
-def get_orders_api(request):
-    """API endpoint to fetch recent orders for the admin dashboard."""
-    try:
-        orders = Order.objects.all().order_by('-created_at')[:20]
-        data = [{
-            'order_id': order.order_id,
-            'customer_name': order.customer_name,
-            'items': order.items,
-            'total_amount': order.total_amount,
-            'status': order.status,
-            'created_at': order.created_at.strftime('%b %d, %Y, %I:%M %p')
-        } for order in orders]
-        return JsonResponse({'orders': data})
-    except Exception as e:
-        logger.error(f"API get_orders error: {e}")
-        return JsonResponse({'error': 'Server error occurred.'}, status=500)
+# API Endpoints (for customer-facing app)
+@csrf_exempt
+def get_menu_api(request):
+    items = MenuItems.objects.all().values('id', 'item_name', 'description', 'price', 'category', 'veg_nonveg', 'image')
+    
+    # Manually handle image URL
+    menu_list = []
+    for item in items:
+        if item['image']:
+            item['image'] = request.build_absolute_uri(settings.MEDIA_URL + item['image'])
+        else:
+            item['image'] = '' # or provide a default image URL
+        menu_list.append(item)
+
+    return JsonResponse(menu_list, safe=False)
 
 
+@csrf_exempt
+def place_order_api(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            
+            # Validate required fields
+            required_fields = ['name', 'mobile', 'address', 'cart_items', 'amount', 'payment_id']
+            if not all(field in data for field in required_fields):
+                return JsonResponse({'success': False, 'error': 'Missing required order data.'}, status=400)
 
+            # Create the order
+            order = Order.objects.create(
+                name=data['name'],
+                mobile=data['mobile'],
+                address=data['address'],
+                amount=data['amount'],
+                payment_id=data['payment_id']
+            )
 
+            # Create order items
+            for item_data in data['cart_items']:
+                OrderItem.objects.create(
+                    order=order,
+                    item_name=item_data['name'],
+                    quantity=item_data['quantity'],
+                    price=item_data['price']
+                )
+
+            return JsonResponse({'success': True, 'order_id': order.id})
+
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON format.'}, status=400)
+        except Exception as e:
+            # Log the exception e for debugging
+            return JsonResponse({'success': False, 'error': f'An unexpected error occurred: {str(e)}'}, status=500)
+
+    return JsonResponse({'success': False, 'error': 'Invalid request method.'}, status=405)
+
+# Customer facing page (optional, if you want to serve it from Django)
+def customer_order_view(request):
+    return render(request, 'OrderMaster/customer_order.html')
