@@ -1,3 +1,5 @@
+# OrderMaster/views.py
+
 # =================================================================================
 # IMPORTS
 # =================================================================================
@@ -111,7 +113,7 @@ def order_management_view(request):
     base_queryset = Order.objects.all()
     if start_date and end_date:
         base_queryset = base_queryset.filter(created_at__gte=start_date, created_at__lt=end_date)
-    
+
     preparing_orders_qs = base_queryset.filter(order_status='open').order_by('-created_at')
     ready_orders_qs = base_queryset.filter(order_status='ready').order_by('-ready_time')
     pickedup_orders_qs = base_queryset.filter(order_status='pickedup').order_by('-pickup_time')
@@ -270,11 +272,46 @@ def api_place_order(request):
     """API endpoint for customers to place a new order."""
     try:
         data = json.loads(request.body)
-        # Your order placement logic here...
-        return JsonResponse({'success': True, 'message': 'Order placed successfully!'})
+        
+        # Extract customer details and cart items from the request
+        customer_name = data.get('customerName')
+        customer_mobile = data.get('customerMobile')
+        cart_items = data.get('cart')
+
+        if not all([customer_name, customer_mobile, cart_items]):
+            return JsonResponse({'success': False, 'error': 'Missing required order data.'}, status=400)
+
+        # Calculate total price and prepare items for the Order model
+        total_price = sum(Decimal(item['price']) * item['quantity'] for item in cart_items)
+        
+        # Create a new Order instance
+        new_order = Order(
+            customer_name=customer_name,
+            customer_mobile=customer_mobile,
+            items=cart_items,  # Save the cart items directly as JSON
+            subtotal=total_price,
+            total_price=total_price,
+            status='pending', # You can set an initial status
+            payment_method='cash_on_delivery', # Set a default or get from request
+            order_status='open'
+        )
+        new_order.save()
+
+        # Return a success response with the new order_id
+        return JsonResponse({
+            'success': True, 
+            'message': 'Order placed successfully!',
+            'order_id': new_order.order_id
+        })
+
+    except json.JSONDecodeError:
+        logger.error("Place order error: Invalid JSON received.")
+        return JsonResponse({'success': False, 'error': 'Invalid data format.'}, status=400)
     except Exception as e:
         logger.error(f"Place order error: {e}")
         return JsonResponse({'error': 'An unexpected server error occurred.'}, status=500)
 
+
 def customer_home(request):
     return render(request, 'OrderMaster/customer_order.html')
+    
