@@ -21,7 +21,7 @@
                 </ul>
             </div>
             
-            <div id="customDateRange" class="{% if selected_filter != 'custom' %}d-none{% endif %} d-flex align-items-center gap-2">
+            <div id="customDateRange" class="{% if selected_filter != 'custom' %}d-none{% else %}d-flex{% endif %} align-items-center gap-2">
                 <input type="hidden" name="date_filter" value="custom">
                 <input type="text" class="form-control" name="start_date" id="startDate" placeholder="Start Date" value="{{ start_date_val }}">
                 <input type="text" class="form-control" name="end_date" id="endDate" placeholder="End Date" value="{{ end_date_val }}">
@@ -60,7 +60,7 @@
                             </div>
                         </div>
                         {% empty %}
-                        <p class="text-center text-muted p-4">No orders are currently being prepared for the selected date range.</p>
+                        <p class="text-center text-muted p-4">No orders are currently being prepared.</p>
                         {% endfor %}
                     </div>
                 </div>
@@ -96,7 +96,7 @@
                             </div>
                         </div>
                         {% empty %}
-                        <p class="text-center text-muted p-4">No orders are ready for pickup for the selected date range.</p>
+                        <p class="text-center text-muted p-4">No orders are ready for pickup.</p>
                         {% endfor %}
                     </div>
                 </div>
