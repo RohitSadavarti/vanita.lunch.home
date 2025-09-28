@@ -27,7 +27,7 @@ class MenuItem(models.Model):
         ('beverage', 'Beverage'),
     ]
 
-    # This is the corrected field name
+    # Use item_name consistently
     item_name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=8, decimal_places=2)
@@ -39,7 +39,7 @@ class MenuItem(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
-        return self.item_name # Use the corrected name here too
+        return self.item_name
 
     class Meta:
         db_table = 'menu_items'
@@ -57,6 +57,7 @@ class Order(models.Model):
     order_id = models.CharField(max_length=50, unique=True)
     customer_name = models.CharField(max_length=200)
     items = models.JSONField()
+    # This field must exist in your database
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_id = models.CharField(max_length=100, blank=True, default='COD')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
