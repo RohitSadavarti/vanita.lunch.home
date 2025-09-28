@@ -1,11 +1,15 @@
 # OrderMaster/OrderMaster/urls.py
 
-from django.urls import path
+from django.urls import path, include
 from . import views
-
+from django.contrib import admin
+from .views import firebase_messaging_sw
 urlpatterns = [
     # Admin URLs
+    path('admin/', admin.site.urls),
+    path('firebase-messaging-sw.js', firebase_messaging_sw, name='firebase-messaging-sw'),
     path('', views.login_view, name='login'),
+    path('', include('OrderMaster.urls')),
     path('logout/', views.logout_view, name='logout'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
     path('orders/', views.order_management_view, name='order_management'),
@@ -26,3 +30,4 @@ urlpatterns = [
     # Customer-facing URL
     path('customer-order/', views.customer_home, name='customer_home'),
 ]
+
