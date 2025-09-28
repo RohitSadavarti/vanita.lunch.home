@@ -16,6 +16,18 @@ import json
 import logging
 from decimal import Decimal
 
+@cache_control(max_age=60 * 60 * 24 * 30) # Cache for 30 days
+def firebase_messaging_sw(request):
+    # Construct the full path to the service worker file
+    sw_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), # Go up to BASE_DIR/vanita_lunch
+        'OrderMaster',
+        'static',
+        'firebase-messaging-sw.js'
+    )
+    with open(sw_path, 'r') as f:
+        return HttpResponse(f.read(), content_type='application/javascript')
+
 # Set up logging
 logger = logging.getLogger(__name__)
 
@@ -318,5 +330,6 @@ def api_place_order(request):
 def customer_home(request):
     return render(request, 'OrderMaster/customer_order.html')
     
+
 
 
