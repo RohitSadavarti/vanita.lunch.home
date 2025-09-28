@@ -72,38 +72,36 @@ def dashboard_view(request):
     return render(request, 'OrderMaster/dashboard.html', context)
 
 # ... (order_management_view, update_order_status, menu_management_view, delete_menu_item_view, api_menu_item_detail are correct)...
-@admin_required
-def order_management_view(request):
-    context = {
-        'preparing_orders': Order.objects.filter(status='Preparing').order_by('created_at'),
-        'ready_orders': Order.objects.filter(status='Ready').order_by('-created_at'),
-    }
-    return render(request, 'OrderMaster/order_management.html', context)
 
 # ... (imports and other functions are correct) ...
 
+@admin_required
+def order_management_view(request):
+    """Displays and manages current orders based on order_status."""
+    context = {
+        'preparing_orders': Order.objects.filter(order_status='open').order_by('created_at'),
+        'ready_orders': Order.objects.filter(order_status='ready').order_by('-created_at'),
+    }
+    return render(request, 'OrderMaster/order_management.html', context)
+    
 @csrf_exempt
 @admin_required
 @require_POST
 def update_order_status(request):
-    """API to update an order's status."""
+    """API to update an order's order_status."""
     try:
         data = json.loads(request.body)
         order_pk = data.get('id')
-        new_status = data.get('status')
+        new_status = data.get('status') # This will be 'ready' or 'pickedup'
 
         if not all([order_pk, new_status]):
             return JsonResponse({'success': False, 'error': 'Missing data'}, status=400)
 
         order = get_object_or_404(Order, pk=order_pk)
-        order.status = new_status
-        
-        # The line below was causing an error and has been removed.
-        # if new_status == 'Ready':
-        #     order.ready_time = timezone.now() 
-        
+        order.order_status = new_status
         order.save()
-        return JsonResponse({'success': True})
+        
+        return JsonResponse({'success': True, 'message': f'Order status updated to {new_status}'})
     except Order.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Order not found'}, status=404)
     except Exception as e:
@@ -293,4 +291,5 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
 
