@@ -1,129 +1,91 @@
 /* General Body and Font Styles */
 body {
     font-family: 'Inter', sans-serif;
-    background-color: #f8f9fa;
+    background-color: #f8f9fa; /* Light grey background */
     color: #212529;
     margin: 0;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
 }
 
-:root {
-  --primary: hsl(24 84% 58%);
-  --primary-foreground: hsl(210 40% 98%);
-  --border: hsl(214.3 31.8% 91.4%);
+/* Prevents scrolling on the main page when the cart is open */
+body.cart-open {
+    overflow: hidden;
 }
 
-/* Header */
-.header {
+/* Page Header */
+.page-header {
     background-color: white;
-    border-bottom: 1px solid var(--border);
     padding: 1rem 1.5rem;
+    border-bottom: 1px solid #dee2e6;
     display: flex;
-    align-items: center;
     justify-content: space-between;
+    align-items: center;
     position: sticky;
     top: 0;
-    z-index: 1000;
+    z-index: 900;
 }
 
-.header-brand {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.header-brand h1 {
-    font-size: 1.25rem;
+.brand-title {
+    font-size: 1.5rem;
     font-weight: 700;
-    margin: 0;
 }
 
-#cartBtn {
+#cart-button {
     position: relative;
     background: none;
     border: none;
     cursor: pointer;
-    color: #333;
 }
 
-#cartCount {
+#cart-count-badge {
     position: absolute;
     top: -5px;
     right: -8px;
-    background-color: var(--primary);
+    background-color: #dc3545;
     color: white;
-    font-size: 0.7rem;
-    font-weight: bold;
-    height: 18px;
-    width: 18px;
+    font-size: 0.75rem;
+    height: 20px;
+    width: 20px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-/* Menu Grid */
-.menu-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1.5rem;
+/* Menu Layout */
+.menu-container {
     padding: 2rem;
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
 }
 
-/* Menu Item Card */
-.menu-item-card {
+.menu-card {
     background-color: white;
-    border: 1px solid var(--border);
     border-radius: 8px;
+    border: 1px solid #e9ecef;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-.menu-item-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-}
+/* === CART OVERLAY AND SIDEBAR STYLES (THE FIX) === */
 
-.menu-item-content {
-    padding: 1rem;
-    flex-grow: 1;
-}
-
-.menu-item-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 1rem;
-}
-
-.btn-add {
-    background-color: var(--primary);
-    color: var(--primary-foreground);
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 500;
-}
-
-/* === NEW CART STYLES === */
 .cart-sidebar {
     position: fixed;
     top: 0;
-    right: -400px; /* Hidden by default */
+    right: -100%; /* Start fully off-screen */
     width: 400px;
+    max-width: 90%;
     height: 100vh;
     background: white;
-    box-shadow: -5px 0 15px rgba(0,0,0,0.1);
-    transition: right 0.3s ease;
-    z-index: 1050;
+    box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+    transition: right 0.35s ease-in-out;
+    z-index: 1050; /* Z-index must be higher than the overlay */
     display: flex;
     flex-direction: column;
 }
 
+/* The 'open' class slides the cart into view */
 .cart-sidebar.open {
     right: 0;
 }
@@ -134,60 +96,35 @@ body {
     left: 0;
     width: 100%;
     height: 100vh;
-    background: rgba(0,0,0,0.5);
-    z-index: 1040;
+    background: rgba(0, 0, 0, 0.5); /* Semi-transparent black background */
+    z-index: 1040; /* Sits below the cart but above the main content */
     opacity: 0;
     visibility: hidden;
-    transition: all 0.3s ease;
+    transition: opacity 0.35s ease-in-out, visibility 0.35s ease-in-out;
 }
 
+/* The 'open' class fades in the overlay */
 .cart-overlay.open {
     opacity: 1;
     visibility: visible;
 }
 
-.animate-pop {
-    animation: pop 0.3s ease-out;
-}
-
-@keyframes pop {
-    0% { transform: scale(0.9); opacity: 0; }
-    50% { transform: scale(1.05); opacity: 1; }
-    100% { transform: scale(1); opacity: 1; }
-}
-
 .cart-header {
     padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid #dee2e6;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.cart-header h5 {
-    margin: 0;
-    font-weight: 600;
-}
-
-.cart-items {
+.cart-body {
     flex-grow: 1;
     overflow-y: auto;
-    padding: 0.5rem 1.5rem;
+    padding: 1rem 1.5rem;
 }
 
 .cart-footer {
     padding: 1.5rem;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid #dee2e6;
     background-color: #f8f9fa;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    .menu-grid {
-        padding: 1rem;
-    }
-    .cart-sidebar {
-        width: 90%;
-        right: -100%;
-    }
 }
