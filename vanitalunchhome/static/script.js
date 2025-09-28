@@ -16,13 +16,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Setup event listeners
 function setupEventListeners() {
-    // Cart functionality
     document.getElementById('cartBtn').addEventListener('click', toggleCart);
     document.getElementById('closeCartBtn').addEventListener('click', toggleCart);
     document.getElementById('cartOverlay').addEventListener('click', toggleCart);
     document.getElementById('payNowBtn').addEventListener('click', handleOrderSubmit);
     
-    // --- ADDED: Event Listeners for Search and Filters ---
     document.getElementById('searchInput').addEventListener('input', handleSearch);
     document.querySelectorAll('.category-filter').forEach(button => {
         button.addEventListener('click', handleCategoryFilter);
@@ -31,9 +29,7 @@ function setupEventListeners() {
         button.addEventListener('click', handleVegFilter);
     });
 
-    // OTP functionality
     document.getElementById('customerForm').addEventListener('submit', (e) => e.preventDefault());
-    document.getElementById('sendOtpBtn').addEventListener('click', handleSendOtp);
 }
 
 // Load menu items from the backend API
@@ -58,12 +54,11 @@ function renderMenu() {
     container.innerHTML = ''; 
 
     if (filteredMenuItems.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center py-12"><h3 class="text-lg font-medium">No items found</h3></div>`;
+        container.innerHTML = `<div class="col-span-full text-center py-12"><h3 class="text-lg font-medium">No items found matching your criteria.</h3></div>`;
         return;
     }
 
     filteredMenuItems.forEach(item => {
-        // --- FIX: Use item.image_url ---
         const imageUrl = item.image_url || `https://placehold.co/600x400/f3f4f6/6b7280?text=No+Image`;
         
         const card = document.createElement('div');
@@ -72,10 +67,10 @@ function renderMenu() {
             <img src="${imageUrl}" alt="${item.item_name}" class="h-48 w-full object-cover">
             <div class="p-4">
                 <h4 class="text-lg font-bold">${item.item_name}</h4>
-                <p class="text-sm text-gray-600 mt-1">${item.description || ''}</p>
+                <p class="text-sm text-gray-600 mt-1 h-10 overflow-hidden">${item.description || ''}</p>
                 <div class="flex justify-between items-center mt-4">
                     <span class="text-lg font-bold text-orange-600">₹${parseFloat(item.price).toFixed(2)}</span>
-                    <button class="add-to-cart-btn bg-orange-100 text-orange-700 font-semibold px-4 py-2 rounded-lg hover:bg-orange-200 transition-colors text-sm" onclick="addToCart(${item.id})">Add to Cart</button>
+                    <button class="add-to-cart-btn bg-orange-100 text-orange-700 font-semibold px-4 py-2 rounded-lg hover:bg-orange-200" onclick="addToCart(${item.id})">Add to Cart</button>
                 </div>
             </div>
         `;
@@ -83,14 +78,18 @@ function renderMenu() {
     });
 }
 
-// --- ADDED: Functions to handle searching and filtering ---
+// --- THIS FUNCTION IS FIXED ---
+// It now safely checks for null values before calling .toLowerCase()
 function applyFilters() {
     filteredMenuItems = menuItems.filter(item => {
         const categoryMatch = currentCategory === 'all' || (item.category && item.category.toLowerCase() === currentCategory);
-        const vegMatch = currentVegFilter === 'all' || (item.veg_nonveg && item.veg_nonveg.toLowerCase().replace('-', '_') === currentVegFilter.replace('-', '_'));
+        
+        const vegMatch = currentVegFilter === 'all' || (item.veg_nonveg && item.veg_nonveg.toLowerCase().replace(/ /g, '-') === currentVegFilter);
+
         const searchMatch = !currentSearchTerm ||
             (item.item_name && item.item_name.toLowerCase().includes(currentSearchTerm)) ||
             (item.description && item.description.toLowerCase().includes(currentSearchTerm));
+            
         return categoryMatch && vegMatch && searchMatch;
     });
     renderMenu();
@@ -114,16 +113,26 @@ function handleCategoryFilter(e) {
 }
 
 function handleVegFilter(e) {
-    document.querySelectorAll('.veg-filter').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.veg-filter').forEach(btn => {
+        btn.classList.remove('active');
+        btn.classList.remove('bg-green-100', 'text-green-800');
+        btn.classList.remove('bg-red-100', 'text-red-800');
+        btn.classList.add('bg-gray-100', 'text-gray-700');
+    });
     const clickedButton = e.currentTarget;
     clickedButton.classList.add('active');
+    clickedButton.classList.remove('bg-gray-100', 'text-gray-700');
+    if (clickedButton.dataset.type === 'veg') {
+        clickedButton.classList.add('bg-green-100', 'text-green-800');
+    } else if (clickedButton.dataset.type === 'non-veg') {
+         clickedButton.classList.add('bg-red-100', 'text-red-800');
+    }
+
     currentVegFilter = clickedButton.dataset.type;
     applyFilters();
 }
-// --- END of new search/filter functions ---
 
-
-// Cart Logic (No changes here, but included for completeness)
+// Cart and Order functions
 function addToCart(itemId) {
     const item = menuItems.find(i => i.id === itemId);
     if (!item) return;
@@ -152,11 +161,10 @@ function updateQuantity(itemId, change) {
 
 function removeFromCart(itemId) {
     const item = cart.find(i => i.id === itemId);
-    const itemName = item ? item.name : 'Item';
     cart = cart.filter(i => i.id !== itemId);
     updateCartDisplay();
     saveCartToStorage();
-    showToast(`${itemName} removed from cart.`, 'info');
+    showToast(`${item.name} removed from cart.`, 'info');
 }
 
 function updateCartDisplay() {
@@ -186,10 +194,10 @@ function updateCartDisplay() {
                     <div class="font-bold">₹${(item.price * item.quantity).toFixed(2)}</div>
                 </div>
                 <div class="flex items-center mt-2">
-                    <button onclick="updateQuantity(${item.id}, -1)">-</button>
-                    <span class="mx-2">${item.quantity}</span>
-                    <button onclick="updateQuantity(${item.id}, 1)">+</button>
-                    <button class="text-red-500 ml-auto" onclick="removeFromCart(${item.id})">Remove</button>
+                    <button class="bg-gray-200 w-7 h-7 rounded-full font-bold" onclick="updateQuantity(${item.id}, -1)">-</button>
+                    <span class="mx-3">${item.quantity}</span>
+                    <button class="bg-gray-200 w-7 h-7 rounded-full font-bold" onclick="updateQuantity(${item.id}, 1)">+</button>
+                    <button class="text-red-500 hover:text-red-700 ml-auto text-sm font-medium" onclick="removeFromCart(${item.id})">Remove</button>
                 </div>
             </div>`;
     });
@@ -207,61 +215,18 @@ function toggleCart() {
     document.body.style.overflow = cartSidebar.classList.contains('translate-x-full') ? '' : 'hidden';
 }
 
-async function handleSendOtp() {
-    const mobileInput = document.getElementById('customerMobileCart');
-    const sendOtpBtn = document.getElementById('sendOtpBtn');
-    const otpMessage = document.getElementById('otpMessage');
-    const payNowBtn = document.getElementById('payNowBtn');
-    const mobileNumber = mobileInput.value.trim();
-
-    if (!/^\d{10}$/.test(mobileNumber)) {
-        showToast('Please enter a valid 10-digit mobile number.', 'error');
-        return;
-    }
-
-    sendOtpBtn.disabled = true;
-    sendOtpBtn.textContent = 'Sending...';
-
-    try {
-        const response = await fetch('/api/send-otp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mobile: mobileNumber })
-        });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'Server error');
-        
-        document.getElementById('otp-container').classList.remove('hidden');
-        otpMessage.textContent = 'OTP sent successfully.';
-        otpMessage.className = 'text-xs text-green-600 mt-1';
-        payNowBtn.disabled = false;
-        payNowBtn.classList.remove('bg-orange-300', 'cursor-not-allowed');
-        payNowBtn.classList.add('bg-orange-500', 'hover:bg-orange-600');
-        showToast('OTP sent!', 'success');
-    } catch (error) {
-        otpMessage.textContent = error.message;
-        otpMessage.className = 'text-xs text-red-600 mt-1';
-        showToast(error.message, 'error');
-    } finally {
-        sendOtpBtn.disabled = false;
-        sendOtpBtn.textContent = 'Send OTP';
-    }
-}
-
 async function handleOrderSubmit() {
     const submitBtn = document.getElementById('payNowBtn');
-    const originalText = submitBtn.querySelector('span').textContent;
     submitBtn.querySelector('span').textContent = 'Placing...';
     submitBtn.disabled = true;
     
     const customerName = document.getElementById('customerNameCart').value.trim();
     const customerMobile = document.getElementById('customerMobileCart').value.trim();
     const customerAddress = document.getElementById('customerAddress').value.trim();
-    const otp = document.getElementById('customerOtp').value.trim();
 
-    if (!customerName || !customerMobile || !customerAddress || !otp) {
-        showToast('Please fill all fields and enter OTP.', 'error');
-        submitBtn.querySelector('span').textContent = originalText;
+    if (!customerName || !customerMobile || !customerAddress) {
+        showToast('Please fill in all delivery details.', 'error');
+        submitBtn.querySelector('span').textContent = 'Place Order (Cash)';
         submitBtn.disabled = false;
         return;
     }
@@ -270,7 +235,6 @@ async function handleOrderSubmit() {
         name: customerName,
         mobile: customerMobile,
         address: customerAddress,
-        otp: otp,
         cart_items: cart.map(item => ({ id: item.id, quantity: item.quantity })),
     };
 
@@ -290,41 +254,30 @@ async function handleOrderSubmit() {
     } catch (error) {
         showToast(error.message, 'error');
     } finally {
-        submitBtn.querySelector('span').textContent = originalText;
-        submitBtn.disabled = true;
-        submitBtn.classList.add('bg-orange-300', 'cursor-not-allowed');
-        submitBtn.classList.remove('bg-orange-500', 'hover:bg-orange-600');
+        submitBtn.querySelector('span').textContent = 'Place Order (Cash)';
+        submitBtn.disabled = false;
     }
 }
 
+// Helper functions
 function clearCart() {
     cart = [];
     updateCartDisplay();
     saveCartToStorage();
 }
-
 function resetCheckoutForm() {
     document.getElementById('customerForm').reset();
-    document.getElementById('otp-container').classList.add('hidden');
-    document.getElementById('otpMessage').textContent = '';
 }
-
 function saveCartToStorage() {
     localStorage.setItem('vanita_cart', JSON.stringify(cart));
 }
-
 function loadCartFromStorage() {
     const savedCart = localStorage.getItem('vanita_cart');
     if (savedCart) {
-        try {
-            cart = JSON.parse(savedCart);
-            updateCartDisplay();
-        } catch (error) {
-            cart = [];
-        }
+        cart = JSON.parse(savedCart);
+        updateCartDisplay();
     }
 }
-
 function showToast(message, type = 'success') {
     const toastEl = document.getElementById('toast');
     const toastMessage = document.getElementById('toast-message');
