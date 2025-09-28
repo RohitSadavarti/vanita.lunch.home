@@ -37,7 +37,8 @@ def get_menu():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT id, item_name, description, CAST(price AS FLOAT) as price, category, veg_nonveg, meal_type, availability_time FROM menu_items ORDER BY category, item_name")
+        # --- FIX: Added image_url to the SELECT statement ---
+        cur.execute("SELECT id, item_name, description, CAST(price AS FLOAT) as price, category, veg_nonveg, meal_type, availability_time, image_url FROM menu_items ORDER BY category, item_name")
         menu_items = cur.fetchall()
         column_names = [desc[0] for desc in cur.description]
         menu_list = [dict(zip(column_names, item)) for item in menu_items]
@@ -47,7 +48,7 @@ def get_menu():
     except Exception as e:
         print(f"Error in get_menu: {str(e)}")
         return jsonify({'error': 'Failed to load menu'}), 500
-
+        
 @app.route('/api/send-otp', methods=['POST'])
 def send_otp():
     data = request.get_json()
@@ -61,13 +62,12 @@ def send_otp():
 
     otp_storage[mobile] = {'otp': otp, 'expires_at': expiration_time}
     
-    # --- SIMULATION: In a real app, you would send the OTP via an SMS gateway here ---
     print(f"=====================================")
     print(f"OTP for {mobile} is: {otp}")
     print(f"=====================================")
-    # -------------------------------------------------------------------
 
     return jsonify({'success': True, 'message': 'OTP sent successfully.'})
+
 
 # API endpoint to place an order
 @app.route('/api/order', methods=['POST'])
@@ -81,12 +81,11 @@ def place_order():
         mobile = data.get('mobile', '').strip()
         address = data.get('address', '').strip()
         cart_items = data.get('cart_items', [])
-        otp_received = data.get('otp', '').strip() # OTP from the frontend
+        otp_received = data.get('otp', '').strip()
 
         if not all([name, mobile, address, cart_items, otp_received]):
             return jsonify({'success': False, 'error': 'Missing required fields'}), 400
         
-        # --- OTP VERIFICATION LOGIC ---
         if mobile not in otp_storage:
             return jsonify({'success': False, 'error': 'Please request an OTP first.'}), 400
         
@@ -98,7 +97,6 @@ def place_order():
         if stored_otp_data['otp'] != otp_received:
             return jsonify({'success': False, 'error': 'Invalid OTP.'}), 400
         
-        # OTP is correct, so we can remove it now
         del otp_storage[mobile]
 
         conn = get_db_connection()
