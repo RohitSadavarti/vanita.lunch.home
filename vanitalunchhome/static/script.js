@@ -10,9 +10,13 @@ let currentCategory = 'all';
 let currentVegFilter = 'all';
 let currentSearchTerm = '';
 
+// DOM Elements for cart sidebar
+const cartSidebar = document.getElementById('cartSidebar');
+const cartOverlay = document.getElementById('cartOverlay');
+
+
 // Initialize the application once the DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // This check ensures the lucide library is loaded before trying to use it.
     if (typeof lucide !== 'undefined') {
         lucide.createIcons();
     }
@@ -26,9 +30,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Centralized function to set up all event listeners for the page
 function setupEventListeners() {
-    // Page navigation
-    document.getElementById('cartBtn').addEventListener('click', showCartPage);
-    document.getElementById('backToMenuBtn').addEventListener('click', showHomePage);
+    // Cart sidebar controls
+    document.getElementById('cartBtn').addEventListener('click', openCart);
+    document.getElementById('closeCartBtn').addEventListener('click', closeCart);
+    cartOverlay.addEventListener('click', closeCart);
 
     // Main cart action
     document.getElementById('payNowBtn').addEventListener('click', processOrder);
@@ -67,22 +72,27 @@ async function loadMenu() {
 // UI RENDERING & PAGE NAVIGATION
 // =================================================================================
 
-// Show the main menu page and hide the cart
-function showHomePage() {
-    document.getElementById('cartView').classList.add('hidden');
-    document.getElementById('homeView').classList.remove('hidden');
-}
-
-// Show the cart page and hide the menu
-function showCartPage() {
+// --- NEW CART SIDEBAR FUNCTIONS ---
+function openCart() {
     if (cart.length === 0) {
         showToast('Your cart is empty!', 'info');
         return;
     }
-    document.getElementById('homeView').classList.add('hidden');
-    document.getElementById('cartView').classList.remove('hidden');
-    renderCartPage();
+    cartOverlay.classList.remove('hidden');
+    cartSidebar.classList.remove('translate-x-full');
+    cartSidebar.classList.add('translate-x-0');
+    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    renderCartPage(); // Re-render cart content every time it opens
 }
+
+function closeCart() {
+    cartOverlay.classList.add('hidden');
+    cartSidebar.classList.add('translate-x-full');
+    cartSidebar.classList.remove('translate-x-0');
+    document.body.style.overflow = ''; // Restore scrolling
+}
+// --- END NEW CART SIDEBAR FUNCTIONS ---
+
 
 // Render the filtered menu items on the page
 function renderMenu() {
@@ -104,7 +114,7 @@ function renderMenu() {
     }
 
     if (typeof lucide !== 'undefined') {
-        lucide.createIcons(); // Re-render icons for new elements
+        lucide.createIcons();
     }
 }
 
@@ -151,7 +161,7 @@ function renderCartPage() {
     cartItemsContainer.innerHTML = '';
 
     if (cart.length === 0) {
-        showHomePage(); // If cart becomes empty, go back to the menu
+        closeCart(); // If cart becomes empty, close the sidebar
         return;
     }
 
@@ -217,7 +227,7 @@ function applyFilters() {
         const vegMatch = currentVegFilter === 'all' || item.veg_nonveg === currentVegFilter;
         const searchMatch = !currentSearchTerm ||
             item.item_name.toLowerCase().includes(currentSearchTerm) ||
-            item.description.toLowerCase().includes(currentSearchTerm);
+            (item.description && item.description.toLowerCase().includes(currentSearchTerm));
         return categoryMatch && vegMatch && searchMatch;
     });
     renderMenu();
@@ -262,6 +272,10 @@ function addToCart(itemId) {
     }
 
     updateCartCount();
+    // If cart sidebar is already open, refresh its content
+    if (!cartSidebar.classList.contains('translate-x-full')) {
+        renderCartPage();
+    }
     showToast(`${item.item_name} added to cart!`);
 }
 
@@ -271,7 +285,8 @@ function removeFromCart(itemId) {
     
     cart = cart.filter(i => i.id !== itemId);
     updateCartCount();
-    if (!document.getElementById('cartView').classList.contains('hidden')) {
+    // If cart sidebar is open, refresh its content
+    if (!cartSidebar.classList.contains('translate-x-full')) {
         renderCartPage();
     }
     showToast(`${item.name} removed from cart.`, 'info');
@@ -285,7 +300,8 @@ function updateQuantity(itemId, change) {
             removeFromCart(itemId);
         } else {
             updateCartCount();
-            if (!document.getElementById('cartView').classList.contains('hidden')) {
+            // If cart sidebar is open, refresh its content
+            if (!cartSidebar.classList.contains('translate-x-full')) {
                 renderCartPage();
             }
         }
@@ -340,7 +356,6 @@ async function processOrder() {
 }
 
 async function placeOrderOnBackend(paymentResponse, customerDetails) {
-    // This object's keys must match the Flask backend (app.py)
     const orderData = {
         name: customerDetails.name,
         mobile: customerDetails.mobile,
@@ -368,7 +383,7 @@ async function placeOrderOnBackend(paymentResponse, customerDetails) {
             showToast('Order placed successfully! You will receive a confirmation call shortly.');
             cart = [];
             updateCartCount();
-            showHomePage();
+            closeCart(); // Close sidebar on successful order
             document.getElementById('customerDetailsForm').reset();
         } else {
             throw new Error(result.message || 'An unknown error occurred.');
@@ -397,7 +412,7 @@ function showToast(message, type = 'success') {
         info: 'bg-blue-500'
     };
     
-    toast.className = `fixed bottom-5 right-5 text-white px-6 py-3 rounded-lg shadow-lg animate-pop ${colorClasses[type] || colorClasses.success}`;
+    toast.className = `fixed bottom-5 right-5 text-white px-6 py-3 rounded-lg shadow-lg animate-pop z-50 ${colorClasses[type] || colorClasses.success}`;
 
     toast.classList.remove('hidden');
 
@@ -414,4 +429,3 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
-
