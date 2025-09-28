@@ -114,10 +114,12 @@ def order_management_view(request):
     if start_date and end_date:
         base_queryset = base_queryset.filter(created_at__gte=start_date, created_at__lt=end_date)
     
-    preparing_orders_qs = base_queryset.filter(order_status='open').order_by('created_at')
+    # Sort all querysets by most recent first
+    preparing_orders_qs = base_queryset.filter(order_status='open').order_by('-created_at')
     ready_orders_qs = base_queryset.filter(order_status='ready').order_by('-created_at')
     pickedup_orders_qs = base_queryset.filter(order_status='pickedup').order_by('-created_at')
 
+    # Parse the JSON 'items' string into a Python list for the template
     for order_list in [preparing_orders_qs, ready_orders_qs, pickedup_orders_qs]:
         for order in order_list:
             try:
@@ -252,7 +254,6 @@ def get_orders_api(request):
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
 
-# ... (customer-facing API views like api_menu_items, api_place_order, etc.) ...
 
 @require_http_methods(["GET"])
 def api_menu_items(request):
@@ -282,4 +283,5 @@ def api_place_order(request):
 
 def customer_home(request):
     return render(request, 'OrderMaster/customer_order.html')
+
 
