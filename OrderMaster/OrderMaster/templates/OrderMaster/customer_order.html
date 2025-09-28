@@ -5,84 +5,61 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vanita Lunch Home - Order Online</title>
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
     <link rel="stylesheet" href="{% static 'css/customer.css' %}">
+    
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
 
-    <div id="app">
-        <header class="header">
-            <div class="header-brand">
-                <i data-lucide="utensils-crossed"></i>
-                <h1>Vanita Lunch Home</h1>
-            </div>
-            <button id="cartBtn">
-                <i data-lucide="shopping-cart"></i>
-                <span id="cartCount" style="display: none;">0</span>
-            </button>
-        </header>
+    <header class="page-header">
+        <h1 class="brand-title">Vanita Lunch Home</h1>
+        <button id="cart-button">
+            <i data-lucide="shopping-cart"></i>
+            <span id="cart-count-badge" style="display: none;">0</span>
+        </button>
+    </header>
 
-        <main>
-            <div id="loadingIndicator" class="text-center p-5">
-                <p>Loading menu...</p>
-            </div>
-            <div id="menuContainer" class="menu-grid">
-                </div>
+    <main id="menu-container" class="menu-container">
         </main>
 
-        <div id="cartSidebar" class="cart-sidebar">
-            <div class="cart-header">
-                <h5>Your Order</h5>
-                <button type="button" class="btn-close" id="closeCartBtn"></button>
+    <div id="cart-overlay" class="cart-overlay"></div>
+
+    <div id="cart-sidebar" class="cart-sidebar">
+        <div class="cart-header">
+            <h5 class="m-0">Your Order</h5>
+            <button type="button" class="btn-close" id="close-cart-btn"></button>
+        </div>
+        <div class="cart-body" id="cart-items-container">
             </div>
-            <div class="cart-items" id="cartItems">
-                <p id="emptyCartMessage" class="text-center text-muted p-4">Your cart is empty.</p>
+        <div class="cart-footer">
+            <div id="cart-summary-container">
                 </div>
-            <div class="cart-footer">
-                <div id="cartSummary">
-                    </div>
-                <div id="checkoutSection" class="mt-3">
-                    <button id="proceedToCheckout" class="btn btn-primary w-100">Proceed to Checkout</button>
-                    <div id="checkoutForm" class="mt-4" style="display: none;">
-                        <h6 class="mb-3">Delivery Details</h6>
-                        <form id="customerForm">
-                            <div class="mb-3">
-                                <label for="customerName" class="form-label">Name</label>
-                                <input type="text" id="customerName" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="customerMobile" class="form-label">Mobile</label>
-                                <input type="tel" id="customerMobile" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="customerAddress" class="form-label">Address</label>
-                                <textarea id="customerAddress" class="form-control" rows="3" required></textarea>
-                            </div>
-                            <button type="submit" id="placeOrderBtn" class="btn btn-success w-100">Place Order</button>
-                        </form>
-                    </div>
+            <div id="checkout-container" class="mt-3">
+                <button id="checkout-btn" class="btn btn-primary w-100">Proceed to Checkout</button>
+                <div id="checkout-form-container" class="mt-4" style="display: none;">
+                    <h6 class="mb-3">Delivery Details</h6>
+                    <form id="customer-details-form">
+                        <div class="mb-3">
+                            <input type="text" id="customer-name" class="form-control" placeholder="Your Name" required>
+                        </div>
+                        <div class="mb-3">
+                            <input type="tel" id="customer-mobile" class="form-control" placeholder="Mobile Number" required>
+                        </div>
+                        <div class="mb-3">
+                            <textarea id="customer-address" class="form-control" rows="3" placeholder="Delivery Address" required></textarea>
+                        </div>
+                        <button type="submit" id="place-order-btn" class="btn btn-success w-100">Place Order</button>
+                    </form>
                 </div>
             </div>
         </div>
-        <div id="cartOverlay" class="cart-overlay"></div>
-    </div>
-    
-    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
-      <div id="toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="toast-header">
-          <strong id="toastTitle" class="me-auto">Notification</strong>
-          <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-        <div class="toast-body" id="toastMessage"></div>
-      </div>
     </div>
 
-    <script>
-        // Create icon placeholders
-        lucide.createIcons();
-    </script>
+    <script> lucide.createIcons(); </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{% static 'js/customer.js' %}"></script>
 </body>
