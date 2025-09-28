@@ -1,234 +1,107 @@
+{% extends 'OrderMaster/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Management - Vanita Lunch Home</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body>
-    <div class="app-layout">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <nav class="sidebar-nav">
-                <a href="{% url 'dashboard' %}"><span>Dashboard</span></a>
-                <a href="{% url 'order_management' %}" class="active"><span>Order Management</span></a>
-                <a href="{% url 'menu_management' %}"><span>Menu Management</span></a>
-                <a href="{% url 'analytics' %}"><span>Analytics</span></a>
-                <a href="{% url 'settings' %}"><span>Settings</span></a>
-            </nav>
-        </aside>
 
-        <div style="width:100%">
-            <!-- Header -->
-            <header class="admin-header">
-                <div class="header-brand">
-                    <h1>Vanita Lunch Home</h1>
-                    <p>Admin Portal</p>
-                </div>
-                <div class="header-actions">
-                    <div class="connection-status">
-                        <div class="status-indicator status-connected"></div>
-                        <span class="text-sm text-muted-foreground">Connected</span>
-                    </div>
-                    <a href="{% url 'logout' %}" class="btn">Logout</a>
-                </div>
-            </header>
-
-            <!-- Main Content -->
-            <main class="main-content">
-                <div class="card-title mb-4">
-                    <h2>Order Management</h2>
-                    <p class="card-description">Manage incoming and ready orders</p>
-                </div>
-
-                <!-- Preparing & Ready Orders -->
-                <div class="row">
-                    <!-- Preparing Orders -->
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header bg-warning">
-                                <h5 class="mb-0">Preparing Orders (<span id="preparing-count">{{ preparing_orders.count }}</span>)</h5>
-                            </div>
-                            <div class="card-body" id="preparing-orders-list">
-                                {% for order in preparing_orders %}
-                                <div class="card mb-3 order-card" data-order-id="{{ order.id }}">
-                                    <div class="card-body">
-                                        <h6>Order #{{ order.order_id }}</h6>
-                                        <p><strong>Customer:</strong> {{ order.customer_name }}</p>
-                                        <p><strong>Total:</strong> ₹{{ order.total_amount }}</p>
-                                        <button class="btn btn-success btn-sm move-to-ready" data-order-pk="{{ order.id }}">Mark as Ready</button>
-                                    </div>
-                                </div>
-                                {% empty %}
-                                <p class="text-muted">No orders in preparation</p>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Ready Orders -->
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header bg-success text-white">
-                                <h5 class="mb-0">Ready Orders (<span id="ready-count">{{ ready_orders.count }}</span>)</h5>
-                            </div>
-                            <div class="card-body" id="ready-orders-list">
-                                {% for order in ready_orders %}
-                                <div class="card mb-3 order-card" data-order-id="{{ order.id }}">
-                                    <div class="card-body">
-                                        <h6>Order #{{ order.order_id }}</h6>
-                                        <p><strong>Customer:</strong> {{ order.customer_name }}</p>
-                                        <p><strong>Total:</strong> ₹{{ order.total_amount }}</p>
-                                        <button class="btn btn-primary btn-sm mark-completed" data-order-pk="{{ order.id }}">Complete</button>
-                                    </div>
-                                </div>
-                                {% empty %}
-                                <p class="text-muted">No ready orders</p>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Live Orders Table -->
-                <div class="card mt-5">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0">Live Orders (Auto Refresh)</h5>
-                    </div>
-                    <div class="card-body">
-                        <table class="table table-bordered order-table">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Order ID</th>
-                                    <th>Customer Name</th>
-                                    <th>Items</th>
-                                    <th>Total Amount</th>
-                                    <th>Status</th>
-                                    <th>Time</th>
-                                </tr>
-                            </thead>
-                            <tbody id="orders-tbody">
-                                <tr><td colspan="6" class="text-center">Loading orders...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </main>
-        </div>
+{% block content %}
+<main class="main-content">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h3>Order Management</h3>
+        
+        <form method="GET" action="{% url 'order_management' %}" id="dateFilterForm" class="d-flex align-items-center gap-2">
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="dateFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    Filter: <span class="text-capitalize fw-bold">{{ selected_filter|replace:"_"," " }}</span>
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="dateFilterDropdown">
+                    <li><button class="dropdown-item" type="submit" name="date_filter" value="today">Today</button></li>
+                    <li><button class="dropdown-item" type="submit" name="date_filter" value="yesterday">Yesterday</button></li>
+                    <li><button class="dropdown-item" type="submit" name="date_filter" value="this_week">This Week</button></li>
+                    <li><button class="dropdown-item" type="submit" name="date_filter" value="this_month">This Month</button></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" id="customDateBtn">Custom Range...</a></li>
+                </ul>
+            </div>
+            
+            <div id="customDateRange" class="{% if selected_filter != 'custom' %}d-none{% endif %} d-flex align-items-center gap-2">
+                <input type="hidden" name="date_filter" value="custom">
+                <input type="text" class="form-control" name="start_date" id="startDate" placeholder="Start Date" value="{{ start_date_val }}">
+                <input type="text" class="form-control" name="end_date" id="endDate" placeholder="End Date" value="{{ end_date_val }}">
+                <button class="btn btn-primary" type="submit">Apply</button>
+            </div>
+        </form>
     </div>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-
-    <script>
-        function createOrderCard(order, isPreparing) {
-            let itemsHtml = '<ul>';
-            for (const item in order.items) {
-                itemsHtml += `<li>${item}: ${order.items[item]}</li>`;
-            }
-            itemsHtml += '</ul>';
-
-            const buttonHtml = isPreparing
-                ? `<button class="btn btn-success btn-sm move-to-ready" data-order-pk="${order.id}">Mark as Ready</button>`
-                : `<button class="btn btn-primary btn-sm mark-completed" data-order-pk="${order.id}">Complete</button>`;
-
-            return `
-                <div class="card mb-3 order-card">
-                    <div class="card-body">
-                        <h6>Order #${order.order_id}</h6>
-                        <p><strong>Customer:</strong> ${order.customer_name}</p>
-                        <p><strong>Total:</strong> ₹${order.total_amount}</p>
-                        ${itemsHtml}
-                        ${buttonHtml}
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Preparing Orders ({{ preparing_orders.count }})</h5>
+                    <button class="btn btn-sm btn-light p-1" type="button" data-bs-toggle="collapse" data-bs-target="#preparingOrdersCollapse" aria-expanded="true">
+                        <i data-lucide="chevron-up"></i>
+                    </button>
+                </div>
+                <div class="collapse show" id="preparingOrdersCollapse">
+                    <div class="card-body order-list">
+                        {% for order in preparing_orders %}
+                        <div class="order-card" data-order-id="{{ order.id }}">
+                            <div class="order-card-header">
+                                <strong>Order #{{ order.order_id }}</strong>
+                                <span>{{ order.customer_name }}</span>
+                            </div>
+                            <div class="order-card-body">
+                                <ul>
+                                    {% for item in order.items_list %}
+                                        <li>{{ item.quantity }} x {{ item.name }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            <div class="order-card-footer">
+                                <span>Total: ₹{{ order.total_price }}</span>
+                                <button class="btn btn-warning btn-sm mark-ready-btn">Mark Ready</button>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-center text-muted p-4">No orders are currently being prepared for the selected date range.</p>
+                        {% endfor %}
                     </div>
-                </div>`;
-        }
+                </div>
+            </div>
+        </div>
 
-        async function fetchAndDisplayOrders() {
-            try {
-                const response = await fetch("{% url 'get_orders_api' %}");
-                const data = await response.json();
-
-                const preparingList = document.getElementById('preparing-orders-list');
-                const readyList = document.getElementById('ready-orders-list');
-                preparingList.innerHTML = '';
-                readyList.innerHTML = '';
-
-                data.preparing_orders.forEach(order => {
-                    preparingList.innerHTML += createOrderCard(order, true);
-                });
-                data.ready_orders.forEach(order => {
-                    readyList.innerHTML += createOrderCard(order, false);
-                });
-
-                document.getElementById('preparing-count').innerText = data.preparing_orders.length;
-                document.getElementById('ready-count').innerText = data.ready_orders.length;
-            } catch (err) {
-                console.error("Error fetching orders:", err);
-            }
-        }
-
-        async function updateOrderStatus(orderPk, newStatus) {
-            try {
-                await fetch("{% url 'update_order_status' %}", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ id: orderPk, status: newStatus })
-                });
-                fetchAndDisplayOrders();
-            } catch (err) {
-                console.error("Error updating status:", err);
-            }
-        }
-
-        document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('move-to-ready')) {
-                updateOrderStatus(e.target.dataset.orderPk, 'Ready');
-            }
-            if (e.target.classList.contains('mark-completed')) {
-                updateOrderStatus(e.target.dataset.orderPk, 'Completed');
-            }
-        });
-
-        document.addEventListener('DOMContentLoaded', () => {
-            fetchAndDisplayOrders();
-            setInterval(fetchAndDisplayOrders, 10000);
-        });
-
-        function fetchOrders() {
-            fetch("{% url 'get_orders_api' %}")
-                .then(res => res.json())
-                .then(data => {
-                    let tbody = document.getElementById('orders-tbody');
-                    tbody.innerHTML = '';
-                    if (data.orders.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No orders found.</td></tr>';
-                        return;
-                    }
-                    data.orders.forEach(order => {
-                        let itemsHtml = '<ul>';
-                        for (const item in order.items) {
-                            itemsHtml += `<li>${item}: ${order.items[item]}</li>`;
-                        }
-                        itemsHtml += '</ul>';
-                        tbody.innerHTML += `
-                            <tr>
-                                <td>${order.order_id}</td>
-                                <td>${order.customer_name}</td>
-                                <td>${itemsHtml}</td>
-                                <td>₹${order.total_amount}</td>
-                                <td>${order.status}</td>
-                                <td>${order.created_at}</td>
-                            </tr>`;
-                    });
-                });
-        }
-        document.addEventListener('DOMContentLoaded', fetchOrders);
-        setInterval(fetchOrders, 5000);
-    </script>
-</body>
-</html>
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Ready Orders ({{ ready_orders.count }})</h5>
+                    <button class="btn btn-sm btn-light p-1" type="button" data-bs-toggle="collapse" data-bs-target="#readyOrdersCollapse" aria-expanded="true">
+                        <i data-lucide="chevron-up"></i>
+                    </button>
+                </div>
+                <div class="collapse show" id="readyOrdersCollapse">
+                    <div class="card-body order-list">
+                        {% for order in ready_orders %}
+                        <div class="order-card" data-order-id="{{ order.id }}">
+                            <div class="order-card-header">
+                                <strong>Order #{{ order.order_id }}</strong>
+                                <span>{{ order.customer_name }}</span>
+                            </div>
+                            <div class="order-card-body">
+                                <ul>
+                                    {% for item in order.items_list %}
+                                        <li>{{ item.quantity }} x {{ item.name }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            <div class="order-card-footer">
+                                <span>Total: ₹{{ order.total_price }}</span>
+                                <button class="btn btn-success btn-sm mark-pickedup-btn">Picked Up</button>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-center text-muted p-4">No orders are ready for pickup for the selected date range.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
