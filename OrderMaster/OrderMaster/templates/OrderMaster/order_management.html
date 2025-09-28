@@ -31,10 +31,10 @@
     </div>
 
     <div class="row">
-        <div class="col-lg-12 mb-4">
-            <div class="card">
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Preparing Orders ({{ preparing_orders.count }})</h5>
+                    <h5 class="mb-0">Preparing ({{ preparing_orders.count }})</h5>
                     <button class="btn btn-sm btn-light p-1" type="button" data-bs-toggle="collapse" data-bs-target="#preparingOrdersCollapse" aria-expanded="true">
                         <i data-lucide="chevron-up"></i>
                     </button>
@@ -66,10 +66,10 @@
             </div>
         </div>
 
-        <div class="col-lg-12 mb-4">
-            <div class="card">
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Ready Orders ({{ ready_orders.count }})</h5>
+                    <h5 class="mb-0">Ready for Pickup ({{ ready_orders.count }})</h5>
                     <button class="btn btn-sm btn-light p-1" type="button" data-bs-toggle="collapse" data-bs-target="#readyOrdersCollapse" aria-expanded="true">
                         <i data-lucide="chevron-up"></i>
                     </button>
@@ -95,6 +95,41 @@
                         </div>
                         {% empty %}
                         <p class="text-center text-muted p-4">No orders are ready for pickup.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Delivered ({{ pickedup_orders.count }})</h5>
+                    <button class="btn btn-sm btn-light p-1" type="button" data-bs-toggle="collapse" data-bs-target="#pickedupOrdersCollapse" aria-expanded="true">
+                        <i data-lucide="chevron-up"></i>
+                    </button>
+                </div>
+                <div class="collapse show" id="pickedupOrdersCollapse">
+                    <div class="card-body order-list-container">
+                        {% for order in pickedup_orders %}
+                        <div class="order-card" data-order-id="{{ order.id }}">
+                            <div class="order-details">
+                                <div class="order-info">
+                                    <strong>#{{ order.order_id }}</strong> - <span>{{ order.customer_name }}</span>
+                                </div>
+                                <ul class="order-items-list">
+                                    {% for item in order.items_list %}
+                                        <li>{{ item.quantity }} x {{ item.name }}</li>
+                                    {% endfor %}
+                                </ul>
+                                <div class="order-total">Total: ₹{{ order.total_price }}</div>
+                            </div>
+                            <div class="order-actions">
+                                <span class="badge bg-secondary">Delivered</span>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-center text-muted p-4">No orders have been delivered.</p>
                         {% endfor %}
                     </div>
                 </div>
