@@ -15,13 +15,15 @@ try:
     if firebase_key_json:
         firebase_credentials = json.loads(firebase_key_json)
         cred = credentials.Certificate(firebase_credentials)
+        # Check if the app is already initialized to prevent errors
         if not firebase_admin._apps:
             firebase_admin.initialize_app(cred)
         print("Firebase Admin SDK initialized successfully.")
     else:
-        print("FIREBASE_KEY environment variable not found. Firebase not initialized.")
+        print("WARNING: FIREBASE_KEY environment variable not found. Firebase notifications are disabled.")
 except Exception as e:
     print(f"Error initializing Firebase Admin SDK from environment variable: {e}")
+
 
 app = Flask(__name__)
 CORS(app, origins=['*'])
