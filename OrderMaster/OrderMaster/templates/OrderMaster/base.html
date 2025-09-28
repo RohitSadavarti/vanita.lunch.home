@@ -18,13 +18,11 @@
             <div id="content">
                 {% include 'OrderMaster/includes/topbar.html' %}
                 {% block content %}{% endblock %}
-                </div>
-            {% include 'OrderMaster/includes/footer.html' %}
             </div>
+            {% include 'OrderMaster/includes/footer.html' %}
+        </div>
     </div>
-    <a class="scroll-to-top rounded" href="#page-top">
-        <i class="fas fa-angle-up"></i>
-    </a>
+    <a class="scroll-to-top rounded" href="#page-top"><i class="fas fa-angle-up"></i></a>
     
     {% include 'OrderMaster/includes/scripts.html' %}
 
@@ -32,11 +30,11 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
 
     <script>
-        // IMPORTANT: You MUST get this config object from your Firebase project settings
+        // ACTION REQUIRED: Get this config object from your Firebase project settings
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
             authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
+            projectId: "YOUR_PROJECT_ID", // e.g., "vanita-lunch-home"
             storageBucket: "YOUR_STORAGE_BUCKET",
             messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
             appId: "YOUR_APP_ID"
@@ -60,18 +58,12 @@
                         .then((currentToken) => {
                             if (currentToken) {
                                 console.log('FCM Token:', currentToken);
-                                // Here you would typically send this token to your server
-                                // to subscribe it to the 'new_orders' topic.
-                                // For simplicity, we'll rely on the service worker for now.
-                                // A full implementation would require a backend endpoint
-                                // in Django to handle the subscription.
                             } else {
                                 console.log('No registration token available. Request permission to generate one.');
                             }
                         }).catch((err) => {
                             console.log('An error occurred while retrieving token. ', err);
                         });
-
                 } else {
                     console.log('Unable to get permission to notify.');
                 }
@@ -81,15 +73,10 @@
         // Listen for messages when the page is in the foreground
         messaging.onMessage((payload) => {
             console.log('Message received. ', payload);
-            // Display a custom notification/toast
-            const notificationTitle = payload.notification.title;
-            const notificationBody = payload.notification.body;
-            
-            // Example using a simple alert, but a toast notification library would be better
-            alert(`New Notification:\nTitle: ${notificationTitle}\nBody: ${notificationBody}`);
+            alert(`New Order:\n${payload.notification.title}\n${payload.notification.body}`);
         });
 
-        // Call the function to request permission when the page loads
+        // Request permission as soon as the page loads
         requestNotificationPermission();
 
     </script>
