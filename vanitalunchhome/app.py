@@ -12,6 +12,7 @@ app = Flask(__name__)
 CORS(app, origins=['*'])  # Replace with your actual domain in production
 
 # Remove admin functionality - no longer needed
+otp_storage = {}
 
 # Database connection function
 def get_db_connection():
@@ -38,24 +39,35 @@ def get_menu():
         cur = conn.cursor()
         cur.execute("SELECT id, item_name, description, CAST(price AS FLOAT) as price, category, veg_nonveg, meal_type, availability_time FROM menu_items ORDER BY category, item_name")
         menu_items = cur.fetchall()
-        
-        # Get column names
         column_names = [desc[0] for desc in cur.description]
-        
-        # Convert to list of dictionaries
-        menu_list = []
-        if menu_items:
-            for item in menu_items:
-                item_dict = dict(zip(column_names, item))
-                menu_list.append(item_dict)
-        
+        menu_list = [dict(zip(column_names, item)) for item in menu_items]
         cur.close()
         conn.close()
-        
         return jsonify(menu_list)
     except Exception as e:
         print(f"Error in get_menu: {str(e)}")
         return jsonify({'error': 'Failed to load menu'}), 500
+
+@app.route('/api/send-otp', methods=['POST'])
+def send_otp():
+    data = request.get_json()
+    mobile = data.get('mobile')
+
+    if not mobile or not (mobile.isdigit() and len(mobile) == 10):
+        return jsonify({'success': False, 'error': 'Invalid mobile number.'}), 400
+
+    otp = str(random.randint(100000, 999999))
+    expiration_time = datetime.now() + timedelta(minutes=5) # OTP is valid for 5 minutes
+
+    otp_storage[mobile] = {'otp': otp, 'expires_at': expiration_time}
+    
+    # --- SIMULATION: In a real app, you would send the OTP via an SMS gateway here ---
+    print(f"=====================================")
+    print(f"OTP for {mobile} is: {otp}")
+    print(f"=====================================")
+    # -------------------------------------------------------------------
+
+    return jsonify({'success': True, 'message': 'OTP sent successfully.'})
 
 # API endpoint to place an order
 @app.route('/api/order', methods=['POST'])
@@ -65,20 +77,19 @@ def place_order():
     try:
         data = request.get_json()
         
-        # Validate input data
         name = data.get('name', '').strip()
         mobile = data.get('mobile', '').strip()
         address = data.get('address', '').strip()
         cart_items = data.get('cart_items', [])
-        otp_received = data.get('otp', '').strip()
-        payment_id = data.get('payment_id', '')
-        
+        otp_received = data.get('otp', '').strip() # OTP from the frontend
+
         if not all([name, mobile, address, cart_items, otp_received]):
             return jsonify({'success': False, 'error': 'Missing required fields'}), 400
         
-        # --- OTP VERIFICATION ---
+        # --- OTP VERIFICATION LOGIC ---
         if mobile not in otp_storage:
             return jsonify({'success': False, 'error': 'Please request an OTP first.'}), 400
+        
         stored_otp_data = otp_storage[mobile]
         if datetime.now() > stored_otp_data['expires_at']:
             del otp_storage[mobile]
@@ -87,34 +98,26 @@ def place_order():
         if stored_otp_data['otp'] != otp_received:
             return jsonify({'success': False, 'error': 'Invalid OTP.'}), 400
         
-        # OTP is correct, remove it after verification
+        # OTP is correct, so we can remove it now
         del otp_storage[mobile]
 
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Validate cart items against menu and calculate totals server-side
         validated_items = []
         subtotal = 0
         
         for cart_item in cart_items:
             item_id = cart_item.get('id')
-            try:
-                quantity = int(cart_item.get('quantity', 0))
-            except (ValueError, TypeError):
-                return jsonify({'error': 'Invalid quantity format'}), 400
-            
+            quantity = int(cart_item.get('quantity', 0))
             if not item_id or quantity <= 0:
                 return jsonify({'error': 'Invalid item or quantity'}), 400
             
-            # Fetch actual menu item from database
             cur.execute("SELECT id, item_name, price FROM menu_items WHERE id = %s", (item_id,))
             menu_item = cur.fetchone()
-            
             if not menu_item:
                 return jsonify({'error': f'Menu item with ID {item_id} not found'}), 400
             
-            # Use server-side pricing
             actual_price = float(menu_item[2])
             item_total = actual_price * quantity
             subtotal += item_total
@@ -127,44 +130,27 @@ def place_order():
                 'total': item_total
             })
         
-        discount = 0  # No discount for now
-        total_price = subtotal - discount
-        
-        # --- GENERATE RANDOM ORDER ID ---
+        total_price = subtotal
         order_id = str(random.randint(10000000, 99999999))
 
-        # Insert single order record with validated items
         cur.execute("""
-            INSERT INTO orders (order_id, customer_name, customer_mobile, items, subtotal, discount, total_price, status, payment_id, created_at, updated_at)
+            INSERT INTO orders (order_id, customer_name, customer_mobile, items, subtotal, total_price, status, payment_method, created_at, updated_at, order_status)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
-            order_id, # <--- Add the new order_id
-            name,
-            mobile,
-            json.dumps(validated_items),
-            subtotal,
-            discount,
-            total_price,
-            'confirmed',
-            payment_id,
-            datetime.now(),
-            datetime.now()
+            order_id, name, mobile, json.dumps(validated_items), subtotal, total_price, 
+            'confirmed', 'Cash', datetime.now(), datetime.now(), 'open'
         ))
         
         conn.commit()
-        print(f"Order placed successfully for {name} - {mobile}")
-        return jsonify({'success': True, 'message': 'Order placed successfully'})
+        return jsonify({'success': True, 'message': f'Order placed successfully! Your Order ID is: {order_id}'})
         
     except Exception as e:
-        if conn:
-            conn.rollback()
+        if conn: conn.rollback()
         print(f"Error in place_order: {str(e)}")
         return jsonify({'error': 'Failed to place order'}), 500
     finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
+        if cur: cur.close()
+        if conn: conn.close()
 
 # API endpoint to get order status (for customer)
 @app.route('/api/order-status/<order_id>', methods=['GET'])
