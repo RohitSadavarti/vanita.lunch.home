@@ -6,7 +6,6 @@ from django.db import models
 from django.utils import timezone
 
 class MenuItem(models.Model):
-    # --- All lines below this are now correctly indented ---
     CATEGORY_CHOICES = [
         ('breakfast', 'Breakfast'),
         ('lunch', 'Lunch'),
@@ -14,12 +13,10 @@ class MenuItem(models.Model):
         ('snacks', 'Snacks'),
         ('beverages', 'Beverages'),
     ]
-
     VEG_CHOICES = [
         ('veg', 'Vegetarian'),
         ('non_veg', 'Non-Vegetarian'),
     ]
-
     MEAL_TYPE_CHOICES = [
         ('main_course', 'Main Course'),
         ('starter', 'Starter'),
@@ -79,11 +76,9 @@ class VlhAdmin(models.Model):
         db_table = 'vlh_admin'
 
     def set_password(self, raw_password):
-        """Hash and set password"""
         self.password_hash = bcrypt.hashpw(raw_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     def check_password(self, raw_password):
-        """Check if the provided password matches the stored hash"""
         return bcrypt.checkpw(raw_password.encode('utf-8'), self.password_hash.encode('utf-8'))
 
     def __str__(self):
