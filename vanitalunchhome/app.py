@@ -70,14 +70,26 @@ def place_order():
         mobile = data.get('mobile', '').strip()
         address = data.get('address', '').strip()
         cart_items = data.get('cart_items', [])
+        otp_received = data.get('otp', '').strip()
         payment_id = data.get('payment_id', '')
         
-        if not name or not mobile or not address or not cart_items or not payment_id:
-            return jsonify({'error': 'Missing required fields'}), 400
+        if not all([name, mobile, address, cart_items, otp_received]):
+            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
         
-        if len(mobile) != 10 or not mobile.isdigit():
-            return jsonify({'error': 'Invalid mobile number'}), 400
+        # --- OTP VERIFICATION ---
+        if mobile not in otp_storage:
+            return jsonify({'success': False, 'error': 'Please request an OTP first.'}), 400
+        stored_otp_data = otp_storage[mobile]
+        if datetime.now() > stored_otp_data['expires_at']:
+            del otp_storage[mobile]
+            return jsonify({'success': False, 'error': 'OTP has expired. Please request a new one.'}), 400
+            
+        if stored_otp_data['otp'] != otp_received:
+            return jsonify({'success': False, 'error': 'Invalid OTP.'}), 400
         
+        # OTP is correct, remove it after verification
+        del otp_storage[mobile]
+
         conn = get_db_connection()
         cur = conn.cursor()
         
