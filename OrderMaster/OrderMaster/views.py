@@ -59,7 +59,6 @@ def logout_view(request):
 
 @admin_required
 def dashboard_view(request):
-    """Renders the main admin dashboard page."""
     context = {
         'total_orders': Order.objects.count(),
         'preparing_orders_count': Order.objects.filter(order_status='open').count(),
@@ -72,7 +71,6 @@ def dashboard_view(request):
 
 @admin_required
 def order_management_view(request):
-    """Displays and manages current orders with date filtering."""
     date_filter = request.GET.get('date_filter', 'today')
     start_date, end_date = None, None
     today = now().date()
@@ -114,12 +112,10 @@ def order_management_view(request):
     if start_date and end_date:
         base_queryset = base_queryset.filter(created_at__gte=start_date, created_at__lt=end_date)
     
-    # Correctly sort each category of orders by most recent first
     preparing_orders_qs = base_queryset.filter(order_status='open').order_by('-created_at')
     ready_orders_qs = base_queryset.filter(order_status='ready').order_by('-ready_time')
     pickedup_orders_qs = base_queryset.filter(order_status='pickedup').order_by('-pickup_time')
 
-    # Parse the JSON 'items' string into a Python list for the template
     for order_list in [preparing_orders_qs, ready_orders_qs, pickedup_orders_qs]:
         for order in order_list:
             try:
@@ -166,7 +162,6 @@ def delete_menu_item_view(request, item_id):
 
 @admin_required
 def analytics_view(request):
-    """Renders the analytics page."""
     completed_orders = Order.objects.filter(order_status='pickedup')
     total_revenue = completed_orders.aggregate(total=models.Sum('total_price'))['total'] or 0
     context = {
@@ -180,7 +175,6 @@ def analytics_view(request):
 
 @admin_required
 def settings_view(request):
-    """Renders the settings page."""
     context = {
         'active_page': 'settings',
     }
@@ -194,7 +188,6 @@ def settings_view(request):
 @admin_required
 @require_POST
 def update_order_status(request):
-    """API to update an order's order_status."""
     try:
         data = json.loads(request.body)
         order_pk = data.get('id')
@@ -203,7 +196,6 @@ def update_order_status(request):
             return JsonResponse({'success': False, 'error': 'Missing data'}, status=400)
         order = get_object_or_404(Order, pk=order_pk)
         order.order_status = new_status
-        # Set the timestamp when the status changes
         if new_status == 'ready':
             order.ready_time = now()
         elif new_status == 'pickedup':
@@ -217,7 +209,6 @@ def update_order_status(request):
 @csrf_exempt
 @admin_required
 def api_menu_item_detail(request, item_id):
-    """API endpoint to get or update a specific menu item."""
     item = get_object_or_404(MenuItem, id=item_id)
     if request.method == 'GET':
         data = {
@@ -238,7 +229,6 @@ def api_menu_item_detail(request, item_id):
 
 @admin_required
 def get_orders_api(request):
-    """API for the live order feed on the dashboard."""
     try:
         orders = Order.objects.order_by('-created_at')[:20]
         data = []
@@ -258,7 +248,6 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
-
 
 
 @require_http_methods(["GET"])
@@ -289,7 +278,3 @@ def api_place_order(request):
 
 def customer_home(request):
     return render(request, 'OrderMaster/customer_order.html')
-
-
-
-
