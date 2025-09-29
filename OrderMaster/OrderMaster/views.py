@@ -20,6 +20,10 @@ logger = logging.getLogger(__name__)
 def customer_order_view(request):
     menu_items = MenuItem.objects.all()
     return render(request, 'OrderMaster/customer_order.html', {'menu_items': menu_items})
+@csrf_exempt
+def firebase_messaging_sw(request):
+    return render(request, 'firebase-messaging-sw.js', content_type='application/javascript')
+
 
 def admin_required(view_func):
     def wrapper(request, *args, **kwargs):
@@ -309,6 +313,7 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
 
 
 
