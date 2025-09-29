@@ -1,7 +1,0 @@
-Flask==3.1.2
-Flask-CORS==6.0.1
-psycopg2-binary==2.9.10
-python-dotenv==1.1.1
-gunicorn==23.0.0
-firebase-admin==6.5.0
-whitenoise==6.7.0
