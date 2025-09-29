@@ -11,6 +11,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/startbootstrap-sb-admin-2/4.1.4/css/sb-admin-2.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     
+    <link rel="stylesheet" href="{% static 'css/management.css' %}">
 </head>
 <body id="page-top">
     <div id="wrapper">
@@ -31,18 +32,16 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
 
     <script>
-        // ACTION REQUIRED: Get this config object from your Firebase project settings
-        // Project Settings > General > Your Apps > Web App
+        
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
             authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID", // e.g., "vanita-lunch-home"
+            projectId: "YOUR_PROJECT_ID", 
             storageBucket: "YOUR_STORAGE_BUCKET",
             messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
             appId: "YOUR_APP_ID"
         };
 
-        // Initialize Firebase
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
@@ -54,8 +53,7 @@
                 if (permission === 'granted') {
                     console.log('Notification permission granted.');
                     
-                    // ACTION REQUIRED: Get this key from your Firebase project console
-                    // Project Settings > Cloud Messaging > Web configuration > Web Push certificates
+                    
                     messaging.getToken({ vapidKey: 'YOUR_FIREBASE_WEB_PUSH_CERTIFICATE_KEY' })
                         .then((currentToken) => {
                             if (currentToken) {
@@ -72,19 +70,14 @@
             });
         }
         
-        // Listen for messages when the page is active
         messaging.onMessage((payload) => {
             console.log('Foreground message received: ', payload);
-            // You can replace this with a more sophisticated toast notification
+            
             alert(`New Order Received!\n${payload.notification.body}`);
         });
 
-        // Request permission as soon as the page loads
+        
         requestNotificationPermission();
     </script>
-    </body>
+</body>
 </html>
-
-
-
-
