@@ -45,13 +45,6 @@ def firebase_messaging_sw(request):
 # DECORATORS & AUTHENTICATION
 # =================================================================================
 
-def admin_required(view_func):
-    def wrapper(request, *args, **kwargs):
-        if not request.session.get('is_authenticated'):
-            messages.warning(request, 'You must be logged in to view this page.')
-            return redirect('login')
-        return view_func(request, *args, **kwargs)
-    return wrapper
 
 def login_view(request):
     if request.session.get('is_authenticated'):
@@ -358,6 +351,7 @@ def api_place_order(request):
 def customer_home(request):
     return render(request, 'OrderMaster/customer_order.html')
     
+
 
 
 
