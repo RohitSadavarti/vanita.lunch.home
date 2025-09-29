@@ -44,6 +44,10 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'vanita_lunch.urls'
 
+Python
+
+# (Keep all other settings in the file as they are)
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -57,12 +61,12 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
             ],
             'builtins': [
-                # Update this path as well
                 'OrderMaster.OrderMaster.templatetags.custom_filters',
             ]
         },
     },
 ]
+
 
 # ... (other settings)
 These changes make your app's location completely clear to Django, which will resolve the ModuleNotFoundError. After applying these changes, commit and push them to GitHub. Your build on Render should now succeed.
@@ -162,5 +166,6 @@ LOGGING = {
         },
     },
 }
+
 
 
