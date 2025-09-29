@@ -5,11 +5,9 @@ set -o errexit
 # Install dependencies
 pip install -r requirements.txt
 
-# Collect static files into the STATIC_ROOT directory
+# Collect static files
 python manage.py collectstatic --no-input
 
-# Create database migrations for your models
+# Create and apply database migrations for the OrderMaster app
 python manage.py makemigrations OrderMaster
-
-# Apply the migrations to the database
 python manage.py migrate
