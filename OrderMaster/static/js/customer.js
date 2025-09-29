@@ -144,36 +144,52 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const placeOrder = async (orderDetails) => {
-        try {
-            const response = await fetch(PLACE_ORDER_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    // CSRF token would be needed for non-@csrf_exempt views
-                },
-                body: JSON.stringify(orderDetails)
-            });
+    try {
+        // Calculate totals
+        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const deliveryFee = subtotal >= 300 ? 0 : 40;
+        const totalPrice = subtotal + deliveryFee;
 
-            const result = await response.json();
+        // Prepare order data with correct field names
+        const orderData = {
+            customer_name: orderDetails.customerName,
+            customer_mobile: orderDetails.customerMobile,
+            customer_address: orderDetails.customerAddress || 'N/A',
+            items: cart.map(item => ({
+                id: item.id,
+                name: item.item_name,
+                price: item.price,
+                quantity: item.quantity
+            })),
+            total_price: totalPrice.toFixed(2),
+            payment_id: 'COD'
+        };
 
-            if (result.success) {
-                // Show success message with the Order ID
-                alert(`Order placed successfully! Your Order ID is: ${result.order_id}`);
-                // Reset cart and UI
-                cart = [];
-                updateCart();
-                hideCart();
-                customerDetailsForm.reset();
-                checkoutFormContainer.style.display = 'none';
-            } else {
-                throw new Error(result.error || 'Failed to place order.');
-            }
-        } catch (error) {
-            console.error('Order placement failed:', error);
-            alert(`Error: ${error.message}`);
+        const response = await fetch(PLACE_ORDER_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(orderData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(`Order placed successfully! Your Order ID is: ${result.order_id}`);
+            cart = [];
+            updateCart();
+            hideCart();
+            customerDetailsForm.reset();
+            checkoutFormContainer.style.display = 'none';
+        } else {
+            throw new Error(result.error || 'Failed to place order.');
         }
-    };
-
+    } catch (error) {
+        console.error('Order placement failed:', error);
+        alert(`Error: ${error.message}`);
+    }
+};
     // --- EVENT LISTENERS ---
     cartButton.addEventListener('click', showCart);
     closeCartBtn.addEventListener('click', hideCart);
@@ -207,16 +223,15 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     customerDetailsForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const orderDetails = {
-            customerName: document.getElementById('customer-name').value,
-            customerMobile: document.getElementById('customer-mobile').value,
-            // You might want to add address if you collect it.
-            cart: cart.map(({ id, item_name, price, quantity }) => ({ id, item_name, price, quantity }))
-        };
-        placeOrder(orderDetails);
-    });
-
+    e.preventDefault();
+    const orderDetails = {
+        customerName: document.getElementById('customer-name').value,
+        customerMobile: document.getElementById('customer-mobile').value,
+        customerAddress: document.getElementById('customer-address').value
+    };
+    placeOrder(orderDetails);
+});
     // --- INITIALIZATION ---
     fetchMenu();
 });
+
