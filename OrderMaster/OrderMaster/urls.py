@@ -4,10 +4,13 @@ from django.urls import path, include
 from . import views
 from django.contrib import admin
 from .views import firebase_messaging_sw
+from OrderMaster.views import firebase_messaging_sw 
 urlpatterns = [
     # Admin URLs
     path('admin/', admin.site.urls),
-    path('firebase-messaging-sw.js', firebase_messaging_sw, name='firebase-messaging-sw'),
+#path('firebase-messaging-sw.js', firebase_messaging_sw, name='firebase-messaging-sw'),
+    path('firebase-messaging-sw.js', firebase_messaging_sw, name='firebase-messaging-sw.js'),
+    path('', include('OrderMaster.urls')),
     path('', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
@@ -29,5 +32,6 @@ urlpatterns = [
     # Customer-facing URL
     path('customer-order/', views.customer_home, name='customer_home'),
 ]
+
 
 
