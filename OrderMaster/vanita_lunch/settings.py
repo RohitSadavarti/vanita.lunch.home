@@ -44,8 +44,6 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'vanita_lunch.urls'
 
-Python
-
 # (Keep all other settings in the file as they are)
 
 TEMPLATES = [
@@ -66,24 +64,6 @@ TEMPLATES = [
         },
     },
 ]
-
-
-# ... (other settings)
-These changes make your app's location completely clear to Django, which will resolve the ModuleNotFoundError. After applying these changes, commit and push them to GitHub. Your build on Render should now succeed.
-
-
-
-
-
-
-
-
-
-
-
-
-Tools
-
 
 WSGI_APPLICATION = 'vanita_lunch.wsgi.application'
 
@@ -166,6 +146,3 @@ LOGGING = {
         },
     },
 }
-
-
-
