@@ -7,3 +7,5 @@ whitenoise==6.7.0
 bcrypt>=4.0.0
 dj-database-url>=2.1.0
 firebase-admin==6.5.0
+Flask>=3.1.2
+flask-cors>=6.0.1
