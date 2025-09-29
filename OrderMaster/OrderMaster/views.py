@@ -71,21 +71,26 @@ def order_management_view(request):
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
 
-    end_date = timezone.now()
+    now = timezone.now()
     if date_filter == 'today':
-        start_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
     elif date_filter == 'yesterday':
-        start_date = (end_date - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        start_date = (now - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
     elif date_filter == 'this_week':
-        start_date = (end_date - timedelta(days=end_date.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+        start_date = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = now
     elif date_filter == 'this_month':
-        start_date = end_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_date = now
     elif date_filter == 'custom' and start_date_str and end_date_str:
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
-    else:
-        start_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    else: # Default to today
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+        date_filter = 'today'
 
     preparing_orders = Order.objects.filter(order_status='open', created_at__range=(start_date, end_date))
     ready_orders = Order.objects.filter(order_status='ready', created_at__range=(start_date, end_date))
@@ -93,11 +98,12 @@ def order_management_view(request):
 
     # Add a simple representation of items for the template
     for order in preparing_orders:
-        order.items_list = order.items
+        order.items_list = order.items if isinstance(order.items, list) else json.loads(order.items)
     for order in ready_orders:
-        order.items_list = order.items
+        order.items_list = order.items if isinstance(order.items, list) else json.loads(order.items)
     for order in pickedup_orders:
-        order.items_list = order.items
+        order.items_list = order.items if isinstance(order.items, list) else json.loads(order.items)
+
 
     context = {
         'preparing_orders': preparing_orders,
@@ -105,11 +111,12 @@ def order_management_view(request):
         'pickedup_orders': pickedup_orders,
         'date_display_str': date_filter.replace('_', ' ').title(),
         'selected_filter': date_filter,
-        'start_date_val': start_date_str,
-        'end_date_val': end_date_str,
+        'start_date_val': start_date_str if date_filter == 'custom' else '',
+        'end_date_val': end_date_str if date_filter == 'custom' else '',
     }
     return render(request, 'OrderMaster/order_management.html', context)
-    
+
+
 @csrf_exempt
 @admin_required
 @require_POST
@@ -302,5 +309,6 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
 
 
