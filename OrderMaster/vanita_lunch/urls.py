@@ -1,7 +1,7 @@
 # vanita_lunch/urls.py
 
 from django.urls import path, include
-from OrderMaster.views import firebase_messaging_sw
+from .views import firebase_messaging_sw # Corrected import
 
 urlpatterns = [
     # This path correctly serves the Firebase service worker
