@@ -29,7 +29,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Use the simplified app reference here
     'OrderMaster',
 ]
 
@@ -58,15 +57,15 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
-            'builtins': [
-                'OrderMaster.templatetags.custom_filters',
-            ]
+            # 'builtins' section removed
         },
     },
 ]
 
 WSGI_APPLICATION = 'vanita_lunch.wsgi.application'
 
+# (Keep the rest of your settings.py file the same)
+# ...
 # Database configuration
 DATABASES = {
     'default': dj_database_url.config(
@@ -148,4 +147,5 @@ LOGGING = {
         },
     },
 }
+
 
