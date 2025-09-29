@@ -2,12 +2,23 @@
 
 from django.contrib import admin
 from django.urls import path, include
-from .views import firebase_messaging_sw # Import the new view
+from django.views.generic import TemplateView
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
-    # Path for the service worker
-    path('firebase-messaging-sw.js', firebase_messaging_sw, name='firebase-messaging-sw.js'),
-
+    # Service worker must be at root level
+    path('firebase-messaging-sw.js', 
+         TemplateView.as_view(
+             template_name='firebase-messaging-sw.js',
+             content_type='application/javascript'
+         ), 
+         name='firebase-messaging-sw'),
+    
     # Include your app's URLs
     path('', include('OrderMaster.urls')),
 ]
+
+# Serve media files in development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
