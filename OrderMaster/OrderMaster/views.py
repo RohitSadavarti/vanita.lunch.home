@@ -157,7 +157,7 @@ def order_management_view(request):
         'active_page': 'order_management',
     }
     return render(request, 'OrderMaster/order_management.html', context)
-
+    
 @admin_required
 def menu_management_view(request):
     if request.method == 'POST':
@@ -347,6 +347,7 @@ def api_place_order(request):
 def customer_home(request):
     return render(request, 'OrderMaster/customer_order.html')
     
+
 
 
 
