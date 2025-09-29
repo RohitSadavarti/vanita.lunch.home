@@ -1,3 +1,4 @@
+
 """
 Django settings for vanita_lunch project.
 """
@@ -13,10 +14,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-b9j01@*vxpl=+zr2@3uq)*=0&o7q7&t1cncn9en*(atpb+9*8o')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=True, cast=bool)  # Changed to True for debugging
+DEBUG = config('DEBUG', default=True, cast=bool)
 
-# ALLOWED_HOSTS is configured to work with Render's deployment environment.
-ALLOWED_HOSTS = ['*']  # Temporarily allow all hosts for debugging
+ALLOWED_HOSTS = ['*']
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
@@ -29,8 +29,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'OrderMaster.OrderMaster.apps.OrdermasterConfig',  # Use the full path here
+    # Use the simplified app reference here
+    'OrderMaster',
 ]
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -43,8 +45,6 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'vanita_lunch.urls'
-
-# (Keep all other settings in the file as they are)
 
 TEMPLATES = [
     {
@@ -59,7 +59,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
             ],
             'builtins': [
-                'OrderMaster.OrderMaster.templatetags.custom_filters',
+                'OrderMaster.templatetags.custom_filters',
             ]
         },
     },
@@ -75,6 +75,8 @@ DATABASES = {
     )
 }
 
+# (Keep the rest of your settings.py file the same)
+# ...
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -146,3 +148,4 @@ LOGGING = {
         },
     },
 }
+
