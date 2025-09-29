@@ -57,10 +57,12 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
+            'builtins': [
+                'OrderMaster.templatetags.custom_filters',
+            ]
         },
     },
 ]
-
 WSGI_APPLICATION = 'vanita_lunch.wsgi.application'
 
 # Database configuration
@@ -142,3 +144,4 @@ LOGGING = {
         },
     },
 }
+
