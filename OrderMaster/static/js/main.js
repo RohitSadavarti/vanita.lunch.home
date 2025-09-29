@@ -20,7 +20,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return cookieValue;
     };
-    // --- DASHBOARD: LIVE ORDER REFRESH ---
+    
+        // --- DASHBOARD: LIVE ORDER REFRESH ---
     const liveOrdersContainer = document.getElementById('live-orders');
     if (liveOrdersContainer) {
         const fetchOrders = async () => {
@@ -45,33 +46,10 @@ document.addEventListener('DOMContentLoaded', function() {
         setInterval(fetchOrders, 10000);
     }
 
-    // --- ORDER MANAGEMENT PAGE ---
-    // 1. Collapse/Expand Section Logic
-    document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(button => {
-        const icon = button.querySelector('i');
-        const collapseEl = document.getElementById(button.getAttribute('data-bs-target').substring(1));
-        
-        collapseEl.addEventListener('show.bs.collapse', () => {
-            icon.setAttribute('data-lucide', 'chevron-up');
-            lucide.createIcons();
-        });
-        collapseEl.addEventListener('hide.bs.collapse', () => {
-            icon.setAttribute('data-lucide', 'chevron-down');
-            lucide.createIcons();
-        });
-    });
 
-    // 2. Date Filter Logic
+    // --- ORDER MANAGEMENT PAGE ---
     const customDateBtn = document.getElementById('customDateBtn');
     const customDateRangeDiv = document.getElementById('customDateRange');
-
-    // Initialize the Flatpickr date pickers
-    if (document.getElementById('startDate')) {
-        flatpickr("#startDate", { dateFormat: "Y-m-d" });
-    }
-    if (document.getElementById('endDate')) {
-        flatpickr("#endDate", { dateFormat: "Y-m-d" });
-    }
 
     if (customDateBtn && customDateRangeDiv) {
         customDateBtn.addEventListener('click', (e) => {
@@ -80,7 +58,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 3. Order Status Update Logic
     const handleStatusUpdate = async (button, newStatus) => {
         const orderCard = button.closest('.card[data-order-id]');
         
@@ -121,19 +98,18 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('A network error occurred. Please check the console for details.');
         }
     };
-
-
-    // --- FIX: Corrected the selector from '.order-card' to '.card' ---
+    
     document.querySelectorAll('.mark-ready-btn').forEach(button => {
         button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'ready'));
     });
+    
     document.querySelectorAll('.mark-pickedup-btn').forEach(button => {
         button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'pickedup'));
     });
+});
 
 
-
-    // --- MENU MANAGEMENT PAGE ---
+// --- MENU MANAGEMENT PAGE ---
     const editSidebar = document.getElementById('editSidebar');
     const editFormContainer = document.getElementById('editForm');
     if (editSidebar) {
@@ -217,6 +193,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
 
 
 
