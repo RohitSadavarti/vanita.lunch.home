@@ -1,24 +1,13 @@
-# OrderMaster/OrderMaster/urls.py
-
-from django.urls import path, include
+from django.urls import path
 from . import views
-from django.contrib import admin
-from .views import firebase_messaging_sw
-from OrderMaster.views import firebase_messaging_sw 
 urlpatterns = [
     # Admin URLs
-    path('admin/', admin.site.urls),
-#path('firebase-messaging-sw.js', firebase_messaging_sw, name='firebase-messaging-sw'),
-    path('firebase-messaging-sw.js', firebase_messaging_sw, name='firebase-messaging-sw.js'),
-    path('', include('OrderMaster.urls')),
     path('', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
     path('orders/', views.order_management_view, name='order_management'),
     path('menu/', views.menu_management_view, name='menu_management'),
     path('menu/delete/<int:item_id>/', views.delete_menu_item_view, name='delete_menu_item'),
-    
-    # --- ADDED MISSING URLS ---
     path('analytics/', views.analytics_view, name='analytics'),
     path('settings/', views.settings_view, name='settings'),
     
