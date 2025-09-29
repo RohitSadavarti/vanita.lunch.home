@@ -241,7 +241,7 @@ def api_menu_items(request):
 def api_place_order(request):
     try:
         data = json.loads(request.body)
-        required_fields = ['customer_name', 'customer_mobile', 'customer_address', 'items', 'total_price']
+        required_fields = ['customer_name', 'customer_mobile', 'items', 'total_price']
         if not all(field in data and data[field] for field in required_fields):
             return JsonResponse({'error': 'Missing required fields.'}, status=400)
 
@@ -262,47 +262,50 @@ def api_place_order(request):
             item_total = menu_item.price * quantity
             calculated_subtotal += item_total
             validated_items_for_db.append({
-                'id': menu_item.id, 'name': menu_item.item_name,
-                'price': float(menu_item.price), 'quantity': quantity,
+                'id': menu_item.id, 
+                'name': menu_item.item_name,
+                'price': float(menu_item.price), 
+                'quantity': quantity,
             })
 
-        delivery_fee = Decimal('0.00') if calculated_subtotal >= 300 else Decimal('40.00')
-        final_total_server = calculated_subtotal + delivery_fee
-
-        if abs(final_total_server - Decimal(str(data['total_price']))) > Decimal('0.01'):
-            return JsonResponse({'error': 'Total price mismatch. Please try again.'}, status=400)
+        final_total_server = Decimal(str(data['total_price']))
 
         order_id = f"VLH{timezone.now().strftime('%y%m%d%H%M')}{str(uuid.uuid4())[:4].upper()}"
 
-        # **CORRECTION 1: Create the new_order object**
+        # Create the order with correct fields
         new_order = Order.objects.create(
             order_id=order_id,
             customer_name=data['customer_name'],
             customer_mobile=data['customer_mobile'],
-            items=json.dumps(validated_items_for_db), # **CORRECTION 2: Store only the items list**
+            items=validated_items_for_db,  # Store as list, JSONField will handle it
+            subtotal=calculated_subtotal,
+            discount=Decimal('0.00'),
             total_price=final_total_server,
+            status='pending',
+            payment_method='COD',
             payment_id=data.get('payment_id', 'COD'),
-            order_status='open' # **CORRECTION 3: Set initial status to 'open'**
+            order_status='open'
         )
 
-        # ======================================================================
-        #  **NEW: Send Firebase Notification**
-        # ======================================================================
+        # Send Firebase Cloud Messaging notification
         try:
             message = messaging.Message(
                 notification=messaging.Notification(
-                    title='New Order Received!',
-                    body=f'Order #{new_order.order_id} from {new_order.customer_name} for ₹{new_order.total_price}.'
+                    title='🔔 New Order Received!',
+                    body=f'Order #{new_order.order_id} from {new_order.customer_name} - ₹{new_order.total_price}'
                 ),
-                topic='new_orders' # This is the topic your admin panel will listen to
+                topic='new_orders'
             )
             response = messaging.send(message)
             logger.info(f'Successfully sent FCM message: {response}')
         except Exception as e:
             logger.error(f"Error sending FCM message: {e}")
-        # ======================================================================
 
-        return JsonResponse({'success': True, 'order_id': order_id, 'message': 'Order placed successfully!'})
+        return JsonResponse({
+            'success': True, 
+            'order_id': order_id, 
+            'message': 'Order placed successfully!'
+        })
 
     except (json.JSONDecodeError, KeyError, ValueError, TypeError) as e:
         logger.warning(f"Invalid order request: {e}")
@@ -312,8 +315,7 @@ def api_place_order(request):
     except Exception as e:
         logger.error(f"Place order error: {e}")
         return JsonResponse({'error': 'An unexpected server error occurred.'}, status=500)
-
-
+        
 # ... (analytics_view, settings_view, get_orders_api remain the same) ...
 @admin_required
 def analytics_view(request):
@@ -349,3 +351,4 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
