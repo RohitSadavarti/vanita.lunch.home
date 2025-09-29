@@ -1,12 +1,12 @@
-from django.contrib import admin
+# vanita_lunch/urls.py
 from django.urls import path, include
-# --- Import the new view from its new location ---
-from .views import firebase_messaging_sw
+from django.views.generic import TemplateView
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    # This URL pattern for the service worker is now correct
-    path('firebase-messaging-sw.js', firebase_messaging_sw, name='firebase-messaging-sw'),
-    # This includes all the URLs from your OrderMaster app
+    # ... other urls
+    path('firebase-messaging-sw.js', (TemplateView.as_view(
+        template_name="firebase-messaging-sw.js",
+        content_type='application/javascript',
+    )), name='firebase-messaging-sw.js'),
     path('', include('OrderMaster.urls')),
 ]
