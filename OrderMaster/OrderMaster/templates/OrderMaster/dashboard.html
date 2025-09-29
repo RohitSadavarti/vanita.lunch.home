@@ -136,11 +136,11 @@
                                         <p>{{ order.customer_name }} • ₹{{ order.total_price }}</p>
                                     </div>
                                 </div>
-                                <div class="order-status" style="background-color: 
-                                    {% if order.status == 'preparing' %}#fef3c7; color: #92400e;
-                                    {% elif order.status == 'ready' %}#dcfce7; color: #166534;
+                                <div class="order-status" style="background-color:
+                                    {% if order.order_status == 'open' %}#fef3c7; color: #92400e;
+                                    {% elif order.order_status == 'ready' %}#dcfce7; color: #166534;
                                     {% else %}#e0e7ff; color: #3730a3;{% endif %}">
-                                    {{ order.status|title }}
+                                    {{ order.order_status|title }}
                                 </div>
                             </div>
                             {% empty %}
@@ -159,4 +159,5 @@
     <script src="{% static 'js/main.js' %}"></script>
 </body>
 </html>
+
 
