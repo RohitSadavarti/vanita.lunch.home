@@ -29,6 +29,7 @@ def firebase_messaging_sw(request):
         # It now correctly constructs the path to the file inside your app's static directory.
         sw_path = os.path.join(
             os.path.dirname(os.path.dirname(__file__)), # This now correctly points to BASE_DIR/OrderMaster
+            'OrderMaster',
             'static',
             'firebase-messaging-sw.js'
         )
@@ -338,6 +339,7 @@ def api_place_order(request):
 def customer_home(request):
     return render(request, 'OrderMaster/customer_order.html')
     
+
 
 
 
