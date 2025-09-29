@@ -22,19 +22,21 @@ from decimal import Decimal
 # Set up logging
 logger = logging.getLogger(__name__)
 
-@cache_control(max_age=60 * 60 * 24 * 30) # Cache for 30 days
+@cache_control(max_age=60 * 60 * 24 * 30)
 def firebase_messaging_sw(request):
     try:
+        # --- THIS PATH IS FIXED ---
+        # It now correctly constructs the path to the file inside your app's static directory.
         sw_path = os.path.join(
-            os.path.dirname(__file__), # Should point to OrderMaster/OrderMaster/
-            '..', # Go up one level to OrderMaster/
+            os.path.dirname(os.path.dirname(__file__)), # This now correctly points to BASE_DIR/OrderMaster
             'static',
             'firebase-messaging-sw.js'
         )
         with open(sw_path, 'r') as f:
             return HttpResponse(f.read(), content_type='application/javascript')
     except FileNotFoundError:
-        return HttpResponse("Service worker not found.", status=404)
+        return HttpResponse("Service worker not found.", status=404, content_type='application/javascript')
+
 
 
 # =================================================================================
@@ -336,6 +338,7 @@ def api_place_order(request):
 def customer_home(request):
     return render(request, 'OrderMaster/customer_order.html')
     
+
 
 
 
