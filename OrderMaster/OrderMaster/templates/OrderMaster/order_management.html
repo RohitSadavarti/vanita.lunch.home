@@ -3,12 +3,12 @@
 
 {% block content %}
 <style>
-    /* Custom styles for the collapse trigger */
     .card-header-action {
         text-decoration: none;
         color: inherit;
         font-size: 1.5rem;
         line-height: 1;
+        cursor: pointer;
     }
 </style>
 
@@ -43,7 +43,7 @@
                 <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Preparing ({{ preparing_orders.count }})</h5>
                     <a class="card-header-action" data-bs-toggle="collapse" href="#preparingCollapse" role="button" aria-expanded="true" aria-controls="preparingCollapse">
-                        <span class="chevron">∧</span>
+                        <span class="chevron">-</span>
                     </a>
                 </div>
                 <div class="collapse show" id="preparingCollapse">
@@ -78,7 +78,7 @@
                 <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Ready for Pickup ({{ ready_orders.count }})</h5>
                     <a class="card-header-action" data-bs-toggle="collapse" href="#readyCollapse" role="button" aria-expanded="true" aria-controls="readyCollapse">
-                         <span class="chevron">∧</span>
+                         <span class="chevron">-</span>
                     </a>
                 </div>
                 <div class="collapse show" id="readyCollapse">
@@ -113,7 +113,7 @@
                 <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Delivered ({{ pickedup_orders.count }})</h5>
                      <a class="card-header-action" data-bs-toggle="collapse" href="#deliveredCollapse" role="button" aria-expanded="true" aria-controls="deliveredCollapse">
-                         <span class="chevron">∧</span>
+                         <span class="chevron">-</span>
                     </a>
                 </div>
                 <div class="collapse show" id="deliveredCollapse">
@@ -146,18 +146,16 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     // --- COLLAPSE ICON TOGGLER ---
-    var collapseElements = document.querySelectorAll('.collapse');
-    collapseElements.forEach(function(collapseEl) {
-        collapseEl.addEventListener('show.bs.collapse', function (event) {
-            let trigger = document.querySelector(`[href="#${event.target.id}"]`);
-            if (trigger) {
-                trigger.querySelector('.chevron').innerHTML = '∧';
-            }
-        });
-        collapseEl.addEventListener('hide.bs.collapse', function (event) {
-            let trigger = document.querySelector(`[href="#${event.target.id}"]`);
-            if (trigger) {
-                trigger.querySelector('.chevron').innerHTML = '∨';
+    document.querySelectorAll('.card-header-action').forEach(function(element) {
+        element.addEventListener('click', function() {
+            const chevron = this.querySelector('.chevron');
+            const collapseTarget = document.querySelector(this.getAttribute('href'));
+            const isCollapsed = collapseTarget.classList.contains('show');
+            
+            if (isCollapsed) {
+                chevron.textContent = '+';
+            } else {
+                chevron.textContent = '-';
             }
         });
     });
