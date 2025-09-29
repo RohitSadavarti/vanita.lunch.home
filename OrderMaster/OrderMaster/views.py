@@ -10,6 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods
 from django.views.decorators.cache import cache_control
 from django.utils.timezone import now
+from .decorators import admin_required
 from .models import MenuItem, Order, VlhAdmin, models
 from .forms import MenuItemForm
 from datetime import datetime, timedelta
@@ -118,7 +119,6 @@ def order_management_view(request):
         date_display_str = f"{start_date.strftime('%b %d')} - {(end_date - timedelta(days=1)).strftime('%b %d, %Y')}"
     elif date_filter == 'this_month':
         start_date = today.replace(day=1)
-        # Go to the next month and then subtract a day to get the end of the current month
         next_month = (start_date.replace(day=28) + timedelta(days=4)).replace(day=1)
         end_date = next_month
         date_display_str = start_date.strftime('%B %Y')
@@ -132,7 +132,6 @@ def order_management_view(request):
                 end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() + timedelta(days=1)
                 date_display_str = f"{start_date.strftime('%b %d')} - {(end_date - timedelta(days=1)).strftime('%b %d, %Y')}"
         except (ValueError, TypeError):
-            # Fallback to 'today' if custom dates are invalid
             date_filter = 'today'
             start_date = today
             end_date = today + timedelta(days=1)
@@ -141,15 +140,14 @@ def order_management_view(request):
     # --- Database Queries ---
     base_queryset = Order.objects.all()
     if start_date and end_date:
-        # Make the datetime objects timezone-aware for comparison
         start_datetime = timezone.make_aware(datetime.combine(start_date, datetime.min.time()))
         end_datetime = timezone.make_aware(datetime.combine(end_date, datetime.min.time()))
         base_queryset = base_queryset.filter(created_at__gte=start_datetime, created_at__lt=end_datetime)
 
-    # Filter orders by status
+    # **THE FIX IS HERE:** Changed order_by to use 'updated_at' which exists on the model
     preparing_orders_qs = base_queryset.filter(order_status='open').order_by('-created_at')
-    ready_orders_qs = base_queryset.filter(order_status='ready').order_by('-created_at') # Assuming you add a 'ready_at' field later
-    pickedup_orders_qs = base_queryset.filter(order_status='pickedup').order_by('-created_at') # Assuming you add a 'picked_up_at' field later
+    ready_orders_qs = base_queryset.filter(order_status='ready').order_by('-updated_at')
+    pickedup_orders_qs = base_queryset.filter(order_status='pickedup').order_by('-updated_at')
 
     # Process items JSON for display
     for order_list in [preparing_orders_qs, ready_orders_qs, pickedup_orders_qs]:
@@ -157,7 +155,7 @@ def order_management_view(request):
             try:
                 order.items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
             except (json.JSONDecodeError, TypeError):
-                order.items_list = [] # Failsafe for malformed JSON
+                order.items_list = []
 
     context = {
         'preparing_orders': preparing_orders_qs,
@@ -170,7 +168,6 @@ def order_management_view(request):
         'active_page': 'order_management',
     }
     return render(request, 'OrderMaster/order_management.html', context)
-
     
 @admin_required
 def menu_management_view(request):
@@ -361,6 +358,7 @@ def api_place_order(request):
 def customer_home(request):
     return render(request, 'OrderMaster/customer_order.html')
     
+
 
 
 
