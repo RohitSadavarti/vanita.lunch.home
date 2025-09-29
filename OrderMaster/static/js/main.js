@@ -62,16 +62,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // 2. Date Filter Logic
     const customDateBtn = document.getElementById('customDateBtn');
     const customDateRangeDiv = document.getElementById('customDateRange');
-    if (customDateBtn && customDateRangeDiv) {
+    
+    // Initialize the date pickers
+    if (document.getElementById('startDate')) {
         flatpickr("#startDate", { dateFormat: "Y-m-d" });
+    }
+    if (document.getElementById('endDate')) {
         flatpickr("#endDate", { dateFormat: "Y-m-d" });
+    }
 
+    if (customDateBtn && customDateRangeDiv) {
         customDateBtn.addEventListener('click', (e) => {
             e.preventDefault();
             customDateRangeDiv.classList.toggle('d-none');
         });
     }
-
     // 3. Order Status Update Logic
     const handleStatusUpdate = async (button, newStatus) => {
     // Find the closest parent element with the class 'card' and a 'data-order-id' attribute
@@ -210,5 +215,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
 
 
