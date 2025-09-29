@@ -3,12 +3,13 @@
 
 {% block content %}
 <style>
+    /* Custom styles for the collapse trigger */
     .card-header-action {
         text-decoration: none;
         color: inherit;
         font-size: 1.5rem;
         line-height: 1;
-        cursor: pointer;
+        cursor: pointer; /* Ensures it looks clickable */
     }
 </style>
 
@@ -37,9 +38,9 @@
         </form>
     </div>
 
-    <div class="row">
+    <div class="row align-items-start">
         <div class="col-lg-4 mb-4">
-            <div class="card h-100 shadow-sm">
+            <div class="card shadow-sm">
                 <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Preparing ({{ preparing_orders.count }})</h5>
                     <a class="card-header-action" data-bs-toggle="collapse" href="#preparingCollapse" role="button" aria-expanded="true" aria-controls="preparingCollapse">
@@ -74,7 +75,7 @@
         </div>
 
         <div class="col-lg-4 mb-4">
-            <div class="card h-100 shadow-sm">
+             <div class="card shadow-sm">
                 <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Ready for Pickup ({{ ready_orders.count }})</h5>
                     <a class="card-header-action" data-bs-toggle="collapse" href="#readyCollapse" role="button" aria-expanded="true" aria-controls="readyCollapse">
@@ -109,7 +110,7 @@
         </div>
 
         <div class="col-lg-4 mb-4">
-            <div class="card h-100 shadow-sm">
+             <div class="card shadow-sm">
                 <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Delivered ({{ pickedup_orders.count }})</h5>
                      <a class="card-header-action" data-bs-toggle="collapse" href="#deliveredCollapse" role="button" aria-expanded="true" aria-controls="deliveredCollapse">
@@ -150,9 +151,12 @@ document.addEventListener('DOMContentLoaded', function () {
         element.addEventListener('click', function() {
             const chevron = this.querySelector('.chevron');
             const collapseTarget = document.querySelector(this.getAttribute('href'));
-            const isCollapsed = collapseTarget.classList.contains('show');
+            const isCurrentlyOpen = collapseTarget.classList.contains('show');
             
-            if (isCollapsed) {
+            // We check the state *before* the toggle happens.
+            // If it's currently open and will be closed, show '+'.
+            // If it's currently closed and will be opened, show '-'.
+            if (isCurrentlyOpen) {
                 chevron.textContent = '+';
             } else {
                 chevron.textContent = '-';
