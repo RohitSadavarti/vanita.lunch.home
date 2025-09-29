@@ -1,5 +1,6 @@
+from django.shortcuts import render, redirect, get_object_or_40
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.utils import timezone
-from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -347,6 +348,7 @@ def api_place_order(request):
 def customer_home(request):
     return render(request, 'OrderMaster/customer_order.html')
     
+
 
 
 
