@@ -60,7 +60,7 @@ function requestNotificationPermission() {
                     
                     // Get FCM token
                     messaging.getToken({
-                        vapidKey: 'YOUR_VAPID_KEY_HERE', // Get this from Firebase Console
+                        vapidKey: 'BKjH1TPFhqWc4b0ClYHjgp7maojaR8TD1FnsI7eZCRGSPWul3aNtMs4Gd9wvER8Vlcs65I5jGDhFHzLN9DAxBqA', // Get this from Firebase Console
                         serviceWorkerRegistration: registration
                     }).then((token) => {
                         console.log('FCM Token:', token);
@@ -96,6 +96,7 @@ requestNotificationPermission();
 </script>
 </body>
 </html>
+
 
 
 
