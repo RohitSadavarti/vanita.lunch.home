@@ -86,8 +86,8 @@ def dashboard_view(request):
 @admin_required
 def order_management_view(request):
     """
-    Handles the display of orders in three stages: Preparing, Ready, and Picked Up.
-    Also includes robust date filtering logic.
+    Handles the display and filtering of orders across three statuses:
+    Preparing, Ready for Pickup, and Delivered.
     """
     date_filter = request.GET.get('date_filter', 'today')
     start_date, end_date = None, None
@@ -122,7 +122,7 @@ def order_management_view(request):
                 end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() + timedelta(days=1)
                 date_display_str = f"{start_date.strftime('%b %d')} - {(end_date - timedelta(days=1)).strftime('%b %d, %Y')}"
         except (ValueError, TypeError):
-            date_filter = 'today'
+            date_filter = 'today' # Fallback if dates are invalid
             start_date = today
             end_date = today + timedelta(days=1)
             date_display_str = start_date.strftime('%b %d, %Y')
@@ -134,12 +134,12 @@ def order_management_view(request):
         end_datetime = timezone.make_aware(datetime.combine(end_date, datetime.min.time()))
         base_queryset = base_queryset.filter(created_at__gte=start_datetime, created_at__lt=end_datetime)
 
-    # **THE FIX IS HERE:** Changed order_by to use 'updated_at' which exists on the model
+    # Correctly filter and sort each category of orders
     preparing_orders_qs = base_queryset.filter(order_status='open').order_by('-created_at')
     ready_orders_qs = base_queryset.filter(order_status='ready').order_by('-updated_at')
     pickedup_orders_qs = base_queryset.filter(order_status='pickedup').order_by('-updated_at')
 
-    # Process items JSON for display
+    # Safely parse JSON for display
     for order_list in [preparing_orders_qs, ready_orders_qs, pickedup_orders_qs]:
         for order in order_list:
             try:
@@ -348,6 +348,7 @@ def api_place_order(request):
 def customer_home(request):
     return render(request, 'OrderMaster/customer_order.html')
     
+
 
 
 
