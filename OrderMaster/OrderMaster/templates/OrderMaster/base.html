@@ -36,46 +36,66 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
 
     <script>
-        
-        const firebaseConfig = {
-            apiKey: "AIzaSyBnYYq_K3TL9MxyKaCNPkB8SRqAIucF0rI",
-            authDomain: "vanita-lunch-home.firebaseapp.com",
-            projectId: "vanita-lunch-home", 
-            storageBucket: "vanita-lunch-home.firebasestorage.app",
-            messagingSenderId: "86193565341",
-            appId: "1:86193565341:web:b9c234bda59b37ee366e74"
-        };
+const firebaseConfig = {
+    apiKey: "AIzaSyBnYYq_K3TL9MxyKaCNPkB8SRqAIucF0rI",
+    authDomain: "vanita-lunch-home.firebaseapp.com",
+    projectId: "vanita-lunch-home", 
+    storageBucket: "vanita-lunch-home.firebasestorage.app",
+    messagingSenderId: "86193565341",
+    appId: "1:86193565341:web:b9c234bda59b37ee366e74"
+};
 
-        firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(firebaseConfig);
+const messaging = firebase.messaging();
 
-  const messaging = firebase.messaging();
-
-  function startFirebaseMessaging() {
-    messaging
-      .requestPermission()
-      .then(function () {
-        console.log("Notification permission granted.");
-        return messaging.getToken();
-      })
-      .then(function (token) {
-        console.log("FCM Token:", token);
-        // You can send this token to your server if you want to send targeted messages
-      })
-      .catch(function (err) {
-        console.log("Unable to get permission to notify.", err);
-      });
-
-    messaging.onMessage(function (payload) {
-      console.log("Message received. ", payload);
-      // When a new order notification is received, show an alert and reload the page.
-      alert('New order received!');
-      window.location.reload();
+function requestNotificationPermission() {
+    Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+            console.log('Notification permission granted.');
+            
+            // Register service worker
+            navigator.serviceWorker.register('/firebase-messaging-sw.js')
+                .then((registration) => {
+                    console.log('Service Worker registered:', registration);
+                    
+                    // Get FCM token
+                    messaging.getToken({
+                        vapidKey: 'YOUR_VAPID_KEY_HERE', // Get this from Firebase Console
+                        serviceWorkerRegistration: registration
+                    }).then((token) => {
+                        console.log('FCM Token:', token);
+                        // Subscribe to topic
+                        subscribeToTopic(token);
+                    }).catch((err) => {
+                        console.error('Error getting token:', err);
+                    });
+                })
+                .catch((err) => {
+                    console.error('Service Worker registration failed:', err);
+                });
+        } else {
+            console.log('Notification permission denied.');
+        }
     });
-  }
+}
 
-  startFirebaseMessaging();
-    </script>
+function subscribeToTopic(token) {
+    // This should be done on your backend
+    console.log('Subscribe token to new_orders topic:', token);
+}
+
+// Handle foreground messages
+messaging.onMessage((payload) => {
+    console.log('Message received in foreground:', payload);
+    alert('New order received: ' + payload.notification.body);
+    window.location.reload();
+});
+
+// Request permission when page loads
+requestNotificationPermission();
+</script>
 </body>
 </html>
+
 
 
