@@ -2,29 +2,39 @@
 {% load static %}
 
 {% block content %}
+<style>
+    /* Custom styles for the collapse trigger */
+    .card-header-action {
+        text-decoration: none;
+        color: inherit;
+        font-size: 1.5rem;
+        line-height: 1;
+    }
+</style>
+
 <main class="main-content">
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h3>Order Management</h3>
         <form method="GET" action="{% url 'order_management' %}" id="dateFilterForm" class="d-flex align-items-center gap-2">
-    <div class="dropdown">
-        <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="dateFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-            Showing: <span class="fw-bold">{{ date_display_str }}</span>
-        </button>
-        <ul class="dropdown-menu" aria-labelledby="dateFilterDropdown">
-            <li><button class="dropdown-item" type="submit" name="date_filter" value="today">Today</button></li>
-            <li><button class="dropdown-item" type="submit" name="date_filter" value="yesterday">Yesterday</button></li>
-            <li><button class="dropdown-item" type="submit" name="date_filter" value="this_week">This Week</button></li>
-            <li><button class="dropdown-item" type="submit" name="date_filter" value="this_month">This Month</button></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="#" id="customDateBtn">Custom Range...</a></li>
-        </ul>
-    </div>
-    <div id="customDateRange" class="{% if selected_filter != 'custom' %}d-none{% else %}d-flex{% endif %} align-items-center gap-2">
-        <input type="date" class="form-control form-control-sm" name="start_date" id="startDate" placeholder="Start Date" value="{{ start_date_val }}">
-        <input type="date" class="form-control form-control-sm" name="end_date" id="endDate" placeholder="End Date" value="{{ end_date_val }}">
-        <button class="btn btn-primary btn-sm" type="submit" name="date_filter" value="custom">Apply</button>
-    </div>
-</form>
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="dateFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    Showing: <span class="fw-bold">{{ date_display_str }}</span>
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="dateFilterDropdown">
+                    <li><button class="dropdown-item" type="submit" name="date_filter" value="today">Today</button></li>
+                    <li><button class="dropdown-item" type="submit" name="date_filter" value="yesterday">Yesterday</button></li>
+                    <li><button class="dropdown-item" type="submit" name="date_filter" value="this_week">This Week</button></li>
+                    <li><button class="dropdown-item" type="submit" name="date_filter" value="this_month">This Month</button></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" id="customDateBtn">Custom Range...</a></li>
+                </ul>
+            </div>
+            <div id="customDateRange" class="{% if selected_filter != 'custom' %}d-none{% else %}d-flex{% endif %} align-items-center gap-2">
+                <input type="date" class="form-control form-control-sm" name="start_date" id="startDate" placeholder="Start Date" value="{{ start_date_val }}">
+                <input type="date" class="form-control form-control-sm" name="end_date" id="endDate" placeholder="End Date" value="{{ end_date_val }}">
+                <button class="btn btn-primary btn-sm" type="submit" name="date_filter" value="custom">Apply</button>
+            </div>
+        </form>
     </div>
 
     <div class="row">
@@ -32,24 +42,33 @@
             <div class="card h-100 shadow-sm">
                 <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Preparing ({{ preparing_orders.count }})</h5>
+                    <a class="card-header-action" data-bs-toggle="collapse" href="#preparingCollapse" role="button" aria-expanded="true" aria-controls="preparingCollapse">
+                        <span class="chevron">∧</span>
+                    </a>
                 </div>
-                <div class="card-body order-list-container">
-                    {% for order in preparing_orders %}
-                    <div class="card mb-3" data-order-id="{{ order.id }}">
-                        <div class="card-body">
-                            <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
-                            <ul class="list-unstyled mb-2">
-                                {% for item in order.items_list %}
-                                    <li>{{ item.quantity }} x {{ item.name }}</li>
-                                {% endfor %}
-                            </ul>
-                            <p class="card-text mb-2"><strong>Total: ₹{{ order.total_price }}</strong></p>
-                            <button class="btn btn-warning btn-sm w-100 mark-ready-btn">Mark Ready</button>
+                <div class="collapse show" id="preparingCollapse">
+                    <div class="card-body order-list-container">
+                        {% for order in preparing_orders %}
+                        <div class="card mb-3" data-order-id="{{ order.id }}">
+                            <div class="card-body d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                    <ul class="list-unstyled mb-2">
+                                        {% for item in order.items_list %}
+                                            <li>{{ item.quantity }} x {{ item.name }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                                </div>
+                                <a href="#" class="mark-ready-btn badge bg-warning text-dark text-decoration-none p-2">
+                                    Mark Ready
+                                </a>
+                            </div>
                         </div>
+                        {% empty %}
+                        <p class="text-center text-muted p-4">No orders are currently being prepared.</p>
+                        {% endfor %}
                     </div>
-                    {% empty %}
-                    <p class="text-center text-muted p-4">No orders are currently being prepared.</p>
-                    {% endfor %}
                 </div>
             </div>
         </div>
@@ -58,24 +77,33 @@
             <div class="card h-100 shadow-sm">
                 <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Ready for Pickup ({{ ready_orders.count }})</h5>
+                    <a class="card-header-action" data-bs-toggle="collapse" href="#readyCollapse" role="button" aria-expanded="true" aria-controls="readyCollapse">
+                         <span class="chevron">∧</span>
+                    </a>
                 </div>
-                <div class="card-body order-list-container">
-                    {% for order in ready_orders %}
-                    <div class="card mb-3" data-order-id="{{ order.id }}">
-                        <div class="card-body">
-                            <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
-                            <ul class="list-unstyled mb-2">
-                                {% for item in order.items_list %}
-                                    <li>{{ item.quantity }} x {{ item.name }}</li>
-                                {% endfor %}
-                            </ul>
-                            <p class="card-text mb-2"><strong>Total: ₹{{ order.total_price }}</strong></p>
-                            <button class="btn btn-success btn-sm w-100 mark-pickedup-btn">Picked Up</button>
+                <div class="collapse show" id="readyCollapse">
+                    <div class="card-body order-list-container">
+                        {% for order in ready_orders %}
+                        <div class="card mb-3" data-order-id="{{ order.id }}">
+                            <div class="card-body d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                    <ul class="list-unstyled mb-2">
+                                        {% for item in order.items_list %}
+                                            <li>{{ item.quantity }} x {{ item.name }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                                </div>
+                                <a href="#" class="mark-pickedup-btn badge bg-success text-white text-decoration-none p-2">
+                                    Picked up
+                                </a>
+                            </div>
                         </div>
+                        {% empty %}
+                        <p class="text-center text-muted p-4">No orders are ready for pickup.</p>
+                        {% endfor %}
                     </div>
-                    {% empty %}
-                    <p class="text-center text-muted p-4">No orders are ready for pickup.</p>
-                    {% endfor %}
                 </div>
             </div>
         </div>
@@ -84,26 +112,31 @@
             <div class="card h-100 shadow-sm">
                 <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Delivered ({{ pickedup_orders.count }})</h5>
+                     <a class="card-header-action" data-bs-toggle="collapse" href="#deliveredCollapse" role="button" aria-expanded="true" aria-controls="deliveredCollapse">
+                         <span class="chevron">∧</span>
+                    </a>
                 </div>
-                <div class="card-body order-list-container">
-                    {% for order in pickedup_orders %}
-                    <div class="card mb-3" data-order-id="{{ order.id }}">
-                        <div class="card-body d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
-                                <ul class="list-unstyled mb-0">
-                                    {% for item in order.items_list %}
-                                        <li>{{ item.quantity }} x {{ item.name }}</li>
-                                    {% endfor %}
-                                </ul>
-                                <p class="card-text mt-2 mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                <div class="collapse show" id="deliveredCollapse">
+                    <div class="card-body order-list-container">
+                        {% for order in pickedup_orders %}
+                        <div class="card mb-3" data-order-id="{{ order.id }}">
+                            <div class="card-body d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                    <ul class="list-unstyled mb-0">
+                                        {% for item in order.items_list %}
+                                            <li>{{ item.quantity }} x {{ item.name }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    <p class="card-text mt-2 mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                                </div>
+                                <span class="badge bg-secondary p-2">Delivered</span>
                             </div>
-                            <span class="badge bg-secondary p-2">Delivered</span>
                         </div>
+                        {% empty %}
+                        <p class="text-center text-muted p-4">No orders have been delivered for the selected period.</p>
+                        {% endfor %}
                     </div>
-                    {% empty %}
-                    <p class="text-center text-muted p-4">No orders have been delivered for the selected period.</p>
-                    {% endfor %}
                 </div>
             </div>
         </div>
@@ -111,69 +144,94 @@
 </main>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const getCookie = (name) => {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
+document.addEventListener('DOMContentLoaded', function () {
+    // --- COLLAPSE ICON TOGGLER ---
+    var collapseElements = document.querySelectorAll('.collapse');
+    collapseElements.forEach(function(collapseEl) {
+        collapseEl.addEventListener('show.bs.collapse', function (event) {
+            let trigger = document.querySelector(`[href="#${event.target.id}"]`);
+            if (trigger) {
+                trigger.querySelector('.chevron').innerHTML = '∧';
             }
-            return cookieValue;
-        };
-
-        const handleStatusUpdate = async (button, newStatus) => {
-            const orderCard = button.closest('.card[data-order-id]');
-            if (!orderCard) return;
-
-            const orderId = orderCard.dataset.orderId;
-
-            try {
-                const response = await fetch('/api/update-order-status/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({ id: orderId, status: newStatus })
-                });
-
-                if (response.ok) {
-                    orderCard.style.transition = 'opacity 0.5s ease';
-                    orderCard.style.opacity = '0';
-                    setTimeout(() => window.location.reload(), 500);
-                } else {
-                    alert('Error updating status. Please try again.');
-                }
-            } catch (error) {
-                console.error('Failed to update order status:', error);
+        });
+        collapseEl.addEventListener('hide.bs.collapse', function (event) {
+            let trigger = document.querySelector(`[href="#${event.target.id}"]`);
+            if (trigger) {
+                trigger.querySelector('.chevron').innerHTML = '∨';
             }
-        };
-
-        document.querySelectorAll('.mark-ready-btn').forEach(button => {
-            button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'ready'));
         });
-
-        document.querySelectorAll('.mark-pickedup-btn').forEach(button => {
-            button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'pickedup'));
-        });
-
-        const customDateBtn = document.getElementById('customDateBtn');
-        const customDateRangeDiv = document.getElementById('customDateRange');
-
-        if (customDateBtn) {
-            customDateBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                customDateRangeDiv.classList.toggle('d-none');
-                customDateRangeDiv.classList.toggle('d-flex');
-            });
-        }
     });
+
+    // --- UTILITY: Get CSRF Token ---
+    const getCookie = (name) => {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    };
+
+    // --- ORDER STATUS UPDATE ---
+    const handleStatusUpdate = async (button, newStatus) => {
+        const orderCard = button.closest('.card[data-order-id]');
+        if (!orderCard) return;
+
+        const orderId = orderCard.dataset.orderId;
+
+        try {
+            const response = await fetch('/api/update-order-status/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ id: orderId, status: newStatus })
+            });
+
+            if (response.ok) {
+                orderCard.style.transition = 'opacity 0.5s ease';
+                orderCard.style.opacity = '0';
+                setTimeout(() => window.location.reload(), 500);
+            } else {
+                alert('Error updating status. Please try again.');
+            }
+        } catch (error) {
+            console.error('Failed to update order status:', error);
+        }
+    };
+
+    document.querySelectorAll('.mark-ready-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleStatusUpdate(e.target, 'ready');
+        });
+    });
+
+    document.querySelectorAll('.mark-pickedup-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleStatusUpdate(e.target, 'pickedup');
+        });
+    });
+
+    // --- DATE FILTER ---
+    const customDateBtn = document.getElementById('customDateBtn');
+    const customDateRangeDiv = document.getElementById('customDateRange');
+
+    if (customDateBtn) {
+        customDateBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            customDateRangeDiv.classList.toggle('d-none');
+            customDateRangeDiv.classList.toggle('d-flex');
+        });
+    }
+});
 </script>
 {% endblock %}
-
