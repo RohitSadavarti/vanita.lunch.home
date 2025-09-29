@@ -33,14 +33,16 @@ function setupEventListeners() {
 }
 
 // Load menu items from the backend API
+
 async function loadMenuItems() {
     const menuContainer = document.getElementById('menu-container');
     try {
-        const response = await fetch('/api/menu');
+        // --- THIS URL IS NOW CORRECTED ---
+        const response = await fetch('/api/menu-items'); // Changed from /api/menu
         if (!response.ok) throw new Error('Failed to load menu');
         
         menuItems = await response.json();
-        applyFilters(); // Apply default filters on load
+        applyFilters();
 
     } catch (error) {
         console.error('Error loading menu:', error);
