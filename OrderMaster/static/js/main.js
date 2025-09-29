@@ -1,23 +1,25 @@
 document.addEventListener('DOMContentLoaded', function() {
+    
+    // Initialize Lucide Icons if available
     if (typeof lucide !== 'undefined') {
         lucide.createIcons();
     }
 
     // --- UTILITY: Get CSRF Token ---
     const getCookie = (name) => {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
             }
         }
-    }
-    return cookieValue;
-};
+        return cookieValue;
+    };
     // --- DASHBOARD: LIVE ORDER REFRESH ---
     const liveOrdersContainer = document.getElementById('live-orders');
     if (liveOrdersContainer) {
@@ -62,8 +64,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // 2. Date Filter Logic
     const customDateBtn = document.getElementById('customDateBtn');
     const customDateRangeDiv = document.getElementById('customDateRange');
-    
-    // Initialize the date pickers
+
+    // Initialize the Flatpickr date pickers
     if (document.getElementById('startDate')) {
         flatpickr("#startDate", { dateFormat: "Y-m-d" });
     }
@@ -77,58 +79,58 @@ document.addEventListener('DOMContentLoaded', function() {
             customDateRangeDiv.classList.toggle('d-none');
         });
     }
+
     // 3. Order Status Update Logic
     const handleStatusUpdate = async (button, newStatus) => {
-    // Find the closest parent element with the class 'card' and a 'data-order-id' attribute
-    const orderCard = button.closest('.card[data-order-id]');
-    
-    if (!orderCard) {
-        console.error('Could not find the parent order card element.');
-        alert('An error occurred. Could not identify the order.');
-        return;
-    }
-    
-    const orderId = orderCard.dataset.orderId;
-    if (!orderId) {
-        console.error('Order ID is missing from the card element.');
-        alert('An error occurred. Order ID is missing.');
-        return;
-    }
-
-    try {
-        const response = await fetch('/api/update-order-status/', {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'X-CSRFToken': getCookie('csrftoken') // Assumes you have a getCookie function
-            },
-            body: JSON.stringify({ id: orderId, status: newStatus })
-        });
-
-        if (response.ok) {
-            // Animate the card fading out and then reload the page
-            orderCard.style.transition = 'opacity 0.5s ease';
-            orderCard.style.opacity = '0';
-            setTimeout(() => {
-                window.location.reload();
-            }, 500); // Wait for the animation to finish before reloading
-        } else {
-            alert('Error updating status. Please try again.');
+        const orderCard = button.closest('.card[data-order-id]');
+        
+        if (!orderCard) {
+            console.error('Could not find the parent order card element.');
+            alert('An error occurred. Could not identify the order.');
+            return;
         }
-    } catch (error) {
-        console.error('Failed to update order status:', error);
-        alert('An network error occurred. Please check the console for details.');
-    }
-};
+        
+        const orderId = orderCard.dataset.orderId;
+        if (!orderId) {
+            console.error('Order ID is missing from the card element.');
+            alert('An error occurred. Order ID is missing.');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/update-order-status/', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ id: orderId, status: newStatus })
+            });
+
+            if (response.ok) {
+                orderCard.style.transition = 'opacity 0.5s ease';
+                orderCard.style.opacity = '0';
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            } else {
+                alert('Error updating status. Please try again.');
+            }
+        } catch (error) {
+            console.error('Failed to update order status:', error);
+            alert('A network error occurred. Please check the console for details.');
+        }
+    };
 
 
     // --- FIX: Corrected the selector from '.order-card' to '.card' ---
     document.querySelectorAll('.mark-ready-btn').forEach(button => {
-    button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'ready'));
-});
+        button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'ready'));
+    });
     document.querySelectorAll('.mark-pickedup-btn').forEach(button => {
-    button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'pickedup'));
-});
+        button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'pickedup'));
+    });
+
 
 
     // --- MENU MANAGEMENT PAGE ---
@@ -215,6 +217,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
 
 
 
