@@ -32,8 +32,8 @@
 
     <div class="row">
         <div class="col-lg-4 mb-4">
-            <div class="card h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-warning text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Preparing ({{ preparing_orders.count }})</h5>
                     <button class="btn btn-sm btn-light p-1" type="button" data-bs-toggle="collapse" data-bs-target="#preparingOrdersCollapse" aria-expanded="true">
                         <i data-lucide="chevron-up"></i>
@@ -42,20 +42,20 @@
                 <div class="collapse show" id="preparingOrdersCollapse">
                     <div class="card-body order-list-container">
                         {% for order in preparing_orders %}
-                        <div class="order-card" data-order-id="{{ order.id }}">
-                            <div class="order-details">
-                                <div class="order-info">
-                                    <strong>#{{ order.order_id }}</strong> - <span>{{ order.customer_name }}</span>
+                        <div class="card mb-3" data-order-id="{{ order.id }}">
+                            <div class="card-body d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-title">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                    <ul class="list-unstyled mb-0">
+                                        {% for item in order.items_list %}
+                                            <li>{{ item.quantity }} x {{ item.name }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    <p class="card-text mt-2"><strong>Total: ₹{{ order.total_price }}</strong></p>
                                 </div>
-                                <ul class="order-items-list">
-                                    {% for item in order.items_list %}
-                                        <li>{{ item.quantity }} x {{ item.name }}</li>
-                                    {% endfor %}
-                                </ul>
-                                <div class="order-total">Total: ₹{{ order.total_price }}</div>
-                            </div>
-                            <div class="order-actions">
-                                <button class="btn btn-warning btn-sm mark-ready-btn">Mark Ready</button>
+                                <div class="action-buttons">
+                                    <button class="btn btn-warning btn-sm mark-ready-btn">Mark Ready</button>
+                                </div>
                             </div>
                         </div>
                         {% empty %}
@@ -67,8 +67,8 @@
         </div>
 
         <div class="col-lg-4 mb-4">
-            <div class="card h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Ready for Pickup ({{ ready_orders.count }})</h5>
                     <button class="btn btn-sm btn-light p-1" type="button" data-bs-toggle="collapse" data-bs-target="#readyOrdersCollapse" aria-expanded="true">
                         <i data-lucide="chevron-up"></i>
@@ -77,20 +77,20 @@
                 <div class="collapse show" id="readyOrdersCollapse">
                     <div class="card-body order-list-container">
                         {% for order in ready_orders %}
-                        <div class="order-card" data-order-id="{{ order.id }}">
-                            <div class="order-details">
-                                <div class="order-info">
-                                    <strong>#{{ order.order_id }}</strong> - <span>{{ order.customer_name }}</span>
+                        <div class="card mb-3" data-order-id="{{ order.id }}">
+                            <div class="card-body d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-title">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                    <ul class="list-unstyled mb-0">
+                                        {% for item in order.items_list %}
+                                            <li>{{ item.quantity }} x {{ item.name }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    <p class="card-text mt-2"><strong>Total: ₹{{ order.total_price }}</strong></p>
                                 </div>
-                                <ul class="order-items-list">
-                                    {% for item in order.items_list %}
-                                        <li>{{ item.quantity }} x {{ item.name }}</li>
-                                    {% endfor %}
-                                </ul>
-                                <div class="order-total">Total: ₹{{ order.total_price }}</div>
-                            </div>
-                            <div class="order-actions">
-                                <button class="btn btn-success btn-sm mark-pickedup-btn">Picked Up</button>
+                                <div class="action-buttons">
+                                    <button class="btn btn-success btn-sm mark-pickedup-btn">Picked Up</button>
+                                </div>
                             </div>
                         </div>
                         {% empty %}
@@ -102,8 +102,8 @@
         </div>
 
         <div class="col-lg-4 mb-4">
-            <div class="card h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Delivered ({{ pickedup_orders.count }})</h5>
                     <button class="btn btn-sm btn-light p-1" type="button" data-bs-toggle="collapse" data-bs-target="#pickedupOrdersCollapse" aria-expanded="true">
                         <i data-lucide="chevron-up"></i>
@@ -112,20 +112,20 @@
                 <div class="collapse show" id="pickedupOrdersCollapse">
                     <div class="card-body order-list-container">
                         {% for order in pickedup_orders %}
-                        <div class="order-card" data-order-id="{{ order.id }}">
-                            <div class="order-details">
-                                <div class="order-info">
-                                    <strong>#{{ order.order_id }}</strong> - <span>{{ order.customer_name }}</span>
+                        <div class="card mb-3" data-order-id="{{ order.id }}">
+                            <div class="card-body d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-title">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                    <ul class="list-unstyled mb-0">
+                                        {% for item in order.items_list %}
+                                            <li>{{ item.quantity }} x {{ item.name }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    <p class="card-text mt-2"><strong>Total: ₹{{ order.total_price }}</strong></p>
                                 </div>
-                                <ul class="order-items-list">
-                                    {% for item in order.items_list %}
-                                        <li>{{ item.quantity }} x {{ item.name }}</li>
-                                    {% endfor %}
-                                </ul>
-                                <div class="order-total">Total: ₹{{ order.total_price }}</div>
-                            </div>
-                            <div class="order-actions">
-                                <span class="badge bg-secondary">Delivered</span>
+                                <div class="action-buttons">
+                                    <span class="badge bg-secondary">Delivered</span>
+                                </div>
                             </div>
                         </div>
                         {% empty %}
