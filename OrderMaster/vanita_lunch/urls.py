@@ -1,12 +1,12 @@
 # vanita_lunch/urls.py
+
 from django.urls import path, include
-from django.views.generic import TemplateView
+from OrderMaster.views import firebase_messaging_sw
 
 urlpatterns = [
-    # ... other urls
-    path('firebase-messaging-sw.js', (TemplateView.as_view(
-        template_name="firebase-messaging-sw.js",
-        content_type='application/javascript',
-    )), name='firebase-messaging-sw.js'),
+    # This path correctly serves the Firebase service worker
+    path('firebase-messaging-sw.js', firebase_messaging_sw, name='firebase-messaging-sw.js'),
+    
+    # This is the ONLY include you need for your app
     path('', include('OrderMaster.urls')),
 ]
