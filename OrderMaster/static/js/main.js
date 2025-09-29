@@ -5,20 +5,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- UTILITY: Get CSRF Token ---
     const getCookie = (name) => {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
             }
         }
-        return cookieValue;
-    };
-
+    }
+    return cookieValue;
+};
     // --- DASHBOARD: LIVE ORDER REFRESH ---
     const liveOrdersContainer = document.getElementById('live-orders');
     if (liveOrdersContainer) {
@@ -74,38 +73,57 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // 3. Order Status Update Logic
-    const handleStatusUpdate = async (orderCard, newStatus) => {
-        if (!orderCard) {
-            console.error('Could not find the parent order card element.');
-            return;
+    const handleStatusUpdate = async (button, newStatus) => {
+    // Find the closest parent element with the class 'card' and a 'data-order-id' attribute
+    const orderCard = button.closest('.card[data-order-id]');
+    
+    if (!orderCard) {
+        console.error('Could not find the parent order card element.');
+        alert('An error occurred. Could not identify the order.');
+        return;
+    }
+    
+    const orderId = orderCard.dataset.orderId;
+    if (!orderId) {
+        console.error('Order ID is missing from the card element.');
+        alert('An error occurred. Order ID is missing.');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/update-order-status/', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'X-CSRFToken': getCookie('csrftoken') // Assumes you have a getCookie function
+            },
+            body: JSON.stringify({ id: orderId, status: newStatus })
+        });
+
+        if (response.ok) {
+            // Animate the card fading out and then reload the page
+            orderCard.style.transition = 'opacity 0.5s ease';
+            orderCard.style.opacity = '0';
+            setTimeout(() => {
+                window.location.reload();
+            }, 500); // Wait for the animation to finish before reloading
+        } else {
+            alert('Error updating status. Please try again.');
         }
-        const orderId = orderCard.dataset.orderId;
-        try {
-            const response = await fetch('/api/update-order-status/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-                body: JSON.stringify({ id: orderId, status: newStatus })
-            });
-            if (response.ok) {
-                orderCard.style.transition = 'opacity 0.5s ease';
-                orderCard.style.opacity = '0';
-                setTimeout(() => window.location.reload(), 500);
-            } else {
-                alert('Error updating status.');
-            }
-        } catch (error) {
-            console.error('Failed to update order status:', error);
-            alert('An error occurred. Please check the console for details.');
-        }
-    };
+    } catch (error) {
+        console.error('Failed to update order status:', error);
+        alert('An network error occurred. Please check the console for details.');
+    }
+};
+
 
     // --- FIX: Corrected the selector from '.order-card' to '.card' ---
     document.querySelectorAll('.mark-ready-btn').forEach(button => {
-        button.addEventListener('click', (e) => handleStatusUpdate(e.target.closest('.card[data-order-id]'), 'ready'));
-    });
+    button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'ready'));
+});
     document.querySelectorAll('.mark-pickedup-btn').forEach(button => {
-        button.addEventListener('click', (e) => handleStatusUpdate(e.target.closest('.card[data-order-id]'), 'pickedup'));
-    });
+    button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'pickedup'));
+});
 
 
     // --- MENU MANAGEMENT PAGE ---
@@ -192,4 +210,5 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
 
