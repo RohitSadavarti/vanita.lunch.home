@@ -5,31 +5,37 @@
 # =================================================================================
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.http import JsonResponse, HttpResponseBadRequest
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods
+from django.views.decorators.cache import cache_control
 from django.utils.timezone import now
 from .models import MenuItem, Order, VlhAdmin, models
 from .forms import MenuItemForm
 from datetime import datetime, timedelta
 import json
 import logging
+import os
 from decimal import Decimal
 
-@cache_control(max_age=60 * 60 * 24 * 30) # Cache for 30 days
-def firebase_messaging_sw(request):
-    # Construct the full path to the service worker file
-    sw_path = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), # Go up to BASE_DIR/vanita_lunch
-        'OrderMaster',
-        'static',
-        'firebase-messaging-sw.js'
-    )
-    with open(sw_path, 'r') as f:
-        return HttpResponse(f.read(), content_type='application/javascript')
 
 # Set up logging
 logger = logging.getLogger(__name__)
+
+@cache_control(max_age=60 * 60 * 24 * 30) # Cache for 30 days
+def firebase_messaging_sw(request):
+    try:
+        sw_path = os.path.join(
+            os.path.dirname(__file__), # Should point to OrderMaster/OrderMaster/
+            '..', # Go up one level to OrderMaster/
+            'static',
+            'firebase-messaging-sw.js'
+        )
+        with open(sw_path, 'r') as f:
+            return HttpResponse(f.read(), content_type='application/javascript')
+    except FileNotFoundError:
+        return HttpResponse("Service worker not found.", status=404)
+
 
 # =================================================================================
 # DECORATORS & AUTHENTICATION
@@ -60,7 +66,7 @@ def login_view(request):
         except VlhAdmin.DoesNotExist:
             messages.error(request, 'Invalid mobile number or password.')
     return render(request, 'OrderMaster/login.html')
-
+    
 @admin_required
 def logout_view(request):
     request.session.flush()
@@ -152,7 +158,7 @@ def order_management_view(request):
 @admin_required
 def menu_management_view(request):
     if request.method == 'POST':
-        form = MenuItemForm(request.POST, request.FILES or None)
+        form = MenuItemForm(request.POST)
         if form.is_valid():
             form.save()
             messages.success(request, 'New menu item added successfully!')
@@ -229,18 +235,18 @@ def api_menu_item_detail(request, item_id):
             'id': item.id, 'item_name': item.item_name, 'description': item.description,
             'price': str(item.price), 'category': item.category, 'veg_nonveg': item.veg_nonveg,
             'meal_type': item.meal_type, 'availability_time': item.availability_time,
-            # --- ADDED: Include image_url in the API response ---
             'image_url': item.image_url,
         }
         return JsonResponse(data)
+    
     if request.method == 'POST':
-        # Use the form to handle validation
         form = MenuItemForm(request.POST, instance=item)
         if form.is_valid():
             form.save()
-            return JsonResponse({'success': True, 'message': 'Item updated successfully.'})
+            return JsonResponse({'success': True})
         else:
             return JsonResponse({'success': False, 'errors': form.errors.as_json()}, status=400)
+            
     return HttpResponseBadRequest("Invalid request method")
 
 
@@ -330,6 +336,7 @@ def api_place_order(request):
 def customer_home(request):
     return render(request, 'OrderMaster/customer_order.html')
     
+
 
 
 
