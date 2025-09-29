@@ -64,6 +64,7 @@ def dashboard_view(request):
     }
     return render(request, 'OrderMaster/dashboard.html', context)
 
+
 @admin_required
 def order_management_view(request):
     date_filter = request.GET.get('date_filter', 'today')
@@ -92,11 +93,11 @@ def order_management_view(request):
 
     # Add a simple representation of items for the template
     for order in preparing_orders:
-        order.items_list = json.loads(order.items)
+        order.items_list = order.items
     for order in ready_orders:
-        order.items_list = json.loads(order.items)
+        order.items_list = order.items
     for order in pickedup_orders:
-        order.items_list = json.loads(order.items)
+        order.items_list = order.items
 
     context = {
         'preparing_orders': preparing_orders,
@@ -108,7 +109,7 @@ def order_management_view(request):
         'end_date_val': end_date_str,
     }
     return render(request, 'OrderMaster/order_management.html', context)
-
+    
 @csrf_exempt
 @admin_required
 @require_POST
@@ -301,4 +302,5 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
 
