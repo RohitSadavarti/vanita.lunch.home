@@ -29,9 +29,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'OrderMaster',
+    'OrderMaster.OrderMaster.apps.OrdermasterConfig',  # Use the full path here
 ]
-
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -58,11 +57,30 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
             ],
             'builtins': [
-                'OrderMaster.templatetags.custom_filters',
+                # Update this path as well
+                'OrderMaster.OrderMaster.templatetags.custom_filters',
             ]
         },
     },
 ]
+
+# ... (other settings)
+These changes make your app's location completely clear to Django, which will resolve the ModuleNotFoundError. After applying these changes, commit and push them to GitHub. Your build on Render should now succeed.
+
+
+
+
+
+
+
+
+
+
+
+
+Tools
+
+
 WSGI_APPLICATION = 'vanita_lunch.wsgi.application'
 
 # Database configuration
@@ -144,4 +162,5 @@ LOGGING = {
         },
     },
 }
+
 
