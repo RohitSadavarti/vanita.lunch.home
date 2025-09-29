@@ -48,7 +48,7 @@ def get_db_connection():
 def index():
     return render_template('index.html')
 
-@app.route('/api/menu', methods=['GET'])
+@app.route('/api/menu-items', methods=['GET'])
 def get_menu():
     try:
         conn = get_db_connection()
@@ -150,3 +150,4 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
+
