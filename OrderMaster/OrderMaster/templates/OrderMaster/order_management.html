@@ -5,7 +5,6 @@
 <main class="main-content">
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h3>Order Management</h3>
-        
         <form method="GET" action="{% url 'order_management' %}" id="dateFilterForm" class="d-flex align-items-center gap-2">
             <div class="dropdown">
                 <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="dateFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
@@ -20,7 +19,6 @@
                     <li><a class="dropdown-item" href="#" id="customDateBtn">Custom Range...</a></li>
                 </ul>
             </div>
-            
             <div id="customDateRange" class="{% if selected_filter != 'custom' %}d-none{% else %}d-flex{% endif %} align-items-center gap-2">
                 <input type="hidden" name="date_filter" value="custom">
                 <input type="text" class="form-control form-control-sm" name="start_date" id="startDate" placeholder="Start Date" value="{{ start_date_val }}">
