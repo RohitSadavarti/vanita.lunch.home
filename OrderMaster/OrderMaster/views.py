@@ -1,9 +1,8 @@
 # OrderMaster/views.py
 
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib import messages
-from django.http import JsonResponse, HttpResponseBadRequest
+from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods
 from django.utils import timezone
@@ -15,13 +14,41 @@ import uuid
 from decimal import Decimal
 import logging
 
+# Firebase Admin Imports
+import firebase_admin
+from firebase_admin import credentials, messaging
+
 logger = logging.getLogger(__name__)
+
+# ==============================================================================
+#  Firebase Admin SDK Initialization
+# ==============================================================================
+# IMPORTANT: This setup assumes you have your service account JSON file
+# and have set the GOOGLE_APPLICATION_CREDENTIALS environment variable.
+# If not, you can load it directly:
+# cred = credentials.Certificate("path/to/your/serviceAccountKey.json")
+
+try:
+    if not firebase_admin._apps:
+        # Using Application Default Credentials
+        cred = credentials.ApplicationDefault()
+        firebase_admin.initialize_app(cred, {
+            'projectId': "vanita-lunch-home", # <-- REPLACE WITH YOUR FIREBASE PROJECT ID
+        })
+    print("Firebase Admin SDK initialized successfully.")
+except Exception as e:
+    logger.error(f"Failed to initialize Firebase Admin SDK: {e}")
+    print(f"ERROR: Failed to initialize Firebase Admin SDK: {e}")
+# ==============================================================================
+
 
 def customer_order_view(request):
     menu_items = MenuItem.objects.all()
     return render(request, 'OrderMaster/customer_order.html', {'menu_items': menu_items})
+
 @csrf_exempt
 def firebase_messaging_sw(request):
+    # This view correctly serves the service worker file.
     return render(request, 'firebase-messaging-sw.js', content_type='application/javascript')
 
 
@@ -32,6 +59,8 @@ def admin_required(view_func):
             return redirect('login')
         return view_func(request, *args, **kwargs)
     return wrapper
+
+# ... (login_view, logout_view, and dashboard_view remain the same) ...
 
 def login_view(request):
     if request.session.get('is_authenticated'):
@@ -61,8 +90,8 @@ def logout_view(request):
 def dashboard_view(request):
     context = {
         'total_orders': Order.objects.count(),
-        'preparing_orders_count': Order.objects.filter(status='Preparing').count(),
-        'ready_orders_count': Order.objects.filter(status='Ready').count(),
+        'preparing_orders_count': Order.objects.filter(order_status='open').count(),
+        'ready_orders_count': Order.objects.filter(order_status='ready').count(),
         'menu_items_count': MenuItem.objects.count(),
         'recent_orders': Order.objects.order_by('-created_at')[:5],
     }
@@ -100,14 +129,12 @@ def order_management_view(request):
     ready_orders = Order.objects.filter(order_status='ready', created_at__range=(start_date, end_date))
     pickedup_orders = Order.objects.filter(order_status='pickedup', created_at__range=(start_date, end_date))
 
-    # Add a simple representation of items for the template
     for order in preparing_orders:
         order.items_list = order.items if isinstance(order.items, list) else json.loads(order.items)
     for order in ready_orders:
         order.items_list = order.items if isinstance(order.items, list) else json.loads(order.items)
     for order in pickedup_orders:
         order.items_list = order.items if isinstance(order.items, list) else json.loads(order.items)
-
 
     context = {
         'preparing_orders': preparing_orders,
@@ -140,7 +167,9 @@ def update_order_status(request):
     except Order.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Order not found'}, status=404)
     except Exception as e:
-        return JsonResponse({'success': False, 'error': 'Server error'}, status=500)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+# ... (menu_management_view, delete_menu_item_view, api_menu_item_detail remain the same) ...
 @admin_required
 def menu_management_view(request):
     if request.method == 'POST':
@@ -190,8 +219,6 @@ def api_menu_item_detail(request, item_id):
             return JsonResponse({'success': False, 'errors': form.errors}, status=400)
     return HttpResponseBadRequest("Invalid request method")
 
-def customer_home(request):
-    return render(request, 'OrderMaster/customer_order.html')
 
 @require_http_methods(["GET"])
 def api_menu_items(request):
@@ -208,6 +235,7 @@ def api_menu_items(request):
         logger.error(f"API menu items error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
 
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_place_order(request):
@@ -216,104 +244,108 @@ def api_place_order(request):
         required_fields = ['customer_name', 'customer_mobile', 'customer_address', 'items', 'total_price']
         if not all(field in data and data[field] for field in required_fields):
             return JsonResponse({'error': 'Missing required fields.'}, status=400)
-        
+
         mobile = data['customer_mobile']
         if not (mobile.isdigit() and len(mobile) == 10):
             return JsonResponse({'error': 'Invalid 10-digit mobile number format.'}, status=400)
-        
+
         items = data['items']
-        if isinstance(items, str):
-            try:
-                items = json.loads(items)
-            except json.JSONDecodeError:
-                return JsonResponse({'error': 'Invalid items format.'}, status=400)
-        
         if not isinstance(items, list) or not items:
             return JsonResponse({'error': 'Cart items are missing or invalid.'}, status=400)
 
         calculated_subtotal = Decimal('0.00')
         validated_items_for_db = []
-        
         for item in items:
-            try:
-                menu_item = MenuItem.objects.get(id=item['id'])
-                quantity = int(item['quantity'])
-                if quantity <= 0: continue
-                
-                item_total = menu_item.price * quantity
-                calculated_subtotal += item_total
-                
-                validated_items_for_db.append({
-                    'id': menu_item.id, 'name': menu_item.item_name,
-                    'price': float(menu_item.price), 'quantity': quantity,
-                })
-            except MenuItem.DoesNotExist:
-                return JsonResponse({'error': f'Invalid menu item ID: {item.get("id")}.'}, status=400)
-            except (KeyError, ValueError, TypeError):
-                return JsonResponse({'error': 'Invalid data format in cart items.'}, status=400)
+            menu_item = MenuItem.objects.get(id=item['id'])
+            quantity = int(item['quantity'])
+            if quantity <= 0: continue
+            item_total = menu_item.price * quantity
+            calculated_subtotal += item_total
+            validated_items_for_db.append({
+                'id': menu_item.id, 'name': menu_item.item_name,
+                'price': float(menu_item.price), 'quantity': quantity,
+            })
 
         delivery_fee = Decimal('0.00') if calculated_subtotal >= 300 else Decimal('40.00')
         final_total_server = calculated_subtotal + delivery_fee
-        
+
         if abs(final_total_server - Decimal(str(data['total_price']))) > Decimal('0.01'):
             return JsonResponse({'error': 'Total price mismatch. Please try again.'}, status=400)
-        
+
         order_id = f"VLH{timezone.now().strftime('%y%m%d%H%M')}{str(uuid.uuid4())[:4].upper()}"
-        
-        order_details_json = {
-            'customer_mobile': mobile, 'customer_address': data['customer_address'],
-            'items': validated_items_for_db, 'delivery_fee': float(delivery_fee),
-            'subtotal': float(calculated_subtotal)
-        }
-        
-        Order.objects.create(
+
+        # **CORRECTION 1: Create the new_order object**
+        new_order = Order.objects.create(
             order_id=order_id,
             customer_name=data['customer_name'],
-            items=json.dumps(order_details_json),
+            customer_mobile=data['customer_mobile'],
+            items=json.dumps(validated_items_for_db), # **CORRECTION 2: Store only the items list**
             total_price=final_total_server,
             payment_id=data.get('payment_id', 'COD'),
-            status='Preparing'
+            order_status='open' # **CORRECTION 3: Set initial status to 'open'**
         )
-        
+
+        # ======================================================================
+        #  **NEW: Send Firebase Notification**
+        # ======================================================================
+        try:
+            message = messaging.Message(
+                notification=messaging.Notification(
+                    title='New Order Received!',
+                    body=f'Order #{new_order.order_id} from {new_order.customer_name} for ₹{new_order.total_price}.'
+                ),
+                topic='new_orders' # This is the topic your admin panel will listen to
+            )
+            response = messaging.send(message)
+            logger.info(f'Successfully sent FCM message: {response}')
+        except Exception as e:
+            logger.error(f"Error sending FCM message: {e}")
+        # ======================================================================
+
         return JsonResponse({'success': True, 'order_id': order_id, 'message': 'Order placed successfully!'})
-        
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON data in request body.'}, status=400)
+
+    except (json.JSONDecodeError, KeyError, ValueError, TypeError) as e:
+        logger.warning(f"Invalid order request: {e}")
+        return JsonResponse({'error': 'Invalid data format.'}, status=400)
+    except MenuItem.DoesNotExist:
+        return JsonResponse({'error': 'Invalid menu item in the order.'}, status=400)
     except Exception as e:
         logger.error(f"Place order error: {e}")
         return JsonResponse({'error': 'An unexpected server error occurred.'}, status=500)
 
+
+# ... (analytics_view, settings_view, get_orders_api remain the same) ...
 @admin_required
 def analytics_view(request):
-    completed_orders = Order.objects.filter(status='Completed')
+    """Renders the analytics page."""
+    completed_orders = Order.objects.filter(order_status='pickedup') # Use final status
     total_revenue = completed_orders.aggregate(total=models.Sum('total_price'))['total'] or 0
     context = {
         'total_orders': Order.objects.count(),
         'completed_orders': completed_orders.count(),
         'total_revenue': total_revenue,
-        'pending_orders': Order.objects.filter(status__in=['Preparing', 'Ready']).count(),
+        'pending_orders': Order.objects.filter(order_status__in=['open', 'ready']).count(),
     }
     return render(request, 'OrderMaster/analytics.html', context)
 
 @admin_required
 def settings_view(request):
+    """Renders the settings page."""
     return render(request, 'OrderMaster/settings.html')
 
 @admin_required
 def get_orders_api(request):
+    """API endpoint to fetch recent orders for the admin dashboard."""
     try:
         orders = Order.objects.all().order_by('-created_at')[:20]
         data = [{
             'id': order.id, 'order_id': order.order_id,
             'customer_name': order.customer_name, 'items': order.items,
             'total_price': float(order.total_price),
-            'status': order.status, 'created_at': order.created_at.strftime('%b %d, %Y, %I:%M %p')
+            'status': order.order_status, # Use correct status field
+            'created_at': order.created_at.strftime('%b %d, %Y, %I:%M %p')
         } for order in orders]
         return JsonResponse({'orders': data})
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
-
-
-
-
