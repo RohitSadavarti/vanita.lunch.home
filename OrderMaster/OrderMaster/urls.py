@@ -19,8 +19,9 @@ urlpatterns = [
     path('api/place-order/', views.api_place_order, name='api_place_order'),
 
     # Customer-facing URL
-    path('customer-order/', views.customer_home, name='customer_home'),
+   path('customer-order/', views.customer_order_view, name='customer_home'),
 ]
+
 
 
 
