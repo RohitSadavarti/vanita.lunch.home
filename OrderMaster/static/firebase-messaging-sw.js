@@ -1,18 +1,14 @@
-// OrderMaster/static/firebase-messaging-sw.js
-
-// This file must be in the static root
-// Scripts for Firebase v8
+// firebase-messaging-sw.js
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
 
-// IMPORTANT: You must copy your firebaseConfig here
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyBnYYq_K3TL9MxyKaCNPkB8SRqAIucF0rI",
+  authDomain: "vanita-lunch-home.firebaseapp.com",
+  projectId: "vanita-lunch-home",
+  storageBucket: "vanita-lunch-home.firebasestorage.app",
+  messagingSenderId: "86193565341",
+  appId: "1:86193565341:web:b9c234bda59b37ee366e74"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -21,10 +17,14 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
+  
   const notificationTitle = payload.notification.title;
   const notificationOptions = {
     body: payload.notification.body,
-    icon: '/static/path/to/your/icon.png' // Optional: add an icon
+    icon: '/static/favicon.ico', // Add your icon path
+    badge: '/static/favicon.ico',
+    tag: 'new-order',
+    requireInteraction: true
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
