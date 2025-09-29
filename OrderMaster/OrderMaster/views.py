@@ -211,23 +211,31 @@ def settings_view(request):
 @admin_required
 @require_POST
 def update_order_status(request):
+    """API to update an order's status."""
     try:
         data = json.loads(request.body)
         order_pk = data.get('id')
         new_status = data.get('status')
+
         if not all([order_pk, new_status]):
             return JsonResponse({'success': False, 'error': 'Missing data'}, status=400)
+
         order = get_object_or_404(Order, pk=order_pk)
         order.order_status = new_status
+        
         if new_status == 'ready':
-            order.ready_time = now()
+            order.ready_time = timezone.now()
         elif new_status == 'pickedup':
-            order.pickup_time = now()
+            order.pickup_time = timezone.now()
+            
         order.save()
-        return JsonResponse({'success': True, 'message': f'Order status updated to {new_status}'})
+        return JsonResponse({'success': True})
+    except Order.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Order not found'}, status=404)
     except Exception as e:
         logger.error(f"Update order status error: {e}")
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        return JsonResponse({'success': False, 'error': 'Server error'}, status=500)
+
 
 @csrf_exempt
 @admin_required
@@ -339,6 +347,7 @@ def api_place_order(request):
 def customer_home(request):
     return render(request, 'OrderMaster/customer_order.html')
     
+
 
 
 
