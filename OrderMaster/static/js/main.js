@@ -75,6 +75,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 3. Order Status Update Logic
     const handleStatusUpdate = async (orderCard, newStatus) => {
+        if (!orderCard) {
+            console.error('Could not find the parent order card element.');
+            return;
+        }
         const orderId = orderCard.dataset.orderId;
         try {
             const response = await fetch('/api/update-order-status/', {
@@ -91,14 +95,18 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (error) {
             console.error('Failed to update order status:', error);
+            alert('An error occurred. Please check the console for details.');
         }
     };
+
+    // --- FIX: Corrected the selector from '.order-card' to '.card' ---
     document.querySelectorAll('.mark-ready-btn').forEach(button => {
-        button.addEventListener('click', (e) => handleStatusUpdate(e.target.closest('.order-card'), 'ready'));
+        button.addEventListener('click', (e) => handleStatusUpdate(e.target.closest('.card[data-order-id]'), 'ready'));
     });
     document.querySelectorAll('.mark-pickedup-btn').forEach(button => {
-        button.addEventListener('click', (e) => handleStatusUpdate(e.target.closest('.order-card'), 'pickedup'));
+        button.addEventListener('click', (e) => handleStatusUpdate(e.target.closest('.card[data-order-id]'), 'pickedup'));
     });
+
 
     // --- MENU MANAGEMENT PAGE ---
     const editSidebar = document.getElementById('editSidebar');
