@@ -1,8 +1,4 @@
-# OrderMaster/views.py
-
-# =================================================================================
-# IMPORTS
-# =================================================================================
+from django.utils import timezone
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
@@ -351,6 +347,7 @@ def api_place_order(request):
 def customer_home(request):
     return render(request, 'OrderMaster/customer_order.html')
     
+
 
 
 
