@@ -12,42 +12,28 @@
         </button>
     </div>
 
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Current Menu Items</h6>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                    <thead>
-                        <tr>
-                            <th>Item Name</th>
-                            <th>Category</th>
-                            <th>Price</th>
-                            <th>Type</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in menu_items %}
-                        <tr>
-                            <td>{{ item.item_name }}</td>
-                            <td>{{ item.category }}</td>
-                            <td>₹{{ item.price }}</td>
-                            <td>{{ item.veg_nonveg }}</td>
-                            <td>
-                                <button class="btn btn-sm btn-info edit-btn" data-item-id="{{ item.id }}">Edit</button>
-                                <form action="{% url 'delete_menu_item' item.id %}" method="post" class="d-inline">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this item?')">Delete</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <div class="row">
+        {% for item in menu_items %}
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">{{ item.item_name }}</h5>
+                        <h6 class="card-subtitle mb-2 text-muted">{{ item.category }}</h6>
+                        <p class="card-text"><strong>Price:</strong> ₹{{ item.price }}</p>
+                        <p class="card-text"><strong>Type:</strong> {{ item.veg_nonveg }}</p>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn btn-info btn-sm edit-btn" data-item-id="{{ item.id }}">Edit</button>
+                        <form action="{% url 'delete_menu_item' item.id %}" method="post" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this item?')">Delete</button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
+        {% endfor %}
     </div>
 </div>
 
@@ -163,16 +149,16 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize the Bootstrap Modal component
+    
     const editModalEl = document.getElementById('editMenuItemModal');
     const editModal = new bootstrap.Modal(editModalEl);
 
-    // Add click listeners to all edit buttons
+    
     document.querySelectorAll('.edit-btn').forEach(button => {
         button.addEventListener('click', function() {
             const itemId = this.dataset.itemId;
             
-            // Fetch item details from the API
+            
             fetch(`/api/menu-item/${itemId}/`)
                 .then(response => {
                     if (!response.ok) {
@@ -181,7 +167,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     return response.json();
                 })
                 .then(data => {
-                    // Populate the modal form with the fetched data
+                    
                     document.getElementById('edit-item-id').value = data.id;
                     document.getElementById('edit-item_name').value = data.item_name;
                     document.getElementById('edit-price').value = data.price;
@@ -192,7 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('edit-meal_type').value = data.meal_type;
                     document.getElementById('edit-availability_time').value = data.availability_time;
                     
-                    // Show the modal
+                    
                     editModal.show();
                 })
                 .catch(error => {
@@ -202,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Handle the form submission for editing an item
+    
     document.getElementById('editMenuItemForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const itemId = document.getElementById('edit-item-id').value;
@@ -210,9 +196,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         fetch(`/api/menu-item/${itemId}/`, {
             method: 'POST',
-            body: new URLSearchParams(formData), // Send data as form-urlencoded
+            body: new URLSearchParams(formData), 
             headers: {
-                // The CSRF token is sent as a cookie, but adding it here is good practice
+                
                 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
             }
         })
@@ -220,7 +206,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 editModal.hide();
-                // Use a slight delay to allow the modal to close gracefully before reloading
+                
                 setTimeout(() => {
                     window.location.reload();
                 }, 500);
