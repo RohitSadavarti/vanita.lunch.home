@@ -21,8 +21,8 @@
             </div>
             <div id="customDateRange" class="{% if selected_filter != 'custom' %}d-none{% else %}d-flex{% endif %} align-items-center gap-2">
                 <input type="hidden" name="date_filter" value="custom">
-                <input type="text" class="form-control form-control-sm" name="start_date" id="startDate" placeholder="Start Date" value="{{ start_date_val }}">
-                <input type="text" class="form-control form-control-sm" name="end_date" id="endDate" placeholder="End Date" value="{{ end_date_val }}">
+                <input type="date" class="form-control form-control-sm" name="start_date" id="startDate" placeholder="Start Date" value="{{ start_date_val }}">
+                <input type="date" class="form-control form-control-sm" name="end_date" id="endDate" placeholder="End Date" value="{{ end_date_val }}">
                 <button class="btn btn-primary btn-sm" type="submit">Apply</button>
             </div>
         </form>
@@ -33,7 +33,6 @@
             <div class="card h-100 shadow-sm">
                 <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Preparing ({{ preparing_orders.count }})</h5>
-                    <i data-lucide="blinds"></i>
                 </div>
                 <div class="card-body order-list-container">
                     {% for order in preparing_orders %}
@@ -60,7 +59,6 @@
             <div class="card h-100 shadow-sm">
                 <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Ready for Pickup ({{ ready_orders.count }})</h5>
-                    <i data-lucide="shopping-bag"></i>
                 </div>
                 <div class="card-body order-list-container">
                     {% for order in ready_orders %}
@@ -87,7 +85,6 @@
             <div class="card h-100 shadow-sm">
                 <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Delivered ({{ pickedup_orders.count }})</h5>
-                    <i data-lucide="check-circle"></i>
                 </div>
                 <div class="card-body order-list-container">
                     {% for order in pickedup_orders %}
@@ -113,4 +110,70 @@
         </div>
     </div>
 </main>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const getCookie = (name) => {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        };
+
+        const handleStatusUpdate = async (button, newStatus) => {
+            const orderCard = button.closest('.card[data-order-id]');
+            if (!orderCard) return;
+
+            const orderId = orderCard.dataset.orderId;
+
+            try {
+                const response = await fetch('/api/update-order-status/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ id: orderId, status: newStatus })
+                });
+
+                if (response.ok) {
+                    orderCard.style.transition = 'opacity 0.5s ease';
+                    orderCard.style.opacity = '0';
+                    setTimeout(() => window.location.reload(), 500);
+                } else {
+                    alert('Error updating status. Please try again.');
+                }
+            } catch (error) {
+                console.error('Failed to update order status:', error);
+            }
+        };
+
+        document.querySelectorAll('.mark-ready-btn').forEach(button => {
+            button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'ready'));
+        });
+
+        document.querySelectorAll('.mark-pickedup-btn').forEach(button => {
+            button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'pickedup'));
+        });
+
+        const customDateBtn = document.getElementById('customDateBtn');
+        const customDateRangeDiv = document.getElementById('customDateRange');
+
+        if (customDateBtn) {
+            customDateBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                customDateRangeDiv.classList.toggle('d-none');
+                customDateRangeDiv.classList.toggle('d-flex');
+            });
+        }
+    });
+</script>
 {% endblock %}
