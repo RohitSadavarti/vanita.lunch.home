@@ -5,15 +5,15 @@ from pathlib import Path
 import dj_database_url
 from decouple import config
 
-# Base directory of your Django project
+# --- Correct Base Directory ---
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Security settings
+# --- Security Settings ---
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = ['*']
 
-# Application definition
+# --- Application Definition ---
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     'OrderMaster',
 ]
 
+# --- Middleware ---
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -37,10 +38,10 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'vanita_lunch.urls'
 
+# --- Templates ---
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        # Correct path to your app's templates directory
         'DIRS': [os.path.join(BASE_DIR, 'OrderMaster/templates')],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -56,14 +57,14 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'vanita_lunch.wsgi.application'
 
-# Database configuration
+# --- Database ---
 DATABASES = {
     'default': dj_database_url.config(
         default=config('DATABASE_URL')
     )
 }
 
-# Password validation
+# --- Password Validation ---
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -71,20 +72,19 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# Internationalization
+# --- Internationalization ---
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# --- STATIC FILES SETTINGS (CORRECTED) ---
+# --- Static Files (CSS, JavaScript, Images) ---
 STATIC_URL = '/static/'
-# This is the corrected path where Django will find your static files.
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'OrderMaster/static'),
 ]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Default primary key field type
+# --- Default Primary Key ---
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
