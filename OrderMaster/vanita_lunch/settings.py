@@ -71,7 +71,6 @@ USE_TZ = True
 
 # --- STATIC FILES SETTINGS (THIS SECTION IS FIXED) ---
 STATIC_URL = '/static/'
-
 # This path was incorrect and has been corrected to point to your app's static folder.
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'OrderMaster/static'),
@@ -81,4 +80,5 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 
