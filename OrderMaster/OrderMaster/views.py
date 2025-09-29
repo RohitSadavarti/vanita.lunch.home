@@ -9,6 +9,7 @@ from django.utils import timezone
 from .models import MenuItem, Order, VlhAdmin, models
 from .forms import MenuItemForm
 from datetime import datetime, timedelta
+import os
 import json
 import uuid
 from decimal import Decimal
@@ -28,18 +29,56 @@ logger = logging.getLogger(__name__)
 # If not, you can load it directly:
 # cred = credentials.Certificate("path/to/your/serviceAccountKey.json")
 
+
+# Firebase Admin SDK Initialization
 try:
     if not firebase_admin._apps:
-        # Using Application Default Credentials
-        cred = credentials.ApplicationDefault()
-        firebase_admin.initialize_app(cred, {
-            'projectId': "vanita-lunch-home", # <-- REPLACE WITH YOUR FIREBASE PROJECT ID
-        })
-    print("Firebase Admin SDK initialized successfully.")
+        # Check if running on Render (has environment variable)
+        firebase_creds = os.environ.get('FIREBASE_CREDENTIALS')
+        
+        if firebase_creds:
+            # Parse JSON credentials from environment variable
+            cred_dict = json.loads(firebase_creds)
+            cred = credentials.Certificate(cred_dict)
+            firebase_admin.initialize_app(cred)
+            print("✅ Firebase Admin SDK initialized with service account")
+            logger.info("Firebase Admin SDK initialized successfully")
+        else:
+            # Fallback for local development
+            cred = credentials.ApplicationDefault()
+            firebase_admin.initialize_app(cred, {
+                'projectId': "vanita-lunch-home",
+            })
+            print("⚠️ Firebase Admin SDK initialized with default credentials")
 except Exception as e:
-    logger.error(f"Failed to initialize Firebase Admin SDK: {e}")
+    logger.error(f"❌ Failed to initialize Firebase Admin SDK: {e}")
     print(f"ERROR: Failed to initialize Firebase Admin SDK: {e}")
-# ==============================================================================
+    # ==============================================================================
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def subscribe_to_topic(request):
+    """Subscribe FCM token to new_orders topic"""
+    try:
+        data = json.loads(request.body)
+        token = data.get('token')
+        
+        if not token:
+            return JsonResponse({'error': 'Token required'}, status=400)
+        
+        # Subscribe token to topic
+        response = messaging.subscribe_to_topic([token], 'new_orders')
+        
+        if response.failure_count > 0:
+            logger.error(f"Failed to subscribe token: {response.errors}")
+            return JsonResponse({'error': 'Subscription failed'}, status=500)
+        
+        logger.info(f"Successfully subscribed token to new_orders topic")
+        return JsonResponse({'success': True, 'message': 'Subscribed to notifications'})
+        
+    except Exception as e:
+        logger.error(f"Topic subscription error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 def customer_order_view(request):
@@ -351,4 +390,5 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
 
