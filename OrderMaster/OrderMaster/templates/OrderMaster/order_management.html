@@ -33,35 +33,54 @@
     <div class="row">
         <div class="col-lg-4 mb-4">
             <div class="card h-100 shadow-sm">
+                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Preparing ({{ preparing_orders.count }})</h5>
+                    <i data-lucide="blinds"></i>
+                </div>
+                <div class="card-body order-list-container">
+                    {% for order in preparing_orders %}
+                    <div class="card mb-3" data-order-id="{{ order.id }}">
+                        <div class="card-body">
+                            <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                            <ul class="list-unstyled mb-2">
+                                {% for item in order.items_list %}
+                                    <li>{{ item.quantity }} x {{ item.name }}</li>
+                                {% endfor %}
+                            </ul>
+                            <p class="card-text mb-2"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                            <button class="btn btn-warning btn-sm w-100 mark-ready-btn">Mark Ready</button>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-center text-muted p-4">No orders are currently being prepared.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100 shadow-sm">
                 <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Ready for Pickup ({{ ready_orders.count }})</h5>
-                    <button class="btn btn-sm btn-light p-1" type="button" data-bs-toggle="collapse" data-bs-target="#readyOrdersCollapse" aria-expanded="true">
-                        <i data-lucide="chevron-up"></i>
-                    </button>
+                    <i data-lucide="shopping-bag"></i>
                 </div>
-                <div class="collapse show" id="readyOrdersCollapse">
-                    <div class="card-body order-list-container">
-                        {% for order in ready_orders %}
-                        <div class="card mb-3" data-order-id="{{ order.id }}">
-                            <div class="card-body d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="card-title">#{{ order.order_id }} - {{ order.customer_name }}</h6>
-                                    <ul class="list-unstyled mb-0">
-                                        {% for item in order.items_list %}
-                                            <li>{{ item.quantity }} x {{ item.name }}</li>
-                                        {% endfor %}
-                                    </ul>
-                                    <p class="card-text mt-2"><strong>Total: ₹{{ order.total_price }}</strong></p>
-                                </div>
-                                <div class="action-buttons">
-                                    <button class="btn btn-success btn-sm mark-pickedup-btn">Picked Up</button>
-                                </div>
-                            </div>
+                <div class="card-body order-list-container">
+                    {% for order in ready_orders %}
+                    <div class="card mb-3" data-order-id="{{ order.id }}">
+                        <div class="card-body">
+                            <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                            <ul class="list-unstyled mb-2">
+                                {% for item in order.items_list %}
+                                    <li>{{ item.quantity }} x {{ item.name }}</li>
+                                {% endfor %}
+                            </ul>
+                            <p class="card-text mb-2"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                            <button class="btn btn-success btn-sm w-100 mark-pickedup-btn">Picked Up</button>
                         </div>
-                        {% empty %}
-                        <p class="text-center text-muted p-4">No orders are ready for pickup.</p>
-                        {% endfor %}
                     </div>
+                    {% empty %}
+                    <p class="text-center text-muted p-4">No orders are ready for pickup.</p>
+                    {% endfor %}
                 </div>
             </div>
         </div>
@@ -70,33 +89,27 @@
             <div class="card h-100 shadow-sm">
                 <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Delivered ({{ pickedup_orders.count }})</h5>
-                    <button class="btn btn-sm btn-light p-1" type="button" data-bs-toggle="collapse" data-bs-target="#pickedupOrdersCollapse" aria-expanded="true">
-                        <i data-lucide="chevron-up"></i>
-                    </button>
+                    <i data-lucide="check-circle"></i>
                 </div>
-                <div class="collapse show" id="pickedupOrdersCollapse">
-                    <div class="card-body order-list-container">
-                        {% for order in pickedup_orders %}
-                        <div class="card mb-3" data-order-id="{{ order.id }}">
-                            <div class="card-body d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="card-title">#{{ order.order_id }} - {{ order.customer_name }}</h6>
-                                    <ul class="list-unstyled mb-0">
-                                        {% for item in order.items_list %}
-                                            <li>{{ item.quantity }} x {{ item.name }}</li>
-                                        {% endfor %}
-                                    </ul>
-                                    <p class="card-text mt-2"><strong>Total: ₹{{ order.total_price }}</strong></p>
-                                </div>
-                                <div class="action-buttons">
-                                    <span class="badge bg-secondary">Delivered</span>
-                                </div>
+                <div class="card-body order-list-container">
+                    {% for order in pickedup_orders %}
+                    <div class="card mb-3" data-order-id="{{ order.id }}">
+                        <div class="card-body d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                <ul class="list-unstyled mb-0">
+                                    {% for item in order.items_list %}
+                                        <li>{{ item.quantity }} x {{ item.name }}</li>
+                                    {% endfor %}
+                                </ul>
+                                <p class="card-text mt-2 mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
                             </div>
+                            <span class="badge bg-secondary p-2">Delivered</span>
                         </div>
-                        {% empty %}
-                        <p class="text-center text-muted p-4">No orders have been delivered.</p>
-                        {% endfor %}
                     </div>
+                    {% empty %}
+                    <p class="text-center text-muted p-4">No orders have been delivered for the selected period.</p>
+                    {% endfor %}
                 </div>
             </div>
         </div>
