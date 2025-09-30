@@ -1,6 +1,6 @@
 {% extends 'OrderMaster/base.html' %}
 {% load static %}
-
+ 
 {% block content %}
 <style>
     .kpi-card {
@@ -29,7 +29,7 @@
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 </style>
-
+ 
 <main class="main-content">
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h3>Analytics Dashboard</h3>
@@ -53,8 +53,7 @@
             </div>
         </form>
     </div>
-
-
+ 
     <div class="row mb-4">
         <div class="col-lg-4">
             <div class="kpi-card">
@@ -75,12 +74,12 @@
             </div>
         </div>
     </div>
-
+ 
     <div class="row">
         <div class="col-lg-8 mb-4">
             <div class="chart-container">
-                <h5>Day-Wise Income</h5>
-                <canvas id="dailyIncomeChart"></canvas>
+                <h5>Top 5 Products by Order Type</h5>
+                <canvas id="topProductsChart"></canvas>
             </div>
         </div>
         <div class="col-lg-4 mb-4">
@@ -91,67 +90,95 @@
         </div>
     </div>
 </main>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+ 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const dateDisplay = document.getElementById('date-display');
     const customDateBtn = document.getElementById('customDateBtn');
     const customDateRangeDiv = document.getElementById('customDateRange');
     
-    let dailyIncomeChart, mostOrderedItemsChart;
-
+    let topProductsChart, mostOrderedItemsChart;
+ 
     const renderCharts = (data) => {
         // --- Key Metrics ---
         document.getElementById('total-revenue').textContent = `₹${data.key_metrics.total_revenue}`;
         document.getElementById('total-orders').textContent = data.key_metrics.total_orders;
         document.getElementById('avg-order-value').textContent = `₹${data.key_metrics.average_order_value}`;
-
-        // --- Daily Income Chart (Line) ---
-        const dailyCtx = document.getElementById('dailyIncomeChart').getContext('2d');
-        if (dailyIncomeChart) dailyIncomeChart.destroy();
-        dailyIncomeChart = new Chart(dailyCtx, {
-            type: 'line',
+ 
+        // --- Top Products Chart (100% Stacked Bar) ---
+        const topProductsCtx = document.getElementById('topProductsChart').getContext('2d');
+        if (topProductsChart) topProductsChart.destroy();
+        topProductsChart = new Chart(topProductsCtx, {
+            type: 'bar',
             data: {
-                labels: data.daily_income.labels,
-                datasets: [{
-                    label: 'Income',
-                    data: data.daily_income.data,
-                    borderColor: '#ff8100',
-                    backgroundColor: 'rgba(255, 129, 0, 0.1)',
-                    fill: true,
-                    tension: 0.3
-                }]
+                labels: data.top_products_by_type.labels,
+                datasets: data.top_products_by_type.datasets,
             },
-            options: { responsive: true, maintainAspectRatio: false }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y', // To make it horizontal
+                plugins: {
+                    title: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.x !== null) {
+                                    label += context.parsed.x;
+                                }
+                                return label;
+                            }
+                        }
+                    },
+                },
+                scales: {
+                    x: {
+                        stacked: true,
+                        ticks: {
+                            callback: function(value, index, values) {
+                                return value + '%';
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Percentage of Orders'
+                        }
+                    },
+                    y: {
+                        stacked: true
+                    }
+                }
+            }
         });
-
-        // --- Most Ordered Items Chart (Pie) ---
+ 
+        // --- Most Ordered Items Chart (Doughnut) ---
         const itemsCtx = document.getElementById('mostOrderedItemsChart').getContext('2d');
         if (mostOrderedItemsChart) mostOrderedItemsChart.destroy();
         mostOrderedItemsChart = new Chart(itemsCtx, {
-            type: 'pie',
+            type: 'doughnut',
             data: {
                 labels: data.most_ordered_items.labels,
                 datasets: [{
                     label: 'Quantity Sold',
                     data: data.most_ordered_items.data,
                     backgroundColor: [
-                        '#ff8100', 
-                        '#ff9f40', 
-                        '#ffbd6e', // AMENDMENT 2: Corrected typo from '#ffb-d6e'
-                        '#ffda9a', 
-                        '#ffedc9', 
-                        '#fce2a9', 
-                        '#f9d789'
+                        '#ff8100', '#ff9f40', '#ffbd6e', '#ffda9a', '#ffedc9'
                     ]
                 }]
             },
-            options: { responsive: true, maintainAspectRatio: false }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
         });
     };
-
+ 
     const fetchAnalyticsData = async (filter = 'this_month', startDate = '', endDate = '') => {
         let url = `/api/analytics/?date_filter=${filter}`;
         if (filter === 'custom' && startDate && endDate) {
@@ -160,18 +187,15 @@ document.addEventListener('DOMContentLoaded', function () {
         
         try {
             const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
             renderCharts(data);
         } catch (error) {
             console.error('Failed to fetch analytics data:', error);
-            // Optionally, display an error message to the user on the dashboard
         }
     };
-
-    // --- Event Listeners for Filters ---
+ 
+    // Event Listeners for Filters
     document.querySelectorAll('.dropdown-item[data-filter]').forEach(item => {
         item.addEventListener('click', function(e) {
             e.preventDefault();
@@ -181,17 +205,16 @@ document.addEventListener('DOMContentLoaded', function () {
             fetchAnalyticsData(filter);
         });
     });
-
+ 
     customDateBtn.addEventListener('click', (e) => {
         e.preventDefault();
         customDateRangeDiv.classList.toggle('d-none');
     });
-
+ 
     document.getElementById('applyCustomDate').addEventListener('click', function() {
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
         if (startDate && endDate) {
-            // AMENDMENT 3: Improved display for custom date range
             const start = new Date(startDate);
             const end = new Date(endDate);
             const options = { year: 'numeric', month: 'short', day: 'numeric' };
@@ -199,7 +222,7 @@ document.addEventListener('DOMContentLoaded', function () {
             fetchAnalyticsData('custom', startDate, endDate);
         }
     });
-
+ 
     // Initial load
     fetchAnalyticsData();
 });
