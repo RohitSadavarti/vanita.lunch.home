@@ -472,3 +472,53 @@ body {
 }
 
 
+
+/* --- Fixes for Collapsed Sidebar Alignment & Logo --- */
+
+/* Brand link styling */
+.sidebar-brand a {
+    text-decoration: none;
+    color: #f8f9fa;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem; /* Space between icon and text */
+    height: 60px; /* Give it a fixed height */
+    padding: 0 0.5rem; /* Add some horizontal padding */
+}
+
+/* Icon styling */
+.sidebar-brand-icon {
+    flex-shrink: 0; /* Prevents the icon from shrinking */
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.sidebar-brand-icon svg {
+    width: 28px;
+    height: 28px;
+}
+
+/* Fix hyperlink color */
+.sidebar-brand a:hover {
+    color: #fff; /* Ensure text remains white on hover */
+}
+
+/* Collapsed Alignment Fix */
+.app-layout.sidebar-collapsed .sidebar {
+    padding-left: 0;
+    padding-right: 0;
+    align-items: center;
+}
+
+.app-layout.sidebar-collapsed .sidebar-brand a,
+.app-layout.sidebar-collapsed .sidebar-nav a {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.app-layout.sidebar-collapsed .sidebar-nav a svg {
+    margin-right: 0; /* Remove margin when collapsed */
+}
