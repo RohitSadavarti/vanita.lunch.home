@@ -27,6 +27,102 @@ body {
   --ring: hsl(24 95% 53%);
 }
 
+
+/* --- Styles for Sidebar Toggle Functionality --- */
+
+.main-wrapper {
+    width: calc(100% - 256px); /* Full width minus sidebar */
+    margin-left: 256px;
+    transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+.sidebar.toggled + .main-wrapper {
+    width: calc(100% - 100px); /* Full width minus collapsed sidebar */
+    margin-left: 100px;
+}
+
+.sidebar-toggle-btn {
+    background: transparent;
+    border: none;
+    color: var(--foreground);
+    cursor: pointer;
+    padding: 0.5rem;
+    margin-right: 1rem;
+}
+
+.sidebar-divider {
+    margin: 0 1rem 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.sidebar-brand {
+    padding: 1rem 0;
+    text-align: center;
+    height: 60px; /* Give it a fixed height */
+}
+
+.sidebar-brand a {
+    text-decoration: none;
+    color: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.sidebar-brand-icon {
+    font-weight: 700;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.sidebar-brand-text {
+    font-size: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar {
+    width: 256px;
+    transition: width 0.3s ease;
+}
+
+.sidebar.toggled {
+    width: 100px;
+}
+
+.sidebar.toggled .sidebar-nav a span,
+.sidebar.toggled .sidebar-brand-text {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.sidebar.toggled .sidebar-nav a {
+    justify-content: center;
+}
+
+/* On smaller screens */
+@media (max-width: 768px) {
+    .sidebar {
+        position: fixed;
+        height: 100%;
+        z-index: 1000;
+        left: -256px; /* Hide off-screen */
+        transition: left 0.3s ease;
+    }
+    .sidebar.toggled {
+        width: 256px;
+        left: 0; /* Slide in */
+    }
+    .main-wrapper {
+        width: 100%;
+        margin-left: 0;
+    }
+}
+
 /* Main Layout */
 .app-layout {
     display: flex;
@@ -409,3 +505,4 @@ body {
     min-width: 120px;
     padding-left: 1rem;
 }
+
