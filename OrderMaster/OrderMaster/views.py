@@ -133,6 +133,7 @@ def dashboard_view(request):
         'ready_orders_count': Order.objects.filter(order_status='ready').count(),
         'menu_items_count': MenuItem.objects.count(),
         'recent_orders': Order.objects.order_by('-created_at')[:5],
+        'active_page': 'dashboard',
     }
     return render(request, 'OrderMaster/dashboard.html', context)
 
@@ -183,6 +184,7 @@ def order_management_view(request):
         'selected_filter': date_filter,
         'start_date_val': start_date_str if date_filter == 'custom' else '',
         'end_date_val': end_date_str if date_filter == 'custom' else '',
+        'active_page': 'order_management',
     }
     return render(request, 'OrderMaster/order_management.html', context)
 
@@ -225,7 +227,8 @@ def menu_management_view(request):
     
     context = {
         'menu_items': MenuItem.objects.all().order_by('-created_at'),
-        'add_item_form': form  # Use a consistent name for the form
+        'add_item_form': form,
+        'active_page': 'menu_management',
     }
     return render(request, 'OrderMaster/menu_management.html', context)
 
@@ -378,11 +381,15 @@ def analytics_view(request):
         'completed_orders': completed_orders.count(),
         'total_revenue': total_revenue,
         'pending_orders': Order.objects.filter(order_status__in=['open', 'ready']).count(),
+        'active_page': 'analytics',
     }
     return render(request, 'OrderMaster/analytics.html', context)
 
 @admin_required
 def settings_view(request):
+    context = {
+        'active_page': 'settings',
+    }
     """Renders the settings page."""
     return render(request, 'OrderMaster/settings.html')
 
@@ -402,3 +409,4 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
