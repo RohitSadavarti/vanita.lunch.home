@@ -20,6 +20,72 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return cookieValue;
     };
+//--------------------------------------------------------------------------------------------------------------------------
+
+function showNewOrderPopup(orderData) {
+    const modal = new bootstrap.Modal(document.getElementById('newOrderModal'));
+    const detailsContainer = document.getElementById('newOrderDetails');
+    
+    // Parse the items if they are in a string format
+    let items;
+    try {
+        items = JSON.parse(orderData.items);
+    } catch (e) {
+        items = orderData.items; // Assume it's already an object/array
+    }
+
+    let itemsHtml = '<ul>';
+    for (const item of items) {
+        itemsHtml += `<li>${item.quantity} x ${item.name}</li>`;
+    }
+    itemsHtml += '</ul>';
+
+    detailsContainer.innerHTML = `
+        <p><strong>Order ID:</strong> #${orderData.order_id}</p>
+        <p><strong>Customer:</strong> ${orderData.customer_name}</p>
+        <p><strong>Total:</strong> ₹${orderData.total_price}</p>
+        <div><strong>Items:</strong>${itemsHtml}</div>
+    `;
+
+    // Add event listeners for accept/reject buttons
+    const acceptBtn = document.getElementById('acceptOrderBtn');
+    const rejectBtn = document.getElementById('rejectOrderBtn');
+
+    acceptBtn.onclick = () => handleOrderAction(orderData.id, 'accept', modal);
+    rejectBtn.onclick = () => handleOrderAction(orderData.id, 'reject', modal);
+
+    modal.show();
+}
+
+async function handleOrderAction(orderId, action, modalInstance) {
+    try {
+        const response = await fetch('/api/handle-order-action/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ order_id: orderId, action: action })
+        });
+
+        if (response.ok) {
+            modalInstance.hide();
+            // Optionally, show a success message
+            alert(`Order has been ${action}ed.`);
+            // Refresh the page to update the order lists
+            location.reload(); 
+        } else {
+            alert(`Failed to ${action} the order.`);
+        }
+    } catch (error) {
+        console.error(`Error ${action}ing order:`, error);
+        alert('An error occurred. Please try again.');
+    }
+}
+    
+//--------------------------------------------------------------------------------------------------------------------------
+
+    
     
         // --- DASHBOARD: LIVE ORDER REFRESH ---
     const liveOrdersContainer = document.getElementById('live-orders');
@@ -193,6 +259,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
 
 
 
