@@ -50,9 +50,14 @@ body {
     left: 0;
     height: 100vh;
     width: 256px; /* Expanded width */
+    background-color: #212529; /* Dark background */
+    color: #adb5bd; /* Default text/icon color */
     transition: width 0.3s ease-in-out;
     overflow-x: hidden; /* Hide content that overflows horizontally */
+    display: flex; /* Use flexbox for vertical layout */
+    flex-direction: column;
 }
+
 
 .sidebar-nav a span,
 .sidebar-brand-text {
@@ -64,9 +69,7 @@ body {
 /* --- COLLAPSED STATE STYLES --- */
 
 /* When the main layout has the .sidebar-collapsed class... */
-.app-layout.sidebar-collapsed .sidebar {
-    width: 88px; /* New, smaller width for the collapsed sidebar */
-}
+
 
 .app-layout.sidebar-collapsed .main-content-wrapper {
     margin-left: 88px; /* Match the new collapsed sidebar width */
@@ -77,6 +80,28 @@ body {
 .app-layout.sidebar-collapsed .sidebar-nav a span {
     opacity: 0; /* Hide the text */
     visibility: hidden;
+    width: 0;
+}
+
+
+/* Hide brand text when collapsed */
+.app-layout.sidebar-collapsed .sidebar-brand-text {
+    opacity: 0;
+    visibility: hidden;
+    width: 0; /* Collapse width to ensure it doesn't take space */
+}
+/* Center brand icon when collapsed */
+.app-layout.sidebar-collapsed .sidebar-brand a {
+    justify-content: center;
+    padding: 0; /* Remove padding to center */
+    width: 100%; /* Take full width to center its content */
+}
+
+.sidebar-nav a span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: opacity 0.2s ease-in-out;
 }
 
 .app-layout.sidebar-collapsed .sidebar-brand a,
@@ -87,6 +112,9 @@ body {
 /* Ensure icons remain aligned */
 .sidebar-nav a svg {
     flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    margin-right: 1rem; /* Space between icon and text */
 }
 /* Main Layout */
 .app-layout {
@@ -172,32 +200,30 @@ body {
 
 /* Sidebar Navigation */
 .sidebar-nav {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    flex-grow: 1; /* Allows nav to take up remaining space */
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
 }
 
 .sidebar-nav a {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem;
-    border-radius: 0.375rem;
+    padding: 0.75rem 1.25rem; /* Padding for expanded state */
+    color: #adb5bd; /* Default nav item color */
     text-decoration: none;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #adb5bd; /* Lighter text color for dark sidebar */
     transition: background-color 0.2s, color 0.2s;
+    border-radius: 0.25rem; /* Slight rounding for items */
+    margin: 0.25rem 0.5rem; /* Margin between nav items */
 }
 
 .sidebar-nav a:hover {
-    background-color: #343a40; /* Slightly lighter on hover */
-    color: #f8f9fa; /* White text on hover */
+    background-color: #343a40; /* Darker background on hover */
+    color: #f8f9fa; /* Lighter text on hover */
 }
 
 .sidebar-nav a.active {
-    background-color: var(--primary); /* Orange background for active link */
-    color: var(--primary-foreground); /* White text for active link */
+    background-color: #ff8100; /* Orange background for active item */
+    color: #fff; /* White text for active item */
 }
 
 .sidebar-nav a.active svg {
@@ -478,17 +504,15 @@ body {
 /* Brand link styling */
 .sidebar-brand a {
     text-decoration: none;
-    color: #f8f9fa;
+    color: #f8f9fa; /* White text for brand name */
     display: flex;
     align-items: center;
     gap: 0.75rem; /* Space between icon and text */
-    height: 60px; /* Give it a fixed height */
-    padding: 0 0.5rem; /* Add some horizontal padding */
 }
 
 /* Icon styling */
 .sidebar-brand-icon {
-    flex-shrink: 0; /* Prevents the icon from shrinking */
+    flex-shrink: 0;
     width: 32px;
     height: 32px;
     display: flex;
@@ -498,6 +522,7 @@ body {
 .sidebar-brand-icon svg {
     width: 28px;
     height: 28px;
+    color: #ff8100; /* Orange color for the cutlery icon */
 }
 
 /* Fix hyperlink color */
@@ -507,17 +532,19 @@ body {
 
 /* Collapsed Alignment Fix */
 .app-layout.sidebar-collapsed .sidebar {
-    padding-left: 0;
-    padding-right: 0;
     align-items: center;
+    width: 88px;
 }
 
 .app-layout.sidebar-collapsed .sidebar-brand a,
 .app-layout.sidebar-collapsed .sidebar-nav a {
-    justify-content: center;
-    padding-left: 0;
-    padding-right: 0;
+    justify-content: center; /* Center icon horizontally */
+    padding: 0.75rem 0; /* Adjust padding for centered icons */
+    margin: 0.25rem auto; /* Center items with auto margins */
+    width: 64px; /* Fixed width for clickable area when collapsed */
+    height: 48px; /* Fixed height for clickable area */
 }
+
 
 .app-layout.sidebar-collapsed .sidebar-nav a svg {
     margin-right: 0; /* Remove margin when collapsed */
@@ -529,9 +556,11 @@ body {
 .sidebar-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: space-between; /* Pushes brand to left, button to right */
+    padding: 0.5rem 1rem; /* Adjust padding as needed */
+    height: 60px; /* Fixed height for the header */
+    flex-shrink: 0; /* Prevent shrinking */
 }
-
 /* Ensure brand takes up available space */
 .sidebar-header .sidebar-brand {
     flex-grow: 1;
@@ -539,17 +568,18 @@ body {
 
 /* Updated styles for the toggle button */
 .sidebar-toggle-btn {
-    background: transparent;
+    background: transparent; /* No background */
     border: none;
-    color: #adb5bd; /* Match nav icon color */
+    color: #adb5bd; /* Hamburger icon color */
     cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 50%;
+    padding: 0; /* No padding around the icon itself */
+    width: 40px; /* Fixed size for the clickable area */
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.2s, transform 0.3s ease-in-out;
-    flex-shrink: 0; /* Prevent the button from shrinking */
+    transition: color 0.2s;
+    flex-shrink: 0;
 }
 
 .sidebar-toggle-btn:hover {
@@ -557,12 +587,36 @@ body {
     color: #f8f9fa;
 }
 
+.app-layout.sidebar-collapsed .sidebar-header {
+    justify-content: center; /* Center content in collapsed header */
+}
+
+/* Hide divider text */
+.app-layout.sidebar-collapsed .sidebar-divider-text {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+}
+
 /* Add a rotation effect to the button icon when collapsed */
 .app-layout.sidebar-collapsed .sidebar-toggle-btn svg {
     transform: rotate(180deg);
+}
+
+.sidebar-toggle-btn svg {
+    width: 24px;
+    height: 24px;
+}
+
+/* Divider line */
+.sidebar-divider {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin: 0.5rem 0;
 }
 
 /* Remove the old button from the main header if it still appears */
 .admin-header .sidebar-toggle-btn {
     display: none;
 }
+
