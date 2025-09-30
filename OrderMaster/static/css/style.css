@@ -30,99 +30,64 @@ body {
 
 /* --- Styles for Sidebar Toggle Functionality --- */
 
-.main-wrapper {
-    width: calc(100% - 256px); /* Full width minus sidebar */
-    margin-left: 256px;
-    transition: margin-left 0.3s ease, width 0.3s ease;
+/* --- NEW STYLES for Sidebar Toggle & Layout --- */
+
+/* Main content wrapper that sits next to the sidebar */
+.main-content-wrapper {
+    margin-left: 256px; /* Must match the sidebar's expanded width */
+    width: calc(100% - 256px);
+    transition: margin-left 0.3s ease-in-out, width 0.3s ease-in-out;
 }
 
-.sidebar.toggled + .main-wrapper {
-    width: calc(100% - 100px); /* Full width minus collapsed sidebar */
-    margin-left: 100px;
+.main-content-wrapper .main-content {
+    padding: 2rem; /* Apply padding to the content area */
 }
 
-.sidebar-toggle-btn {
-    background: transparent;
-    border: none;
-    color: var(--foreground);
-    cursor: pointer;
-    padding: 0.5rem;
-    margin-right: 1rem;
+/* Sidebar base style */
+.sidebar {
+    position: fixed; /* Fixes the sidebar to the viewport */
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 256px; /* Expanded width */
+    transition: width 0.3s ease-in-out;
+    overflow-x: hidden; /* Hide content that overflows horizontally */
 }
 
-.sidebar-divider {
-    margin: 0 1rem 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.15);
+.sidebar-nav a span,
+.sidebar-brand-text {
+    white-space: nowrap; /* Prevents text from wrapping during transition */
+    transition: opacity 0.2s ease-in-out;
 }
 
-.sidebar-brand {
-    padding: 1rem 0;
-    text-align: center;
-    height: 60px; /* Give it a fixed height */
+
+/* --- COLLAPSED STATE STYLES --- */
+
+/* When the main layout has the .sidebar-collapsed class... */
+.app-layout.sidebar-collapsed .sidebar {
+    width: 88px; /* New, smaller width for the collapsed sidebar */
 }
 
-.sidebar-brand a {
-    text-decoration: none;
-    color: #f8f9fa;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
+.app-layout.sidebar-collapsed .main-content-wrapper {
+    margin-left: 88px; /* Match the new collapsed sidebar width */
+    width: calc(100% - 88px);
 }
 
-.sidebar-brand-icon {
-    font-weight: 700;
-    font-size: 1.5rem;
+.app-layout.sidebar-collapsed .sidebar-brand-text,
+.app-layout.sidebar-collapsed .sidebar-nav a span {
+    opacity: 0; /* Hide the text */
+    visibility: hidden;
+}
+
+.app-layout.sidebar-collapsed .sidebar-brand a,
+.app-layout.sidebar-collapsed .sidebar-nav a {
+    justify-content: center; /* Center the icons */
+}
+
+/* Ensure icons remain aligned */
+.sidebar-nav a svg {
     flex-shrink: 0;
 }
-
-.sidebar-brand-text {
-    font-size: 1rem;
-    font-weight: 600;
-    white-space: nowrap;
-    transition: opacity 0.3s ease;
-}
-
-.sidebar {
-    width: 256px;
-    transition: width 0.3s ease;
-}
-
-.sidebar.toggled {
-    width: 100px;
-}
-
-.sidebar.toggled .sidebar-nav a span,
-.sidebar.toggled .sidebar-brand-text {
-    opacity: 0;
-    width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-}
-
-.sidebar.toggled .sidebar-nav a {
-    justify-content: center;
-}
-
-/* On smaller screens */
-@media (max-width: 768px) {
-    .sidebar {
-        position: fixed;
-        height: 100%;
-        z-index: 1000;
-        left: -256px; /* Hide off-screen */
-        transition: left 0.3s ease;
-    }
-    .sidebar.toggled {
-        width: 256px;
-        left: 0; /* Slide in */
-    }
-    .main-wrapper {
-        width: 100%;
-        margin-left: 0;
-    }
-}
-
 /* Main Layout */
 .app-layout {
     display: flex;
@@ -505,4 +470,5 @@ body {
     min-width: 120px;
     padding-left: 1rem;
 }
+
 
