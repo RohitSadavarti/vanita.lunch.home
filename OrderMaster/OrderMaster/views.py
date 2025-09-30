@@ -245,7 +245,7 @@ def api_menu_item_detail(request, item_id):
             'id': item.id, 'item_name': item.item_name, 'description': item.description,
             'price': str(item.price), 'category': item.category, 'veg_nonveg': item.veg_nonveg,
             'meal_type': item.meal_type, 'availability_time': item.availability_time,
-            'image_url': item.image.url if item.image else ''
+            'image_url': item.image.url if item.image.url else ''
         }
         return JsonResponse(data)
     if request.method == 'POST':
@@ -390,5 +390,6 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
 
 
