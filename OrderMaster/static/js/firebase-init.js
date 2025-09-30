@@ -37,12 +37,17 @@
 
     // Handle incoming messages
     messaging.onMessage((payload) => {
-        console.log('Message received. ', payload);
-        // Customize notification here
-        const notification = new Notification(payload.notification.title, {
-            body: payload.notification.body,
-            icon: '/static/favicon.ico'
-        });
+    console.log('Message received. ', payload);
+    
+    // Show the popup with order details
+    showNewOrderPopup(payload.data);
+
+    // Also show a browser notification
+    const notification = new Notification(payload.notification.title, {
+        body: payload.notification.body,
+        icon: '/static/favicon.ico'
+    });
+});
 
         // Optional: Refresh the page to show the new order
         location.reload();
