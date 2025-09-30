@@ -203,6 +203,12 @@ def update_order_status(request):
 
         order = get_object_or_404(Order, pk=order_pk)
         order.order_status = new_status
+        
+        if new_status == 'ready':
+            order.ready_time = timezone.now()
+        elif new_status == 'pickedup':
+            order.pickup_time = timezone.now()
+            
         order.save()
         return JsonResponse({'success': True})
     except Order.DoesNotExist:
@@ -409,4 +415,5 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
 
