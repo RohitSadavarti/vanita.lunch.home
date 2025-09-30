@@ -9,6 +9,7 @@ from django.views.decorators.http import require_POST, require_http_methods
 from django.utils import timezone
 from .models import MenuItem, Order, VlhAdmin, models
 from .forms import MenuItemForm
+from .decorators import admin_required 
 from datetime import datetime, timedelta
 from django.db.models import Count, Sum
 from collections import Counter
@@ -545,6 +546,7 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
 
 
 
