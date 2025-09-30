@@ -9,6 +9,8 @@ from django.utils import timezone
 from .models import MenuItem, Order, VlhAdmin, models
 from .forms import MenuItemForm
 from datetime import datetime, timedelta
+from django.db.models import Count, Sum
+from collections import Counter
 import os
 import json
 import uuid
@@ -137,6 +139,79 @@ def dashboard_view(request):
     }
     return render(request, 'OrderMaster/dashboard.html', context)
 
+def analytics_api_view(request):
+    """
+    API endpoint to provide data for the analytics dashboard.
+    """
+    date_filter = request.GET.get('date_filter', 'this_month')
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
+
+    now = timezone.now()
+    if date_filter == 'today':
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+    elif date_filter == 'this_week':
+        start_date = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = now
+    elif date_filter == 'this_month':
+        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_date = now
+    elif date_filter == 'custom' and start_date_str and end_date_str:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
+    else: # Default to this_month
+        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_date = now
+
+    # Filter orders based on the date range and 'pickedup' status for revenue calculation
+    completed_orders = Order.objects.filter(order_status='pickedup', created_at__range=(start_date, end_date))
+
+    # --- Key Metrics ---
+    total_revenue = completed_orders.aggregate(total=Sum('total_price'))['total'] or 0
+    total_orders = completed_orders.count()
+    average_order_value = total_revenue / total_orders if total_orders > 0 else 0
+
+    # --- Day-wise Income (Line Chart) ---
+    daily_income = {}
+    current_date = start_date
+    while current_date <= end_date:
+        daily_income[current_date.strftime('%Y-%m-%d')] = 0
+        current_date += timedelta(days=1)
+
+    for order in completed_orders:
+        order_date = order.created_at.strftime('%Y-%m-%d')
+        if order_date in daily_income:
+            daily_income[order_date] += float(order.total_price)
+
+    # --- Most Ordered Items (Pie Chart) ---
+    item_counter = Counter()
+    for order in completed_orders:
+        items = json.loads(order.items) if isinstance(order.items, str) else order.items
+        for item in items:
+            item_counter[item['name']] += item['quantity']
+    
+    # Get the top 7 most common items
+    most_common_items = item_counter.most_common(7)
+    item_labels = [item[0] for item in most_common_items]
+    item_quantities = [item[1] for item in most_common_items]
+
+    data = {
+        'key_metrics': {
+            'total_revenue': f'{total_revenue:,.2f}',
+            'total_orders': total_orders,
+            'average_order_value': f'{average_order_value:,.2f}',
+        },
+        'daily_income': {
+            'labels': list(daily_income.keys()),
+            'data': list(daily_income.values()),
+        },
+        'most_ordered_items': {
+            'labels': item_labels,
+            'data': item_quantities,
+        },
+    }
+    return JsonResponse(data)
 
 @admin_required
 def order_management_view(request):
@@ -415,5 +490,6 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
 
 
