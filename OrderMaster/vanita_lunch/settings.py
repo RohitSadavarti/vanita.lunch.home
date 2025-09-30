@@ -48,7 +48,8 @@ ROOT_URLCONF = 'vanita_lunch.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        # UPDATE THIS DIRS PATH
+        'DIRS': [os.path.join(BASE_DIR, 'OrderMaster', 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -57,7 +58,6 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
-            # 'builtins' section removed
         },
     },
 ]
@@ -92,11 +92,12 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'frontend/build/static'),
+    # This tells Django to look for static files in the 'build/static'
+    # directory of your React 'frontend' app.
+    os.path.join(BASE_DIR, 'OrderMaster', 'frontend', 'build', 'static'),
 ]
-
 # Use Whitenoise to serve static files efficiently in production
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
@@ -147,6 +148,7 @@ LOGGING = {
         },
     },
 }
+
 
 
 
