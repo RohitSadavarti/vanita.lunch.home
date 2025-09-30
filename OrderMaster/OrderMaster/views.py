@@ -1,3 +1,4 @@
+
 # OrderMaster/views.py
 
 from django.shortcuts import render, redirect, get_object_or_404
@@ -513,8 +514,7 @@ def get_orders_api(request):
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
 
 
-def react_app_view(request):
-    """
-    This view serves the main index.html file that bootstraps the React app.
-    """
-    return render(request, 'index.html')
+
+
+
+
