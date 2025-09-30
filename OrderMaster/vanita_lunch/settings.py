@@ -94,8 +94,9 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # --- PATH CORRECTION 2 ---
 # This tells Django where to find the React app's static files (JS, CSS)
+
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'OrderMaster', 'frontend', 'build', 'static'),
+    os.path.join(BASE_DIR, 'OrderMaster', 'static'),
 ]
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
@@ -144,6 +145,7 @@ LOGGING = {
         },
     },
 }
+
 
 
 
