@@ -1,0 +1,73 @@
+body {
+    background-color: #f8f9fa;
+    font-family: sans-serif;
+}
+
+.App {
+    padding: 2rem;
+}
+
+.analytics-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.date-filter {
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    border: 1px solid #ced4da;
+}
+
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.kpi-card {
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.kpi-card h5 {
+    font-size: 1rem;
+    color: #6c757d;
+    margin: 0 0 0.5rem 0;
+}
+
+.kpi-card p {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #343a40;
+    margin: 0;
+}
+
+.chart-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.5rem;
+}
+
+.chart-wrapper {
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+}
+/* This is how we control the chart size */
+.chart-inner {
+    position: relative;
+    height: 450px;
+}
+
+@media (max-width: 992px) {
+    .chart-grid {
+        grid-template-columns: 1fr;
+    }
+}
