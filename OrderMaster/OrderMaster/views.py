@@ -146,7 +146,7 @@ def analytics_api_view(request):
     date_filter = request.GET.get('date_filter', 'this_month')
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
-
+ 
     now = timezone.now()
     if date_filter == 'today':
         start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -160,69 +160,68 @@ def analytics_api_view(request):
     elif date_filter == 'custom' and start_date_str and end_date_str:
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
-    else: # Default to this_month
+    else:
         start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         end_date = now
-
-    # Filter orders based on the date range and 'pickedup' status for revenue calculation
+ 
     completed_orders = Order.objects.filter(order_status='pickedup', created_at__range=(start_date, end_date))
-
-    # --- Key Metrics ---
+ 
+    # Key Metrics
     total_revenue = completed_orders.aggregate(total=Sum('total_price'))['total'] or 0
-    total_orders = completed_orders.count()
-    average_order_value = total_revenue / total_orders if total_orders > 0 else 0
-
-    # --- Day-wise Income (Line Chart) ---
-    daily_income = {}
-    current_date = start_date
-    # Limit to max 31 days for clarity
-    end_date_limit = min(end_date, start_date + timedelta(days=30))
-    while current_date <= end_date_limit:
-        daily_income[current_date.strftime('%b %d')] = 0
-        current_date += timedelta(days=1)
-
-    for order in completed_orders:
-        order_date = order.created_at.strftime('%b %d')
-        if order_date in daily_income:
-            daily_income[order_date] += float(order.total_price)
-
-    # --- Most Ordered Items (Doughnut Chart) ---
+    total_orders_count = completed_orders.count()
+    average_order_value = total_revenue / total_orders_count if total_orders_count > 0 else 0
+ 
+    # Most Ordered Items (Doughnut Chart)
     item_counter = Counter()
     for order in completed_orders:
-        items = json.loads(order.items) if isinstance(order.items, str) else order.items
-        for item in items:
+        items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
+        for item in items_list:
             item_counter[item['name']] += item['quantity']
     
-    most_common_items = item_counter.most_common(5) # Top 5 for doughnut chart
+    most_common_items = item_counter.most_common(5)
     item_labels = [item[0] for item in most_common_items]
     item_quantities = [item[1] for item in most_common_items]
-
-     # --- NEW: Top 5 Products by Order Type (Stacked Bar Chart) ---
+ 
+    # Top 5 Products by Order Type (100% Stacked Bar Chart)
     top_5_names = [item[0] for item in most_common_items]
-    order_types = ['Dine In', 'Take Away', 'Delivery']
-    stacked_bar_data = {ot: [0] * len(top_5_names) for ot in order_types}
-
-    for i, name in enumerate(top_5_names):
-        for order in completed_orders:
-            items = json.loads(order.items) if isinstance(order.items, str) else order.items
-            for item in items:
-                if item['name'] == name:
-                    # Assumes your model has an 'order_type' field.
-                    # If the field doesn't exist, it will default to 'Take Away'.
-                    order_type = getattr(order, 'order_type', 'Take Away')
-                    if order_type in stacked_bar_data:
-                        stacked_bar_data[order_type][i] += item['quantity']
-
+    order_types = ['Dine In', 'Take Away', 'Delivery'] # Define your order types
     
+    # Raw counts
+    stacked_bar_raw_data = {ot: {name: 0 for name in top_5_names} for ot in order_types}
+ 
+    for order in completed_orders:
+        items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
+        order_type = getattr(order, 'order_type', 'Take Away') # Default if not present
+        if order_type in order_types:
+            for item in items_list:
+                if item['name'] in top_5_names:
+                    stacked_bar_raw_data[order_type][item['name']] += item['quantity']
+    
+    # Calculate percentages
+    stacked_bar_datasets = []
+    colors = {'Dine In': '#ff8100', 'Take Away': '#ffbd6e', 'Delivery': '#ffda9a'}
+ 
+    for order_type in order_types:
+        percentages = []
+        for name in top_5_names:
+            total_for_product = sum(stacked_bar_raw_data[ot][name] for ot in order_types)
+            if total_for_product > 0:
+                percentage = (stacked_bar_raw_data[order_type][name] / total_for_product) * 100
+                percentages.append(round(percentage, 2))
+            else:
+                percentages.append(0)
+        
+        stacked_bar_datasets.append({
+            'label': order_type,
+            'data': percentages,
+            'backgroundColor': colors.get(order_type, '#cccccc')
+        })
+ 
     data = {
         'key_metrics': {
             'total_revenue': f'{total_revenue:,.2f}',
-            'total_orders': total_orders,
+            'total_orders': total_orders_count,
             'average_order_value': f'{average_order_value:,.2f}',
-        },
-        'daily_income': {
-            'labels': list(daily_income.keys()),
-            'data': list(daily_income.values()),
         },
         'most_ordered_items': {
             'labels': item_labels,
@@ -230,12 +229,8 @@ def analytics_api_view(request):
         },
         'top_products_by_type': {
             'labels': top_5_names,
-            'datasets': [
-                {'label': 'Dine In', 'data': stacked_bar_data['Dine In'], 'backgroundColor': '#ff8100'},
-                {'label': 'Take Away', 'data': stacked_bar_data['Take Away'], 'backgroundColor': '#ffb-d6e'},
-                {'label': 'Delivery', 'data': stacked_bar_data['Delivery'], 'backgroundColor': '#ffda9a'},
-            ]
-        }        
+            'datasets': stacked_bar_datasets
+        }
     }
     return JsonResponse(data)
 
@@ -516,6 +511,7 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
 
 
 
