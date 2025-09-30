@@ -1,77 +1,190 @@
 {% extends 'OrderMaster/base.html' %}
 {% load static %}
-{% load custom_filters %}
-
-{% block title %}Analytics{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Analytics</h1>
+<style>
+    .kpi-card {
+        background-color: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .kpi-card h5 {
+        font-size: 1rem;
+        color: #6c757d;
+        margin-bottom: 0.5rem;
+    }
+    .kpi-card p {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #343a40;
+    }
+    .chart-container {
+        background-color: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+</style>
+
+<main class="main-content">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h3>Analytics Dashboard</h3>
+        <form id="dateFilterForm" class="d-flex align-items-center gap-2">
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="dateFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    Showing: <span id="date-display" class="fw-bold">This Month</span>
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="dateFilterDropdown">
+                    <li><a class="dropdown-item" href="#" data-filter="today">Today</a></li>
+                    <li><a class="dropdown-item" href="#" data-filter="this_week">This Week</a></li>
+                    <li><a class="dropdown-item" href="#" data-filter="this_month">This Month</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" id="customDateBtn">Custom Range...</a></li>
+                </ul>
+            </div>
+            <div id="customDateRange" class="d-none align-items-center gap-2">
+                <input type="date" class="form-control form-control-sm" name="start_date" id="startDate" placeholder="Start Date">
+                <input type="date" class="form-control form-control-sm" name="end_date" id="endDate" placeholder="End Date">
+                <button class="btn btn-primary btn-sm" type="button" id="applyCustomDate">Apply</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-4">
+            <div class="kpi-card">
+                <h5>Total Revenue</h5>
+                <p id="total-revenue">₹0.00</p>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="kpi-card">
+                <h5>Total Orders</h5>
+                <p id="total-orders">0</p>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="kpi-card">
+                <h5>Average Order Value</h5>
+                <p id="avg-order-value">₹0.00</p>
+            </div>
+        </div>
     </div>
 
     <div class="row">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Orders</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_orders }}</div>
-                        </div>
-                        <div class="col-auto"><i class="fas fa-calendar fa-2x text-gray-300"></i></div>
-                    </div>
-                </div>
+        <div class="col-lg-8 mb-4">
+            <div class="chart-container">
+                <h5>Day-Wise Income</h5>
+                <canvas id="dailyIncomeChart"></canvas>
             </div>
         </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Revenue</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">₹{{ total_revenue|floatformat:2 }}</div>
-                        </div>
-                        <div class="col-auto"><i class="fas fa-dollar-sign fa-2x text-gray-300"></i></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Completion Rate</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {% if total_orders > 0 %}
-                                    {{ completed_orders|mul:100|div:total_orders|floatformat:1 }}%
-                                {% else %}
-                                    0%
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="col-auto"><i class="fas fa-clipboard-list fa-2x text-gray-300"></i></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Pending Orders</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_orders }}</div>
-                        </div>
-                        <div class="col-auto"><i class="fas fa-comments fa-2x text-gray-300"></i></div>
-                    </div>
-                </div>
+        <div class="col-lg-4 mb-4">
+            <div class="chart-container">
+                <h5>Most Ordered Items</h5>
+                <canvas id="mostOrderedItemsChart"></canvas>
             </div>
         </div>
     </div>
-</div>
+</main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const dateDisplay = document.getElementById('date-display');
+    const customDateBtn = document.getElementById('customDateBtn');
+    const customDateRangeDiv = document.getElementById('customDateRange');
+    
+    let dailyIncomeChart, mostOrderedItemsChart;
+
+    const renderCharts = (data) => {
+        // --- Key Metrics ---
+        document.getElementById('total-revenue').textContent = `₹${data.key_metrics.total_revenue}`;
+        document.getElementById('total-orders').textContent = data.key_metrics.total_orders;
+        document.getElementById('avg-order-value').textContent = `₹${data.key_metrics.average_order_value}`;
+
+        // --- Daily Income Chart (Line) ---
+        const dailyCtx = document.getElementById('dailyIncomeChart').getContext('2d');
+        if (dailyIncomeChart) dailyIncomeChart.destroy();
+        dailyIncomeChart = new Chart(dailyCtx, {
+            type: 'line',
+            data: {
+                labels: data.daily_income.labels,
+                datasets: [{
+                    label: 'Income',
+                    data: data.daily_income.data,
+                    borderColor: '#ff8100',
+                    backgroundColor: 'rgba(255, 129, 0, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // --- Most Ordered Items Chart (Pie) ---
+        const itemsCtx = document.getElementById('mostOrderedItemsChart').getContext('2d');
+        if (mostOrderedItemsChart) mostOrderedItemsChart.destroy();
+        mostOrderedItemsChart = new Chart(itemsCtx, {
+            type: 'pie',
+            data: {
+                labels: data.most_ordered_items.labels,
+                datasets: [{
+                    label: 'Quantity Sold',
+                    data: data.most_ordered_items.data,
+                    backgroundColor: [
+                        '#ff8100', '#ff9f40', '#ffb-d6e', '#ffda9a', '#ffedc9', '#fce2a9', '#f9d789'
+                    ]
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    };
+
+    const fetchAnalyticsData = async (filter = 'this_month', startDate = '', endDate = '') => {
+        let url = `/api/analytics/?date_filter=${filter}`;
+        if (filter === 'custom' && startDate && endDate) {
+            url += `&start_date=${startDate}&end_date=${endDate}`;
+        }
+        
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            renderCharts(data);
+        } catch (error) {
+            console.error('Failed to fetch analytics data:', error);
+        }
+    };
+
+    // --- Event Listeners for Filters ---
+    document.querySelectorAll('.dropdown-item[data-filter]').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const filter = this.dataset.filter;
+            dateDisplay.textContent = this.textContent;
+            customDateRangeDiv.classList.add('d-none');
+            fetchAnalyticsData(filter);
+        });
+    });
+
+    customDateBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        customDateRangeDiv.classList.toggle('d-none');
+    });
+
+    document.getElementById('applyCustomDate').addEventListener('click', function() {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        if (startDate && endDate) {
+            dateDisplay.textContent = 'Custom';
+            fetchAnalyticsData('custom', startDate, endDate);
+        }
+    });
+
+    // Initial load
+    fetchAnalyticsData();
+});
+</script>
 {% endblock %}
