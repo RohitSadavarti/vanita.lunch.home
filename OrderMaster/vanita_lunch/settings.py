@@ -1,4 +1,3 @@
-
 """
 Django settings for vanita_lunch project.
 """
@@ -14,7 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-b9j01@*vxpl=+zr2@3uq)*=0&o7q7&t1cncn9en*(atpb+9*8o')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = config('DEBUG', default=False, cast=bool) # Set to False for production
 
 ALLOWED_HOSTS = ['*']
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
@@ -48,7 +47,8 @@ ROOT_URLCONF = 'vanita_lunch.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        # UPDATE THIS DIRS PATH
+        # --- PATH CORRECTION 1 ---
+        # This tells Django where to find the index.html from the React build
         'DIRS': [os.path.join(BASE_DIR, 'OrderMaster', 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -64,8 +64,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'vanita_lunch.wsgi.application'
 
-# (Keep the rest of your settings.py file the same)
-# ...
 # Database configuration
 DATABASES = {
     'default': dj_database_url.config(
@@ -93,22 +91,20 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# --- PATH CORRECTION 2 ---
+# This tells Django where to find the React app's static files (JS, CSS)
 STATICFILES_DIRS = [
-    # This tells Django to look for static files in the 'build/static'
-    # directory of your React 'frontend' app.
     os.path.join(BASE_DIR, 'OrderMaster', 'frontend', 'build', 'static'),
 ]
-# Use Whitenoise to serve static files efficiently in production
+
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Media files (user-uploaded content)
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Login URLs
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
@@ -148,6 +144,7 @@ LOGGING = {
         },
     },
 }
+
 
 
 
