@@ -514,4 +514,7 @@ def get_orders_api(request):
 
 
 def react_app_view(request):
+    """
+    This view serves the main index.html file that bootstraps the React app.
+    """
     return render(request, 'index.html')
