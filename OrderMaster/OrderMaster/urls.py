@@ -8,7 +8,8 @@ urlpatterns = [
     path('orders/', views.order_management_view, name='order_management'),
     path('menu/', views.menu_management_view, name='menu_management'),
     path('menu/delete/<int:item_id>/', views.delete_menu_item_view, name='delete_menu_item'),
-    path('analytics/', views.analytics_view, name='analytics'),
+    path('analytics/', views.react_app_view, name='analytics'),
+
     path('settings/', views.settings_view, name='settings'),
     path('api/subscribe-topic/', views.subscribe_to_topic, name='subscribe_topic'),
     path('api/analytics/', views.analytics_api_view, name='analytics_api'),
@@ -22,6 +23,7 @@ urlpatterns = [
     # Customer-facing URL
    path('customer-order/', views.customer_order_view, name='customer_home'),
 ]
+
 
 
 
