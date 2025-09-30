@@ -94,6 +94,39 @@ def firebase_messaging_sw(request):
     return render(request, 'firebase-messaging-sw.js', content_type='application/javascript')
 
 
+
+
+@csrf_exempt
+@admin_required
+@require_POST
+def handle_order_action(request):
+    try:
+        data = json.loads(request.body)
+        order_id = data.get('order_id')
+        action = data.get('action')
+
+        order = get_object_or_404(Order, id=order_id)
+
+        if action == 'accept':
+            order.status = 'Confirmed'
+            # You can add any other logic here, like sending a confirmation to the customer
+        elif action == 'reject':
+            order.status = 'Rejected'
+            # As requested, clear other fields if necessary
+            order.items = []
+            order.total_price = 0
+            # Add any other fields you want to clear
+        
+        order.save()
+        return JsonResponse({'success': True, 'message': f'Order {action}ed successfully.'})
+
+    except Exception as e:
+        logger.error(f"Error handling order action: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+
+
 def admin_required(view_func):
     def wrapper(request, *args, **kwargs):
         if not request.session.get('is_authenticated'):
@@ -512,6 +545,7 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
 
 
 
