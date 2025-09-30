@@ -14,30 +14,6 @@
 </style>
 
 <main class="main-content">
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-        <h3>Order Management</h3>
-        <form method="GET" action="{% url 'order_management' %}" id="dateFilterForm" class="d-flex align-items-center gap-2">
-            <div class="dropdown">
-                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="dateFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    Showing: <span class="fw-bold">{{ date_display_str }}</span>
-                </button>
-                <ul class="dropdown-menu" aria-labelledby="dateFilterDropdown">
-                    <li><button class="dropdown-item" type="submit" name="date_filter" value="today">Today</button></li>
-                    <li><button class="dropdown-item" type="submit" name="date_filter" value="yesterday">Yesterday</button></li>
-                    <li><button class="dropdown-item" type="submit" name="date_filter" value="this_week">This Week</button></li>
-                    <li><button class="dropdown-item" type="submit" name="date_filter" value="this_month">This Month</button></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" id="customDateBtn">Custom Range...</a></li>
-                </ul>
-            </div>
-            <div id="customDateRange" class="{% if selected_filter != 'custom' %}d-none{% else %}d-flex{% endif %} align-items-center gap-2">
-                <input type="date" class="form-control form-control-sm" name="start_date" id="startDate" placeholder="Start Date" value="{{ start_date_val }}">
-                <input type="date" class="form-control form-control-sm" name="end_date" id="endDate" placeholder="End Date" value="{{ end_date_val }}">
-                <button class="btn btn-primary btn-sm" type="submit" name="date_filter" value="custom">Apply</button>
-            </div>
-        </form>
-    </div>
-
     <div class="row align-items-start">
         <div class="col-lg-4 mb-4">
             <div class="card shadow-sm">
@@ -50,7 +26,7 @@
                 <div class="collapse show" id="preparingCollapse">
                     <div class="card-body order-list-container">
                         {% for order in preparing_orders %}
-                        <div class="card mb-3" data-order-id="{{ order.id }}">
+                        <div class="card mb-3" data-order-id="{{ order.id }}" data-created-at="{{ order.created_at.isoformat }}">
                             <div class="card-body d-flex justify-content-between align-items-center">
                                 <div>
                                     <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
@@ -60,6 +36,7 @@
                                         {% endfor %}
                                     </ul>
                                     <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                                    <p class="card-text mb-0 timer">Preparing for: <span class="fw-bold">00:00:00</span></p>
                                 </div>
                                 <a href="#" class="mark-ready-btn badge bg-warning text-dark text-decoration-none p-2">
                                     Mark Ready
@@ -85,7 +62,7 @@
                 <div class="collapse show" id="readyCollapse">
                     <div class="card-body order-list-container">
                         {% for order in ready_orders %}
-                        <div class="card mb-3" data-order-id="{{ order.id }}">
+                        <div class="card mb-3" data-order-id="{{ order.id }}" data-ready-at="{{ order.ready_time.isoformat }}">
                             <div class="card-body d-flex justify-content-between align-items-center">
                                 <div>
                                     <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
@@ -95,6 +72,7 @@
                                         {% endfor %}
                                     </ul>
                                     <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                                    <p class="card-text mb-0 timer">Ready for: <span class="fw-bold">00:00:00</span></p>
                                 </div>
                                 <a href="#" class="mark-pickedup-btn badge bg-success text-white text-decoration-none p-2">
                                     Picked up
@@ -223,6 +201,43 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+        const updateTimers = () => {
+        document.querySelectorAll('.card[data-created-at]').forEach(card => {
+            const createdAt = new Date(card.dataset.createdAt);
+            const now = new Date();
+            const diff = now - createdAt; // difference in milliseconds
+            const seconds = Math.floor((diff / 1000) % 60);
+            const minutes = Math.floor((diff / (1000 * 60)) % 60);
+            const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+
+            const timerSpan = card.querySelector('.timer span');
+            if (timerSpan) {
+                timerSpan.textContent =
+                    `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }
+        });
+
+        document.querySelectorAll('.card[data-ready-at]').forEach(card => {
+            const readyAt = new Date(card.dataset.readyAt);
+            const now = new Date();
+            const diff = now - readyAt; // difference in milliseconds
+            const seconds = Math.floor((diff / 1000) % 60);
+            const minutes = Math.floor((diff / (1000 * 60)) % 60);
+            const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+
+            const timerSpan = card.querySelector('.timer span');
+            if (timerSpan) {
+                timerSpan.textContent =
+                    `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }
+        });
+    };
+
+    setInterval(updateTimers, 1000);
+    updateTimers(); // initial call
+
+
+    
     // --- DATE FILTER ---
     const customDateBtn = document.getElementById('customDateBtn');
     const customDateRangeDiv = document.getElementById('customDateRange');
@@ -237,3 +252,4 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 {% endblock %}
+
