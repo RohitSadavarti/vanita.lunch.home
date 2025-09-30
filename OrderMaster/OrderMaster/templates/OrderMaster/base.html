@@ -41,16 +41,28 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const appLayout = document.querySelector('.app-layout');
             const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+            const SIDEBAR_STATE_KEY = 'sidebarCollapsed';
 
+            // 1. Check localStorage when the page loads
+            if (localStorage.getItem(SIDEBAR_STATE_KEY) === 'true') {
+                appLayout.classList.add('sidebar-collapsed');
+            }
+
+            // 2. Add click event listener to the toggle button
             if (sidebarToggleBtn && appLayout) {
                 sidebarToggleBtn.addEventListener('click', function() {
+                    // Toggle the class on the layout
                     appLayout.classList.toggle('sidebar-collapsed');
+                    
+                    // 3. Save the new state to localStorage
+                    const isCollapsed = appLayout.classList.contains('sidebar-collapsed');
+                    localStorage.setItem(SIDEBAR_STATE_KEY, isCollapsed);
                 });
             }
         });
@@ -58,6 +70,6 @@
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
-    <script src="{% static 'js/firebase-init.js' %}"></script>
-</body>
+    <script src="{% static 'js/firebase-init.js' %}"></script></body>
 </html>
+
