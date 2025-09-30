@@ -513,7 +513,5 @@ def get_orders_api(request):
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
 
 
-
-
-
-
+def react_app_view(request):
+    return render(request, 'index.html')
