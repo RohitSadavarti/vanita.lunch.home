@@ -25,11 +25,32 @@
                         <p>Admin Portal</p>
                     </div>
                 </div>
+                
                 <div class="header-actions">
                     <div class="connection-status">
                          <div class="status-indicator status-connected"></div>
                          <span class="text-sm text-muted-foreground">Connected</span>
                     </div>
+
+                    <div class="modal fade" id="newOrderModal" tabindex="-1" aria-labelledby="newOrderModalLabel" aria-hidden="true">
+                      <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="newOrderModalLabel">New Order Received!</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                          </div>
+                          <div class="modal-body">
+                        <div id="newOrderDetails">
+                          </div>
+                          </div>
+                          <div class="modal-footer">
+                            <button type="button" class="btn btn-danger" id="rejectOrderBtn">Reject</button>
+                        <button type="button" class="btn btn-success" id="acceptOrderBtn">Accept</button>
+                      </div>
+                    </div>
+              </div>
+</div>
+                    
                     <div style="display:flex; align-items:center; gap: 0.5rem">
                          <div style="width: 2rem; height: 2rem; background-color: var(--primary); color: var(--primary-foreground); border-radius: 9999px; display:flex; align-items: center; justify-content:center; font-weight: 600;">A</div>
                          <a href="{% url 'logout' %}" class="btn" style="background: transparent; border: none; text-decoration: none;">
@@ -76,6 +97,7 @@
     <script src="{% static 'js/firebase-init.js' %}"></script>
 </body>
 </html>
+
 
 
 
