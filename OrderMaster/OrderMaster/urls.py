@@ -11,6 +11,7 @@ urlpatterns = [
     path('analytics/', views.analytics_view, name='analytics'),
     path('settings/', views.settings_view, name='settings'),
     path('api/subscribe-topic/', views.subscribe_to_topic, name='subscribe_topic'),
+    path('api/analytics/', views.analytics_api_view, name='analytics_api'),
     # API URLs
     path('api/menu-item/<int:item_id>/', views.api_menu_item_detail, name='api_menu_item_detail'),
     path('api/update-order-status/', views.update_order_status, name='update_order_status'),
@@ -21,6 +22,7 @@ urlpatterns = [
     # Customer-facing URL
    path('customer-order/', views.customer_order_view, name='customer_home'),
 ]
+
 
 
 
