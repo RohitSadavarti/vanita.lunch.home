@@ -175,27 +175,45 @@ def analytics_api_view(request):
     # --- Day-wise Income (Line Chart) ---
     daily_income = {}
     current_date = start_date
-    while current_date <= end_date:
-        daily_income[current_date.strftime('%Y-%m-%d')] = 0
+    # Limit to max 31 days for clarity
+    end_date_limit = min(end_date, start_date + timedelta(days=30))
+    while current_date <= end_date_limit:
+        daily_income[current_date.strftime('%b %d')] = 0
         current_date += timedelta(days=1)
 
     for order in completed_orders:
-        order_date = order.created_at.strftime('%Y-%m-%d')
+        order_date = order.created_at.strftime('%b %d')
         if order_date in daily_income:
             daily_income[order_date] += float(order.total_price)
 
-    # --- Most Ordered Items (Pie Chart) ---
+    # --- Most Ordered Items (Doughnut Chart) ---
     item_counter = Counter()
     for order in completed_orders:
         items = json.loads(order.items) if isinstance(order.items, str) else order.items
         for item in items:
             item_counter[item['name']] += item['quantity']
     
-    # Get the top 7 most common items
-    most_common_items = item_counter.most_common(7)
+    most_common_items = item_counter.most_common(5) # Top 5 for doughnut chart
     item_labels = [item[0] for item in most_common_items]
     item_quantities = [item[1] for item in most_common_items]
 
+     # --- NEW: Top 5 Products by Order Type (Stacked Bar Chart) ---
+    top_5_names = [item[0] for item in most_common_items]
+    order_types = ['Dine In', 'Take Away', 'Delivery']
+    stacked_bar_data = {ot: [0] * len(top_5_names) for ot in order_types}
+
+    for i, name in enumerate(top_5_names):
+        for order in completed_orders:
+            items = json.loads(order.items) if isinstance(order.items, str) else order.items
+            for item in items:
+                if item['name'] == name:
+                    # Assumes your model has an 'order_type' field.
+                    # If the field doesn't exist, it will default to 'Take Away'.
+                    order_type = getattr(order, 'order_type', 'Take Away')
+                    if order_type in stacked_bar_data:
+                        stacked_bar_data[order_type][i] += item['quantity']
+
+    
     data = {
         'key_metrics': {
             'total_revenue': f'{total_revenue:,.2f}',
@@ -210,6 +228,14 @@ def analytics_api_view(request):
             'labels': item_labels,
             'data': item_quantities,
         },
+        'top_products_by_type': {
+            'labels': top_5_names,
+            'datasets': [
+                {'label': 'Dine In', 'data': stacked_bar_data['Dine In'], 'backgroundColor': '#ff8100'},
+                {'label': 'Take Away', 'data': stacked_bar_data['Take Away'], 'backgroundColor': '#ffb-d6e'},
+                {'label': 'Delivery', 'data': stacked_bar_data['Delivery'], 'backgroundColor': '#ffda9a'},
+            ]
+        }        
     }
     return JsonResponse(data)
 
@@ -490,6 +516,7 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
 
 
 
