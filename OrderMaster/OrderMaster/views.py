@@ -1,4 +1,3 @@
-
 # OrderMaster/views.py
 
 from django.shortcuts import render, redirect, get_object_or_404
@@ -28,20 +27,11 @@ logger = logging.getLogger(__name__)
 # ==============================================================================
 #  Firebase Admin SDK Initialization
 # ==============================================================================
-# IMPORTANT: This setup assumes you have your service account JSON file
-# and have set the GOOGLE_APPLICATION_CREDENTIALS environment variable.
-# If not, you can load it directly:
-# cred = credentials.Certificate("path/to/your/serviceAccountKey.json")
-
-
-# Firebase Admin SDK Initialization
 try:
     if not firebase_admin._apps:
-        # Check if running on Render (has environment variable)
         firebase_creds = os.environ.get('FIREBASE_CREDENTIALS')
         
         if firebase_creds:
-            # Parse JSON credentials from environment variable
             cred_dict = json.loads(firebase_creds)
             cred = credentials.Certificate(cred_dict)
             firebase_admin.initialize_app(cred)
@@ -57,7 +47,7 @@ try:
 except Exception as e:
     logger.error(f"❌ Failed to initialize Firebase Admin SDK: {e}")
     print(f"ERROR: Failed to initialize Firebase Admin SDK: {e}")
-    # ==============================================================================
+# ==============================================================================
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -70,7 +60,6 @@ def subscribe_to_topic(request):
         if not token:
             return JsonResponse({'error': 'Token required'}, status=400)
         
-        # Subscribe token to topic
         response = messaging.subscribe_to_topic([token], 'new_orders')
         
         if response.failure_count > 0:
@@ -91,10 +80,7 @@ def customer_order_view(request):
 
 @csrf_exempt
 def firebase_messaging_sw(request):
-    # This view correctly serves the service worker file.
     return render(request, 'firebase-messaging-sw.js', content_type='application/javascript')
-
-
 
 
 @csrf_exempt
@@ -110,13 +96,10 @@ def handle_order_action(request):
 
         if action == 'accept':
             order.status = 'Confirmed'
-            # You can add any other logic here, like sending a confirmation to the customer
         elif action == 'reject':
             order.status = 'Rejected'
-            # As requested, clear other fields if necessary
             order.items = []
             order.total_price = 0
-            # Add any other fields you want to clear
         
         order.save()
         return JsonResponse({'success': True, 'message': f'Order {action}ed successfully.'})
@@ -126,8 +109,6 @@ def handle_order_action(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
-
-
 def admin_required(view_func):
     def wrapper(request, *args, **kwargs):
         if not request.session.get('is_authenticated'):
@@ -135,8 +116,6 @@ def admin_required(view_func):
             return redirect('login')
         return view_func(request, *args, **kwargs)
     return wrapper
-
-# ... (login_view, logout_view, and dashboard_view remain the same) ...
 
 def login_view(request):
     if request.session.get('is_authenticated'):
@@ -175,9 +154,6 @@ def dashboard_view(request):
     return render(request, 'OrderMaster/dashboard.html', context)
 
 def analytics_api_view(request):
-    """
-    API endpoint to provide data for the analytics dashboard.
-    """
     date_filter = request.GET.get('date_filter', 'this_month')
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
@@ -201,38 +177,33 @@ def analytics_api_view(request):
  
     completed_orders = Order.objects.filter(order_status='pickedup', created_at__range=(start_date, end_date))
  
-    # Key Metrics
     total_revenue = completed_orders.aggregate(total=Sum('total_price'))['total'] or 0
     total_orders_count = completed_orders.count()
     average_order_value = total_revenue / total_orders_count if total_orders_count > 0 else 0
  
-    # Most Ordered Items (Doughnut Chart)
     item_counter = Counter()
     for order in completed_orders:
         items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
         for item in items_list:
             item_counter[item['name']] += item['quantity']
-    
+        
     most_common_items = item_counter.most_common(5)
     item_labels = [item[0] for item in most_common_items]
     item_quantities = [item[1] for item in most_common_items]
  
-    # Top 5 Products by Order Type (100% Stacked Bar Chart)
     top_5_names = [item[0] for item in most_common_items]
-    order_types = ['Dine In', 'Take Away', 'Delivery'] # Define your order types
+    order_types = ['Dine In', 'Take Away', 'Delivery'] 
     
-    # Raw counts
     stacked_bar_raw_data = {ot: {name: 0 for name in top_5_names} for ot in order_types}
  
     for order in completed_orders:
         items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
-        order_type = getattr(order, 'order_type', 'Take Away') # Default if not present
+        order_type = getattr(order, 'order_type', 'Take Away') 
         if order_type in order_types:
             for item in items_list:
                 if item['name'] in top_5_names:
                     stacked_bar_raw_data[order_type][item['name']] += item['quantity']
-    
-    # Calculate percentages
+        
     stacked_bar_datasets = []
     colors = {'Dine In': '#ff8100', 'Take Away': '#ffbd6e', 'Delivery': '#ffda9a'}
  
@@ -245,7 +216,7 @@ def analytics_api_view(request):
                 percentages.append(round(percentage, 2))
             else:
                 percentages.append(0)
-        
+            
         stacked_bar_datasets.append({
             'label': order_type,
             'data': percentages,
@@ -347,11 +318,9 @@ def update_order_status(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
-# ... (menu_management_view, delete_menu_item_view, api_menu_item_detail remain the same) ...
 @admin_required
 def menu_management_view(request):
     if request.method == 'POST':
-        # REMOVED: request.FILES, as we are no longer uploading files
         form = MenuItemForm(request.POST)
         if form.is_valid():
             form.save()
@@ -393,13 +362,11 @@ def api_menu_item_detail(request, item_id):
             'veg_nonveg': item.veg_nonveg,
             'meal_type': item.meal_type,
             'availability_time': item.availability_time,
-            # FIXED: Changed from item.image.url to item.image_url
             'image_url': item.image_url if item.image_url else ''
         }
         return JsonResponse(data)
         
     if request.method == 'POST':
-        # REMOVED: request.FILES from the form instance
         form = MenuItemForm(request.POST, instance=item)
         if form.is_valid():
             form.save()
@@ -412,7 +379,6 @@ def api_menu_item_detail(request, item_id):
 
 def api_menu_items(request):
     try:
-        # FIXED: Select 'image_url' instead of 'image'
         menu_items = MenuItem.objects.all().values(
             'id', 'item_name', 'description', 'price', 'category',
             'veg_nonveg', 'meal_type', 'availability_time', 'image_url'
@@ -460,31 +426,37 @@ def api_place_order(request):
             })
 
         final_total_server = Decimal(str(data['total_price']))
-
         order_id = f"VLH{timezone.now().strftime('%y%m%d%H%M')}{str(uuid.uuid4())[:4].upper()}"
 
-        # Create the order with correct fields
         new_order = Order.objects.create(
             order_id=order_id,
             customer_name=data['customer_name'],
             customer_mobile=data['customer_mobile'],
-            items=validated_items_for_db,  # Store as list, JSONField will handle it
+            items=validated_items_for_db,
             subtotal=calculated_subtotal,
             discount=Decimal('0.00'),
             total_price=final_total_server,
-            status='pending',
+            status='Pending',  # Use the default 'Pending'
             payment_method='COD',
             payment_id=data.get('payment_id', 'COD'),
             order_status='open'
         )
 
-        # Send Firebase Cloud Messaging notification
+        # Send Firebase Cloud Messaging notification with data payload
         try:
+            items_json = json.dumps(new_order.items)
             message = messaging.Message(
                 notification=messaging.Notification(
                     title='🔔 New Order Received!',
                     body=f'Order #{new_order.order_id} from {new_order.customer_name} - ₹{new_order.total_price}'
                 ),
+                data={
+                    'id': str(new_order.id),
+                    'order_id': new_order.order_id,
+                    'customer_name': new_order.customer_name,
+                    'total_price': str(new_order.total_price),
+                    'items': items_json,
+                },
                 topic='new_orders'
             )
             response = messaging.send(message)
@@ -507,11 +479,10 @@ def api_place_order(request):
         logger.error(f"Place order error: {e}")
         return JsonResponse({'error': 'An unexpected server error occurred.'}, status=500)
         
-# ... (analytics_view, settings_view, get_orders_api remain the same) ...
 @admin_required
 def analytics_view(request):
     """Renders the analytics page."""
-    completed_orders = Order.objects.filter(order_status='pickedup') # Use final status
+    completed_orders = Order.objects.filter(order_status='pickedup')
     total_revenue = completed_orders.aggregate(total=models.Sum('total_price'))['total'] or 0
     context = {
         'total_orders': Order.objects.count(),
@@ -527,8 +498,7 @@ def settings_view(request):
     context = {
         'active_page': 'settings',
     }
-    """Renders the settings page."""
-    return render(request, 'OrderMaster/settings.html')
+    return render(request, 'OrderMaster/settings.html', context)
 
 @admin_required
 def get_orders_api(request):
@@ -539,18 +509,10 @@ def get_orders_api(request):
             'id': order.id, 'order_id': order.order_id,
             'customer_name': order.customer_name, 'items': order.items,
             'total_price': float(order.total_price),
-            'status': order.order_status, # Use correct status field
+            'status': order.order_status,
             'created_at': order.created_at.strftime('%b %d, %Y, %I:%M %p')
         } for order in orders]
         return JsonResponse({'orders': data})
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
-
-
-
-
-
-
-
-
