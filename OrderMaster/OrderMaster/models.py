@@ -23,6 +23,15 @@ class MenuItem(models.Model):
         db_table = 'menu_items'
 
 class Order(models.Model):
+    STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Confirmed', 'Confirmed'),  # Added
+        ('Preparing', 'Preparing'),
+        ('Ready', 'Ready'),
+        ('Completed', 'Completed'),
+        ('Rejected', 'Rejected'),    # Added
+        ('Cancelled', 'Cancelled'),
+    ]
     order_id = models.CharField(max_length=50, unique=True, blank=True)
     customer_name = models.CharField(max_length=200)
     customer_mobile = models.CharField(max_length=15)
@@ -30,7 +39,7 @@ class Order(models.Model):
     subtotal = models.DecimalField(max_digits=10, decimal_places=2)
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=50)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='Pending') # Updated
     payment_method = models.CharField(max_length=50)
     payment_id = models.CharField(max_length=100, blank=True, null=True)
     created_at = models.DateTimeField(default=timezone.now)
@@ -50,6 +59,7 @@ class Order(models.Model):
         db_table = 'orders'
         ordering = ['-created_at']
 
+
 class VlhAdmin(models.Model):
     mobile = models.CharField(max_length=10, unique=True)
     password_hash = models.TextField()
@@ -62,3 +72,4 @@ class VlhAdmin(models.Model):
         return bcrypt.checkpw(raw_password.encode('utf-8'), self.password_hash.encode('utf-8'))
     def __str__(self):
         return self.mobile
+
