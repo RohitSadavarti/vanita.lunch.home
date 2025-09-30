@@ -13,9 +13,9 @@
     <div class="app-layout">
         {% include 'OrderMaster/includes/sidebar.html' %}
         
-        <div class="main-wrapper">
+        <div class="main-content-wrapper"> 
             <header class="admin-header">
-                <button id="sidebarToggle" class="sidebar-toggle-btn">
+                <button id="sidebar-toggle-btn" class="sidebar-toggle-btn">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                 </button>
 
@@ -49,12 +49,13 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const sidebar = document.querySelector('.sidebar');
-            const sidebarToggle = document.getElementById('sidebarToggle');
+            const appLayout = document.querySelector('.app-layout');
+            const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
 
-            if (sidebarToggle && sidebar) {
-                sidebarToggle.addEventListener('click', function() {
-                    sidebar.classList.toggle('toggled');
+            if (sidebarToggleBtn && appLayout) {
+                sidebarToggleBtn.addEventListener('click', function() {
+                    // This toggles the class on the main container
+                    appLayout.classList.toggle('sidebar-collapsed');
                 });
             }
         });
