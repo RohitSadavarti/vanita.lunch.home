@@ -212,18 +212,23 @@ def update_order_status(request):
 @admin_required
 def menu_management_view(request):
     if request.method == 'POST':
-        form = MenuItemForm(request.POST, request.FILES)
+        # REMOVED: request.FILES, as we are no longer uploading files
+        form = MenuItemForm(request.POST)
         if form.is_valid():
             form.save()
             messages.success(request, 'Menu item added successfully!')
             return redirect('menu_management')
+        else:
+            messages.error(request, 'Please correct the errors below.')
     else:
         form = MenuItemForm()
+    
     context = {
         'menu_items': MenuItem.objects.all().order_by('-created_at'),
-        'item_form': form
+        'add_item_form': form  # Use a consistent name for the form
     }
     return render(request, 'OrderMaster/menu_management.html', context)
+
 
 @admin_required
 @require_POST
@@ -236,36 +241,43 @@ def delete_menu_item_view(request, item_id):
 @csrf_exempt
 @admin_required
 def api_menu_item_detail(request, item_id):
-    try:
-        item = get_object_or_404(MenuItem, id=item_id)
-    except MenuItem.DoesNotExist:
-        return JsonResponse({'error': 'Item not found'}, status=404)
+    item = get_object_or_404(MenuItem, id=item_id)
+    
     if request.method == 'GET':
         data = {
-            'id': item.id, 'item_name': item.item_name, 'description': item.description,
-            'price': str(item.price), 'category': item.category, 'veg_nonveg': item.veg_nonveg,
-            'meal_type': item.meal_type, 'availability_time': item.availability_time,
-            'image_url': item.image.url if item.image.url else ''
+            'id': item.id,
+            'item_name': item.item_name,
+            'description': item.description,
+            'price': str(item.price),
+            'category': item.category,
+            'veg_nonveg': item.veg_nonveg,
+            'meal_type': item.meal_type,
+            'availability_time': item.availability_time,
+            # FIXED: Changed from item.image.url to item.image_url
+            'image_url': item.image_url if item.image_url else ''
         }
         return JsonResponse(data)
+        
     if request.method == 'POST':
-        form = MenuItemForm(request.POST, request.FILES, instance=item)
+        # REMOVED: request.FILES from the form instance
+        form = MenuItemForm(request.POST, instance=item)
         if form.is_valid():
             form.save()
-            messages.success(request, f"'{item.item_name}' has been updated successfully.")
             return JsonResponse({'success': True, 'message': 'Item updated successfully!'})
         else:
             return JsonResponse({'success': False, 'errors': form.errors}, status=400)
-    return HttpResponseBadRequest("Invalid request method")
+            
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 
-@require_http_methods(["GET"])
 def api_menu_items(request):
     try:
+        # FIXED: Select 'image_url' instead of 'image'
         menu_items = MenuItem.objects.all().values(
             'id', 'item_name', 'description', 'price', 'category',
-            'veg_nonveg', 'meal_type', 'availability_time', 'image'
+            'veg_nonveg', 'meal_type', 'availability_time', 'image_url'
         ).order_by('category', 'item_name')
+        
         items_list = [
             {**item, 'price': float(item['price'])} for item in menu_items
         ]
@@ -390,6 +402,7 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
 
 
 
