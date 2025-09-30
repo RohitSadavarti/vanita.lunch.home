@@ -522,3 +522,47 @@ body {
 .app-layout.sidebar-collapsed .sidebar-nav a svg {
     margin-right: 0; /* Remove margin when collapsed */
 }
+
+/* --- Final Sidebar & Toggle Button Fixes --- */
+
+/* New container for brand and toggle button */
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Ensure brand takes up available space */
+.sidebar-header .sidebar-brand {
+    flex-grow: 1;
+}
+
+/* Updated styles for the toggle button */
+.sidebar-toggle-btn {
+    background: transparent;
+    border: none;
+    color: #adb5bd; /* Match nav icon color */
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, transform 0.3s ease-in-out;
+    flex-shrink: 0; /* Prevent the button from shrinking */
+}
+
+.sidebar-toggle-btn:hover {
+    background-color: #343a40;
+    color: #f8f9fa;
+}
+
+/* Add a rotation effect to the button icon when collapsed */
+.app-layout.sidebar-collapsed .sidebar-toggle-btn svg {
+    transform: rotate(180deg);
+}
+
+/* Remove the old button from the main header if it still appears */
+.admin-header .sidebar-toggle-btn {
+    display: none;
+}
