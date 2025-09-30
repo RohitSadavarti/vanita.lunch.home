@@ -34,7 +34,30 @@
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h3>Analytics Dashboard</h3>
         <form id="dateFilterForm" class="d-flex align-items-center gap-2">
-            <div class="dropdown">
+            <div class="dropdown">    
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="dateFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    Showing: <span id="date-display" class="fw-bold">This Month</span>
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="dateFilterDropdown">
+                    <li><a class="dropdown-item" href="#" data-filter="today">Today</a></li>
+                    <li><a class="dropdown-item" href="#" data-filter="this_week">This Week</a></li>
+                    <li><a class="dropdown-item" href="#" data-filter="this_month">This Month</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" id="customDateBtn">Custom Range...</a></li>
+                </ul>
+            </div>
+            <div id="customDateRange" class="d-none align-items-center gap-2">
+                <input type="date" class="form-control form-control-sm" name="start_date" id="startDate" placeholder="Start Date">
+                <input type="date" class="form-control form-control-sm" name="end_date" id="endDate" placeholder="End Date">
+                <button class="btn btn-primary btn-sm" type="button" id="applyCustomDate">Apply</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h3>Analytics Dashboard</h3>
+        <form id="dateFilterForm" class="d-flex align-items-center gap-2">
+            <div class="dropdown">    
                 <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="dateFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     Showing: <span id="date-display" class="fw-bold">This Month</span>
                 </button>
@@ -91,6 +114,8 @@
     </div>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const dateDisplay = document.getElementById('date-display');
@@ -135,7 +160,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     label: 'Quantity Sold',
                     data: data.most_ordered_items.data,
                     backgroundColor: [
-                        '#ff8100', '#ff9f40', '#ffb-d6e', '#ffda9a', '#ffedc9', '#fce2a9', '#f9d789'
+                        '#ff8100', 
+                        '#ff9f40', 
+                        '#ffbd6e', // AMENDMENT 2: Corrected typo from '#ffb-d6e'
+                        '#ffda9a', 
+                        '#ffedc9', 
+                        '#fce2a9', 
+                        '#f9d789'
                     ]
                 }]
             },
@@ -151,10 +182,14 @@ document.addEventListener('DOMContentLoaded', function () {
         
         try {
             const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             const data = await response.json();
             renderCharts(data);
         } catch (error) {
             console.error('Failed to fetch analytics data:', error);
+            // Optionally, display an error message to the user on the dashboard
         }
     };
 
@@ -178,7 +213,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
         if (startDate && endDate) {
-            dateDisplay.textContent = 'Custom';
+            // AMENDMENT 3: Improved display for custom date range
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const options = { year: 'numeric', month: 'short', day: 'numeric' };
+            dateDisplay.textContent = `${start.toLocaleDateString('en-GB', options)} - ${end.toLocaleDateString('en-GB', options)}`;
             fetchAnalyticsData('custom', startDate, endDate);
         }
     });
