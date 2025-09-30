@@ -88,15 +88,13 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# --- PATH CORRECTION 2 ---
-# This tells Django where to find the React app's static files (JS, CSS)
-
+# --- CORRECTED PATH ---
+# This path now correctly points to your 'static' folder.
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'OrderMaster', 'static'),
+    os.path.join(BASE_DIR, 'static'),
 ]
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
@@ -145,6 +143,7 @@ LOGGING = {
         },
     },
 }
+
 
 
 
