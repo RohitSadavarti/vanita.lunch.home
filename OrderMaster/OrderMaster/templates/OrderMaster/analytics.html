@@ -27,6 +27,9 @@
         border-radius: 0.5rem;
         padding: 1.5rem;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        /* --- AMENDMENT: Set a fixed height for chart containers --- */
+        position: relative;
+        height: 450px; 
     }
 </style>
  
@@ -130,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                     label += ': ';
                                 }
                                 if (context.parsed.x !== null) {
-                                    label += context.parsed.x;
+                                    label += context.parsed.x.toFixed(2) + '%';
                                 }
                                 return label;
                             }
