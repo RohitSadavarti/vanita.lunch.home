@@ -24,17 +24,27 @@ logger = logging.getLogger(__name__)
 # ==============================================================================
 #  Firebase Admin SDK Initialization
 # ==============================================================================
+# IMPORTANT: This setup assumes you have your service account JSON file
+# and have set the GOOGLE_APPLICATION_CREDENTIALS environment variable.
+# If not, you can load it directly:
+# cred = credentials.Certificate("path/to/your/serviceAccountKey.json")
+
+
+# Firebase Admin SDK Initialization
 try:
     if not firebase_admin._apps:
+        # Check if running on Render (has environment variable)
         firebase_creds = os.environ.get('FIREBASE_CREDENTIALS')
         
         if firebase_creds:
+            # Parse JSON credentials from environment variable
             cred_dict = json.loads(firebase_creds)
             cred = credentials.Certificate(cred_dict)
             firebase_admin.initialize_app(cred)
             print("✅ Firebase Admin SDK initialized with service account")
             logger.info("Firebase Admin SDK initialized successfully")
         else:
+            # Fallback for local development
             cred = credentials.ApplicationDefault()
             firebase_admin.initialize_app(cred, {
                 'projectId': "vanita-lunch-home",
@@ -43,6 +53,7 @@ try:
 except Exception as e:
     logger.error(f"❌ Failed to initialize Firebase Admin SDK: {e}")
     print(f"ERROR: Failed to initialize Firebase Admin SDK: {e}")
+    # ==============================================================================
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -55,6 +66,7 @@ def subscribe_to_topic(request):
         if not token:
             return JsonResponse({'error': 'Token required'}, status=400)
         
+        # Subscribe token to topic
         response = messaging.subscribe_to_topic([token], 'new_orders')
         
         if response.failure_count > 0:
@@ -75,6 +87,7 @@ def customer_order_view(request):
 
 @csrf_exempt
 def firebase_messaging_sw(request):
+    # This view correctly serves the service worker file.
     return render(request, 'firebase-messaging-sw.js', content_type='application/javascript')
 
 
@@ -85,6 +98,8 @@ def admin_required(view_func):
             return redirect('login')
         return view_func(request, *args, **kwargs)
     return wrapper
+
+# ... (login_view, logout_view, and dashboard_view remain the same) ...
 
 def login_view(request):
     if request.session.get('is_authenticated'):
@@ -118,7 +133,6 @@ def dashboard_view(request):
         'ready_orders_count': Order.objects.filter(order_status='ready').count(),
         'menu_items_count': MenuItem.objects.count(),
         'recent_orders': Order.objects.order_by('-created_at')[:5],
-        'active_page': 'dashboard',  # --- ADDED THIS LINE ---
     }
     return render(request, 'OrderMaster/dashboard.html', context)
 
@@ -145,7 +159,7 @@ def order_management_view(request):
     elif date_filter == 'custom' and start_date_str and end_date_str:
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
-    else:
+    else: # Default to today
         start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
         date_filter = 'today'
@@ -169,7 +183,6 @@ def order_management_view(request):
         'selected_filter': date_filter,
         'start_date_val': start_date_str if date_filter == 'custom' else '',
         'end_date_val': end_date_str if date_filter == 'custom' else '',
-        'active_page': 'order_management',  # --- ADDED THIS LINE ---
     }
     return render(request, 'OrderMaster/order_management.html', context)
 
@@ -195,9 +208,11 @@ def update_order_status(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+# ... (menu_management_view, delete_menu_item_view, api_menu_item_detail remain the same) ...
 @admin_required
 def menu_management_view(request):
     if request.method == 'POST':
+        # REMOVED: request.FILES, as we are no longer uploading files
         form = MenuItemForm(request.POST)
         if form.is_valid():
             form.save()
@@ -210,8 +225,7 @@ def menu_management_view(request):
     
     context = {
         'menu_items': MenuItem.objects.all().order_by('-created_at'),
-        'add_item_form': form,
-        'active_page': 'menu_management',  # --- ADDED THIS LINE ---
+        'add_item_form': form  # Use a consistent name for the form
     }
     return render(request, 'OrderMaster/menu_management.html', context)
 
@@ -239,11 +253,13 @@ def api_menu_item_detail(request, item_id):
             'veg_nonveg': item.veg_nonveg,
             'meal_type': item.meal_type,
             'availability_time': item.availability_time,
+            # FIXED: Changed from item.image.url to item.image_url
             'image_url': item.image_url if item.image_url else ''
         }
         return JsonResponse(data)
         
     if request.method == 'POST':
+        # REMOVED: request.FILES from the form instance
         form = MenuItemForm(request.POST, instance=item)
         if form.is_valid():
             form.save()
@@ -256,6 +272,7 @@ def api_menu_item_detail(request, item_id):
 
 def api_menu_items(request):
     try:
+        # FIXED: Select 'image_url' instead of 'image'
         menu_items = MenuItem.objects.all().values(
             'id', 'item_name', 'description', 'price', 'category',
             'veg_nonveg', 'meal_type', 'availability_time', 'image_url'
@@ -306,11 +323,12 @@ def api_place_order(request):
 
         order_id = f"VLH{timezone.now().strftime('%y%m%d%H%M')}{str(uuid.uuid4())[:4].upper()}"
 
+        # Create the order with correct fields
         new_order = Order.objects.create(
             order_id=order_id,
             customer_name=data['customer_name'],
             customer_mobile=data['customer_mobile'],
-            items=validated_items_for_db,
+            items=validated_items_for_db,  # Store as list, JSONField will handle it
             subtotal=calculated_subtotal,
             discount=Decimal('0.00'),
             total_price=final_total_server,
@@ -320,6 +338,7 @@ def api_place_order(request):
             order_status='open'
         )
 
+        # Send Firebase Cloud Messaging notification
         try:
             message = messaging.Message(
                 notification=messaging.Notification(
@@ -348,35 +367,35 @@ def api_place_order(request):
         logger.error(f"Place order error: {e}")
         return JsonResponse({'error': 'An unexpected server error occurred.'}, status=500)
         
+# ... (analytics_view, settings_view, get_orders_api remain the same) ...
 @admin_required
 def analytics_view(request):
-    completed_orders = Order.objects.filter(order_status='pickedup')
+    """Renders the analytics page."""
+    completed_orders = Order.objects.filter(order_status='pickedup') # Use final status
     total_revenue = completed_orders.aggregate(total=models.Sum('total_price'))['total'] or 0
     context = {
         'total_orders': Order.objects.count(),
         'completed_orders': completed_orders.count(),
         'total_revenue': total_revenue,
         'pending_orders': Order.objects.filter(order_status__in=['open', 'ready']).count(),
-        'active_page': 'analytics',  # --- ADDED THIS LINE ---
     }
     return render(request, 'OrderMaster/analytics.html', context)
 
 @admin_required
 def settings_view(request):
-    context = {
-        'active_page': 'settings',  # --- ADDED THIS LINE ---
-    }
-    return render(request, 'OrderMaster/settings.html', context)
+    """Renders the settings page."""
+    return render(request, 'OrderMaster/settings.html')
 
 @admin_required
 def get_orders_api(request):
+    """API endpoint to fetch recent orders for the admin dashboard."""
     try:
         orders = Order.objects.all().order_by('-created_at')[:20]
         data = [{
             'id': order.id, 'order_id': order.order_id,
             'customer_name': order.customer_name, 'items': order.items,
             'total_price': float(order.total_price),
-            'status': order.order_status,
+            'status': order.order_status, # Use correct status field
             'created_at': order.created_at.strftime('%b %d, %Y, %I:%M %p')
         } for order in orders]
         return JsonResponse({'orders': data})
