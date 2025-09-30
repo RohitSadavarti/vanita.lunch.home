@@ -34,7 +34,7 @@ body {
 
 /* Main content wrapper that sits next to the sidebar */
 .main-content-wrapper {
-    margin-left: 256px; /* Must match the sidebar's expanded width */
+    margin-left: 256px;
     width: calc(100% - 256px);
     transition: margin-left 0.3s ease-in-out, width 0.3s ease-in-out;
 }
@@ -45,24 +45,28 @@ body {
 
 /* Sidebar base style */
 .sidebar {
-    position: fixed; /* Fixes the sidebar to the viewport */
+    position: fixed;
     top: 0;
     left: 0;
     height: 100vh;
-    width: 256px; /* Expanded width */
-    background-color: #212529; /* Dark background */
-    color: #adb5bd; /* Default text/icon color */
+    width: 256px;
+    background-color: #212529;
+    color: #adb5bd;
     transition: width 0.3s ease-in-out;
-    overflow-x: hidden; /* Hide content that overflows horizontally */
-    display: flex; /* Use flexbox for vertical layout */
+    overflow-x: hidden;
+    display: flex;
     flex-direction: column;
 }
 
 
 .sidebar-nav a span,
 .sidebar-brand-text {
-    white-space: nowrap; /* Prevents text from wrapping during transition */
-    transition: opacity 0.2s ease-in-out;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #f8f9fa;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.2;
 }
 
 
@@ -200,20 +204,19 @@ body {
 
 /* Sidebar Navigation */
 .sidebar-nav {
-    flex-grow: 1; /* Allows nav to take up remaining space */
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
+    flex-grow: 1;
+    padding: 0.5rem 0;
 }
 
 .sidebar-nav a {
     display: flex;
     align-items: center;
-    padding: 0.75rem 1.25rem; /* Padding for expanded state */
-    color: #adb5bd; /* Default nav item color */
+    padding: 0.75rem 1.25rem;
+    color: #adb5bd;
     text-decoration: none;
     transition: background-color 0.2s, color 0.2s;
-    border-radius: 0.25rem; /* Slight rounding for items */
-    margin: 0.25rem 0.5rem; /* Margin between nav items */
+    border-radius: 0.25rem;
+    margin: 0.25rem 0.5rem;
 }
 
 .sidebar-nav a:hover {
@@ -501,28 +504,27 @@ body {
 
 /* --- Fixes for Collapsed Sidebar Alignment & Logo --- */
 
-/* Brand link styling */
 .sidebar-brand a {
     text-decoration: none;
-    color: #f8f9fa; /* White text for brand name */
+    color: #f8f9fa;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0.75rem; /* Space between icon and text */
+    gap: 0.5rem;
 }
 
 /* Icon styling */
 .sidebar-brand-icon {
-    flex-shrink: 0;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 .sidebar-brand-icon svg {
-    width: 28px;
-    height: 28px;
-    color: #ff8100; /* Orange color for the cutlery icon */
+    width: 32px;
+    height: 32px;
+    color: #ff8100;
 }
 
 /* Fix hyperlink color */
@@ -539,9 +541,9 @@ body {
 .app-layout.sidebar-collapsed .sidebar-brand a,
 .app-layout.sidebar-collapsed .sidebar-nav a {
     justify-content: center; /* Center icon horizontally */
-    padding: 0.75rem 0; /* Adjust padding for centered icons */
+    padding: 0; /* Adjust padding for centered icons */
     margin: 0.25rem auto; /* Center items with auto margins */
-    width: 64px; /* Fixed width for clickable area when collapsed */
+    width: 56px; /* Fixed width for clickable area when collapsed */
     height: 48px; /* Fixed height for clickable area */
 }
 
@@ -555,33 +557,38 @@ body {
 /* New container for brand and toggle button */
 .sidebar-header {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between; /* Pushes brand to left, button to right */
-    padding: 0.5rem 1rem; /* Adjust padding as needed */
-    height: 60px; /* Fixed height for the header */
-    flex-shrink: 0; /* Prevent shrinking */
+    padding: 0.75rem 0;
+    transition: all 0.3s ease-in-out;
 }
 /* Ensure brand takes up available space */
 .sidebar-header .sidebar-brand {
     flex-grow: 1;
 }
+.sidebar-brand {
+    transition: opacity 0.3s, visibility 0.3s, height 0.3s;
+}
 
-/* Updated styles for the toggle button */
+/* Toggle Button Styling */
 .sidebar-toggle-btn {
-    background: transparent; /* No background */
+    background: transparent;
     border: none;
-    color: #adb5bd; /* Hamburger icon color */
+    color: #adb5bd;
     cursor: pointer;
-    padding: 0; /* No padding around the icon itself */
-    width: 40px; /* Fixed size for the clickable area */
-    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: color 0.2s;
-    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-bottom: 0.5rem; /* Space between button and logo */
+    transition: color 0.2s, background-color 0.2s;
 }
 
+.sidebar-toggle-btn svg {
+    transition: transform 0.3s ease-in-out;
+}
 .sidebar-toggle-btn:hover {
     background-color: #343a40;
     color: #f8f9fa;
@@ -589,6 +596,19 @@ body {
 
 .app-layout.sidebar-collapsed .sidebar-header {
     justify-content: center; /* Center content in collapsed header */
+}
+
+.app-layout.sidebar-collapsed .sidebar-toggle-btn {
+    margin-bottom: 0; /* Remove space below button */
+}
+
+.app-layout.sidebar-collapsed .sidebar-brand {
+    opacity: 0;
+    visibility: hidden;
+    height: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
 }
 
 /* Hide divider text */
@@ -619,4 +639,5 @@ body {
 .admin-header .sidebar-toggle-btn {
     display: none;
 }
+
 
