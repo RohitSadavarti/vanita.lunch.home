@@ -1,5 +1,3 @@
-
-
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
@@ -41,104 +39,8 @@
             </main>
         </div>
     </div>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     {% include 'OrderMaster/includes/scripts.html' %}
-
-    <script>
-const firebaseConfig = {
-    apiKey: "AIzaSyBnYYq_K3TL9MxyKaCNPkB8SRqAIucF0rI",
-    authDomain: "vanita-lunch-home.firebaseapp.com",
-    projectId: "vanita-lunch-home",
-    storageBucket: "vanita-lunch-home.firebasestorage.app",
-    messagingSenderId: "86193565341",
-    appId: "1:86193565341:web:b9c234bda59b37ee366e74"
-};
-
-firebase.initializeApp(firebaseConfig);
-const messaging = firebase.messaging();
-
-// Request permission and subscribe to topic
-async function initializeNotifications() {
-    try {
-        console.log('🔔 Requesting notification permission...');
-        const permission = await Notification.requestPermission();
-        
-        if (permission !== 'granted') {
-            console.log('❌ Notification permission denied');
-            return;
-        }
-        
-        console.log('✅ Notification permission granted');
-        
-        // Register service worker
-        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-        console.log('✅ Service Worker registered');
-        
-        // Wait for service worker to be ready
-        await navigator.serviceWorker.ready;
-        
-        // Get FCM token
-        const token = await messaging.getToken({
-            vapidKey: 'BKjH1TPFhqWc4b0ClYHjgp7maojaR8TD1FnsI7eZCRGSPWul3aNtMs4Gd9wvER8Vlcs65I5jGDhFHzLN9DAxBqA',
-            serviceWorkerRegistration: registration
-        });
-        
-        console.log('✅ FCM Token:', token);
-        
-        // Subscribe to topic on backend
-        const response = await fetch('/api/subscribe-topic/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ token: token })
-        });
-        
-        const result = await response.json();
-        if (result.success) {
-            console.log('✅ Subscribed to new_orders topic');
-        } else {
-            console.error('❌ Failed to subscribe:', result.error);
-        }
-        
-    } catch (error) {
-        console.error('❌ Notification setup error:', error);
-    }
-}
-
-// Handle foreground messages
-messaging.onMessage((payload) => {
-    console.log('📬 Foreground message received:', payload);
-    
-    // Show notification
-    if (Notification.permission === 'granted') {
-        new Notification(payload.notification.title, {
-            body: payload.notification.body,
-            icon: '/static/favicon.ico',
-            badge: '/static/favicon.ico',
-            tag: 'new-order'
-        });
-    }
-    
-    // Reload page after 2 seconds
-    setTimeout(() => {
-        console.log('🔄 Reloading page to show new order...');
-        window.location.reload();
-    }, 2000);
-});
-
-// Initialize when page loads (only on admin pages)
-if (window.location.pathname.includes('/orders/') || window.location.pathname.includes('/dashboard/')) {
-    initializeNotifications();
-}
-</script>
 </body>
 </html>
-
-
-
-
-
-
