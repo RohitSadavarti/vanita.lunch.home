@@ -20,28 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return cookieValue;
     };
-document.addEventListener('DOMContentLoaded', function() {
     
-    // Initialize Lucide Icons if available
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-    }
-
-    // --- UTILITY: Get CSRF Token ---
-    const getCookie = (name) => {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    };
 
     
 //--------------------------------------------------------------------------------------------------------------------------
@@ -59,8 +38,10 @@ function showNewOrderPopup(orderData) {
     }
 
     let itemsHtml = '<ul>';
-    for (const item of items) {
-        itemsHtml += `<li>${item.quantity} x ${item.name}</li>`;
+    if(Array.isArray(items)) {
+        for (const item of items) {
+            itemsHtml += `<li>${item.quantity} x ${item.name}</li>`;
+        }
     }
     itemsHtml += '</ul>';
 
@@ -105,13 +86,12 @@ async function handleOrderAction(orderId, action, modalInstance) {
         console.error(`Error ${action}ing order:`, error);
         alert('An error occurred. Please try again.');
     }
-}
-    
+}    
 //--------------------------------------------------------------------------------------------------------------------------
 
     
     
-        // --- DASHBOARD: LIVE ORDER REFRESH ---
+ // --- DASHBOARD: LIVE ORDER REFRESH ---
     const liveOrdersContainer = document.getElementById('live-orders');
     if (liveOrdersContainer) {
         const fetchOrders = async () => {
@@ -136,7 +116,8 @@ async function handleOrderAction(orderId, action, modalInstance) {
         setInterval(fetchOrders, 10000);
     }
 
-    // --- ORDER MANAGEMENT PAGE ---
+
+   // --- ORDER MANAGEMENT PAGE ---
     const customDateBtn = document.getElementById('customDateBtn');
     const customDateRangeDiv = document.getElementById('customDateRange');
 
@@ -200,6 +181,7 @@ async function handleOrderAction(orderId, action, modalInstance) {
             handleStatusUpdate(e.target, 'pickedup');
         });
     });
+});
 
 
 // --- MENU MANAGEMENT PAGE ---
@@ -285,3 +267,4 @@ async function handleOrderAction(orderId, action, modalInstance) {
         });
     }
 });
+
