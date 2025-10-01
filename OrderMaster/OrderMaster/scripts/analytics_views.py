@@ -176,8 +176,8 @@ def _png_html(fig, title="Chart"):
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title>
 <style>
-  html,body{{margin:0;padding:0;background:#fff}}
-  img{{display:block;max-width:100%;height:auto}}
+  html,body{{margin:0;padding:0;background:#fff;height:100%}}
+  img{{display:block;width:100%;height:100%;object-fit:contain}}
 </style>
 </head><body>
 <img alt="{title}" src="data:image/png;base64,{b64}" />
