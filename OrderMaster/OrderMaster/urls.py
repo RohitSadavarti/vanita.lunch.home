@@ -27,4 +27,7 @@ urlpatterns = [
 
     # Customer-facing URL
     path('customer-order/', views.customer_order_view, name='customer_home'),
+    path('api/test-notification/', views.test_notification, name='test_notification'),
+
 ]
+
