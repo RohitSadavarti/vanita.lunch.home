@@ -1,7 +1,7 @@
 // OrderMaster/static/js/firebase-init.js
 
 (function() {
-    // Your web app's Firebase configuration
+    // Firebase configuration
     const firebaseConfig = {
       apiKey: "AIzaSyBnYYq_K3TL9MxyKaCNPkB8SRqAIucF0rI",
       authDomain: "vanita-lunch-home.firebaseapp.com",
@@ -15,43 +15,7 @@
     firebase.initializeApp(firebaseConfig);
     const messaging = firebase.messaging();
 
-    // Request notification permission
-    Notification.requestPermission().then((permission) => {
-        if (permission === 'granted') {
-            console.log('Notification permission granted.');
-            // Get token
-            messaging.getToken().then((currentToken) => {
-                if (currentToken) {
-                    console.log('FCM Token:', currentToken);
-                    // Send the token to your server and subscribe to the topic
-                    subscribeTokenToTopic(currentToken, 'new_orders');
-                } else {
-                    console.log('No registration token available. Request permission to generate one.');
-                }
-            }).catch((err) => {
-                console.log('An error occurred while retrieving token. ', err);
-            });
-        } else {
-            console.log('Unable to get permission to notify.');
-        }
-    });
-
-    // Handle incoming messages when page is in foreground
-    messaging.onMessage((payload) => {
-       console.log('Message received. ', payload);
-        
-        // Show the popup with order details
-        if (typeof showNewOrderPopup === "function") {
-            showNewOrderPopup(payload.data);
-        }
-
-        // Also show a browser notification
-        const notification = new Notification(payload.notification.title, {
-            body: payload.notification.body,
-            icon: '/static/favicon.ico'
-        });
-    });
-
+    // Helper function to get CSRF token
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -66,6 +30,8 @@
         }
         return cookieValue;
     }
+
+    // Subscribe token to topic
     function subscribeTokenToTopic(token, topic) {
         fetch('/api/subscribe-topic/', {
             method: 'POST',
@@ -87,15 +53,61 @@
             console.error('Error subscribing to topic:', error);
         });
     }
-})();
+
+    // Request notification permission
+    Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+            console.log('Notification permission granted.');
+            messaging.getToken().then((currentToken) => {
+                if (currentToken) {
+                    console.log('FCM Token:', currentToken);
+                    subscribeTokenToTopic(currentToken, 'new_orders');
+                } else {
+                    console.log('No registration token available.');
+                }
+            }).catch((err) => {
+                console.log('Error retrieving token: ', err);
+            });
+        } else {
+            console.log('Unable to get permission to notify.');
+        }
+    });
+
+    // Handle incoming messages when page is in foreground
+    messaging.onMessage((payload) => {
+        console.log('Message received: ', payload);
+        
+        // Show the popup with order details
+        showNewOrderPopup(payload.data);
+
+        // Also show a browser notification
+        if (Notification.permission === 'granted') {
+            new Notification(payload.notification.title, {
+                body: payload.notification.body,
+                icon: '/static/favicon.ico',
+                tag: 'new-order',
+                requireInteraction: true
+            });
+        }
+
+        // Play notification sound
+        playNotificationSound();
+    });
+
     // Function to show the new order popup
-    function showNewOrderPopup(orderData) {
+    window.showNewOrderPopup = function(orderData) {
         console.log('Showing popup for order:', orderData);
         
-        const modal = new bootstrap.Modal(document.getElementById('newOrderModal'));
+        const modalElement = document.getElementById('newOrderModal');
+        if (!modalElement) {
+            console.error('Modal element not found');
+            return;
+        }
+
+        const modal = new bootstrap.Modal(modalElement);
         const detailsContainer = document.getElementById('newOrderDetails');
         
-        // Parse the items if they are in a string format
+        // Parse the items if they are in string format
         let items;
         try {
             items = typeof orderData.items === 'string' ? JSON.parse(orderData.items) : orderData.items;
@@ -106,9 +118,9 @@
 
         let itemsHtml = '<ul class="list-unstyled">';
         if (Array.isArray(items)) {
-            for (const item of items) {
+            items.forEach(item => {
                 itemsHtml += `<li class="mb-1"><i class="bi bi-dot"></i> ${item.quantity} x ${item.name}</li>`;
-            }
+            });
         }
         itemsHtml += '</ul>';
 
@@ -135,26 +147,25 @@
             </div>
         `;
 
-        // Add event listeners for accept/reject buttons
+        // Get buttons and add event listeners
         const acceptBtn = document.getElementById('acceptOrderBtn');
         const rejectBtn = document.getElementById('rejectOrderBtn');
 
-        // Remove old event listeners by cloning and replacing
-        const newAcceptBtn = acceptBtn.cloneNode(true);
-        const newRejectBtn = rejectBtn.cloneNode(true);
-        acceptBtn.parentNode.replaceChild(newAcceptBtn, acceptBtn);
-        rejectBtn.parentNode.replaceChild(newRejectBtn, rejectBtn);
+        if (acceptBtn && rejectBtn) {
+            // Clone and replace to remove old listeners
+            const newAcceptBtn = acceptBtn.cloneNode(true);
+            const newRejectBtn = rejectBtn.cloneNode(true);
+            acceptBtn.parentNode.replaceChild(newAcceptBtn, acceptBtn);
+            rejectBtn.parentNode.replaceChild(newRejectBtn, rejectBtn);
 
-        // Add new event listeners
-        newAcceptBtn.onclick = () => handleOrderAction(orderData.id, 'accept', modal);
-        newRejectBtn.onclick = () => handleOrderAction(orderData.id, 'reject', modal);
+            // Add new event listeners
+            newAcceptBtn.onclick = () => handleOrderAction(orderData.id, 'accept', modal);
+            newRejectBtn.onclick = () => handleOrderAction(orderData.id, 'reject', modal);
+        }
 
         // Show the modal
         modal.show();
-
-        // Play notification sound (optional)
-        playNotificationSound();
-    }
+    };
 
     // Function to handle order accept/reject actions
     async function handleOrderAction(orderId, action, modalInstance) {
@@ -172,11 +183,9 @@
 
             if (response.ok && result.success) {
                 modalInstance.hide();
-                
-                // Show success message
                 showToastNotification(`Order has been ${action}ed successfully!`, 'success');
                 
-                // Refresh the page to update the order lists after a short delay
+                // Refresh the page after a short delay
                 setTimeout(() => {
                     location.reload();
                 }, 1000);
@@ -191,7 +200,6 @@
 
     // Function to show toast notifications
     function showToastNotification(message, type = 'success') {
-        // Create toast element if it doesn't exist
         let toastContainer = document.getElementById('toastContainer');
         if (!toastContainer) {
             toastContainer = document.createElement('div');
@@ -221,13 +229,12 @@
         const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
         toast.show();
         
-        // Remove toast element after it's hidden
         toastElement.addEventListener('hidden.bs.toast', () => {
             toastElement.remove();
         });
     }
 
-    // Optional: Play notification sound
+    // Function to play notification sound
     function playNotificationSound() {
         try {
             const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGS57OihUxILTqvj7btvIgU2k9r0yH0vBSF1xe3akEIJE1yx6OyrWBIJRp7h8r9xJAQogM3y2Ik2Bxdhue3poVISC06s4+27biMFNpPa9Mh+MAUgdcXt2pBCCRNcsenrq1gSCUae4fK/cSQFKIDN8tiJNggXYbnt6aFSEgtOrOPtu24jBTaT2vTIfjAFIHXF7dqQQgkTXLHp66tYEglGnuHyv3ElBSiAzfLYiTYIF2G57emhUhILTqzj7btuIwU2k9r0yH4wBSB1xe3akEIJE1yx6eurWBIJRp7h8r9xJAUogM3y2Ik2CBdhue3poVISC06s4+27biMFNpPa9Mh+MAUgdcXt2pBCCRNcsenrq1gSCUae4fK/cSQFKIDN8tiJNggXYbnt6aFSEgtOrOPtu24jBTaT2vTIfjAFIHXF7dqQQgkTXLHp66tYEglGnuHyv3ElBSiAzfLYiTYIF2G57emhUhILTqzj7btuIwU2k9r0yH4wBSB1xe3akEIJE1yx6eurWBIJRp7h8r9xJAUogM3y2Ik2CBdhue3poVISC06s4+27biMFNpPa9Mh+MAUgdcXt2pBCCRNcsenrq1gSCUae4fK/cSQFKIDN8tiJNggXYbnt6aFSEgtOrOPtu24jBTaT2vTIfjAFIHXF7dqQQgkTXLHp66tYEglGnuHyv3ElBSiAzfLYiTYIF2G57emhUhILTqzj7btuIwU2k9r0yH4wBSB1xe3akEIJE1yx6eurWBIJRp7h8r9xJAUogM3y2Ik2CBdhue3poVISC06s4+27biMFNpPa9Mh+MAUgdcXt2pBCCRNcsenrq1gSCUae4fK/cSQFKIDN8tiJNggXYbnt6aFSEgtOrOPtu24jBTaT2vTIfjAFIHXF7dqQQgkTXLHp66tYEglGnuHyv3ElBSiAzfLYiTYIF2G57emhUhILTqzj7btuIwU2k9r0yH4wBSB1xe3akEIJE1yx6eurWBIJRp7h8r9xJAUogM3y2Ik2CBdhue3poVISC06s4+27biMFNpPa9Mh+MAUgdcXt2pBCCRNcsenrq1gSCUae4fK/cSQFKIDN8tiJNggXYbnt6aFSEgtOrOPtu24jBTaT2vTIfjAFIHXF7dqQQgkTXLHp66tYEglGnuHyv3ElBSiAzfLYiTYIF2G57emhUhILTqzj7btuIwU2k9r0yH4wBSB1xe3akEIJE1yx6eurWBIJRp7h8r9xJAUogM3y2Ik2CBdhue3poVISC06s4+27biMFNpPa9Mh+MAUgdcXt2pBCCRNcsenrq1gSCUae4fK/cSQFKIDN8tiJNggXYbnt6aFSEgtOrOPtu24jBTaT2vTIfjAFIHXF7dqQQgkTXLHp66tYEglGnuHyv3ElBSiAzfLYiTYIF2G57emhUhILTqzj7btuIwU2k9r0yH4wBSB1xe3akEIJE1yx6eurWBIJRp7h8r9xJAUogM3y2Ik2CBdhue3poVISC06s4+27biMFNpPa9Mh+MAUgdcXt2pBCCRNcsenrq1gSCUae4fK/cSQFKIDN8tiJNggXYbnt6aFSEgtOrOPtu24jBTaT2vTIfjAFIHXF7dqQ==');
@@ -237,7 +244,4 @@
             console.log('Error playing notification sound:', e);
         }
     }
-
-    // Make showNewOrderPopup available globally for testing
-    window.showNewOrderPopup = showNewOrderPopup;
 })();
