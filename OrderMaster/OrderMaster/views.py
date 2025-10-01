@@ -393,6 +393,9 @@ def api_menu_items(request):
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
 
 
+# This is the updated api_place_order function for views.py
+# Replace the existing function with this one
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_place_order(request):
@@ -436,13 +439,13 @@ def api_place_order(request):
             subtotal=calculated_subtotal,
             discount=Decimal('0.00'),
             total_price=final_total_server,
-            status='Pending',  # Use the default 'Pending'
+            status='Pending',
             payment_method='COD',
             payment_id=data.get('payment_id', 'COD'),
             order_status='open'
         )
 
-        # Send Firebase Cloud Messaging notification with data payload
+        # Send Firebase Cloud Messaging notification with complete data
         try:
             items_json = json.dumps(new_order.items)
             message = messaging.Message(
@@ -451,11 +454,13 @@ def api_place_order(request):
                     body=f'Order #{new_order.order_id} from {new_order.customer_name} - ₹{new_order.total_price}'
                 ),
                 data={
-                    'id': str(new_order.id),
+                    'id': str(new_order.id),  # Database ID for accept/reject actions
                     'order_id': new_order.order_id,
                     'customer_name': new_order.customer_name,
+                    'customer_mobile': new_order.customer_mobile,
                     'total_price': str(new_order.total_price),
                     'items': items_json,
+                    'click_action': 'OPEN_ORDER_DETAILS'
                 },
                 topic='new_orders'
             )
@@ -516,3 +521,4 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
