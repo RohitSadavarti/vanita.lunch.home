@@ -522,3 +522,34 @@ def get_orders_api(request):
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
 
+
+@csrf_exempt
+@admin_required
+def test_notification(request):
+    """Test endpoint to manually trigger a notification"""
+    try:
+        test_items = [
+            {'id': 1, 'name': 'Test Item 1', 'price': 100.00, 'quantity': 2}
+        ]
+        
+        items_json = json.dumps(test_items)
+        
+        message = messaging.Message(
+            notification=messaging.Notification(
+                title='🔔 TEST: New Order!',
+                body='Test Order - ₹200.00'
+            ),
+            data={
+                'id': '999',
+                'order_id': 'TEST123',
+                'customer_name': 'Test Customer',
+                'total_price': '200.00',
+                'items': items_json,
+            },
+            topic='new_orders'
+        )
+        
+        response = messaging.send(message)
+        return JsonResponse({'success': True, 'response': response})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
