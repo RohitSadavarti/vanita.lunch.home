@@ -20,6 +20,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return cookieValue;
     };
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // Initialize Lucide Icons if available
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+
+    // --- UTILITY: Get CSRF Token ---
+    const getCookie = (name) => {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    };
+
+    
 //--------------------------------------------------------------------------------------------------------------------------
 
 function showNewOrderPopup(orderData) {
@@ -112,7 +136,6 @@ async function handleOrderAction(orderId, action, modalInstance) {
         setInterval(fetchOrders, 10000);
     }
 
-
     // --- ORDER MANAGEMENT PAGE ---
     const customDateBtn = document.getElementById('customDateBtn');
     const customDateRangeDiv = document.getElementById('customDateRange');
@@ -166,13 +189,17 @@ async function handleOrderAction(orderId, action, modalInstance) {
     };
     
     document.querySelectorAll('.mark-ready-btn').forEach(button => {
-        button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'ready'));
-    });
-    
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleStatusUpdate(e.target, 'ready');
+        });
+    });    
     document.querySelectorAll('.mark-pickedup-btn').forEach(button => {
-        button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'pickedup'));
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleStatusUpdate(e.target, 'pickedup');
+        });
     });
-});
 
 
 // --- MENU MANAGEMENT PAGE ---
@@ -186,7 +213,6 @@ async function handleOrderAction(orderId, action, modalInstance) {
                 const item = await response.json();
 
                 editFormContainer.innerHTML = `
-                    {% csrf_token %}
                     <div class="mb-3">
                         <label class="form-label">Item Name</label>
                         <input type="text" class="form-control" name="item_name" value="${item.item_name}" required>
@@ -259,9 +285,3 @@ async function handleOrderAction(orderId, action, modalInstance) {
         });
     }
 });
-
-
-
-
-
-
