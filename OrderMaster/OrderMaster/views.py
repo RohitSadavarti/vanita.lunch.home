@@ -553,3 +553,13 @@ def test_notification(request):
         return JsonResponse({'success': True, 'response': response})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+# Add this function to your views.py (near other view functions)
+
+@admin_required
+def test_notification_view(request):
+    """Renders the notification test page"""
+    context = {
+        'active_page': 'test',
+    }
+    return render(request, 'OrderMaster/test_notification.html', context)
