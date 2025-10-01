@@ -26,13 +26,14 @@
                         <p>Admin Portal</p>
                     </div>
                 </div>
-                
+
+                </div>
                 <div class="header-actions">
                     <div class="connection-status">
                          <div class="status-indicator status-connected"></div>
                          <span class="text-sm text-muted-foreground">Connected</span>
                     </div>
-
+                    <audio id="notificationSound" src="{% static 'sounds/notification.mp3' %}" preload="auto"></audio>
                     <div class="modal fade" id="newOrderModal" tabindex="-1" aria-labelledby="newOrderModalLabel" aria-hidden="true">
                       <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
@@ -125,6 +126,7 @@
     <script src="{% static 'js/firebase-init.js' %}"></script>
 </body>
 </html>
+
 
 
 
