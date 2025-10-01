@@ -1,233 +1,284 @@
-{% extends 'OrderMaster/base.html' %}
-{% load static %}
- 
-{% block content %}
-<style>
-    .kpi-card {
-        background-color: #fff;
-        border: 1px solid #e0e0e0;
-        border-radius: 0.5rem;
-        padding: 1.5rem;
-        text-align: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Hotel Analytics</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    /* Color palette (max 5):
+       Primary: Blue #1e40af
+       Neutrals: White #ffffff, Gray-100 #f3f4f6, Gray-700 #374151, Black #0b0f19
+       Accent: Green #059669
+    */
+    :root{
+      --primary:#1e40af;
+      --bg:#ffffff;
+      --muted:#f3f4f6;
+      --text:#0b0f19;
+      --text-muted:#374151;
+      --accent:#059669;
+      --card-bg:#ffffff;
+      --border:#e5e7eb;
     }
-    .kpi-card h5 {
-        font-size: 1rem;
-        color: #6c757d;
-        margin-bottom: 0.5rem;
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text); background:var(--muted);
+      line-height:1.55;
     }
-    .kpi-card p {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #343a40;
+    .container{max-width:1200px;margin:0 auto;padding:16px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+    h1{font-size:20px;margin:0}
+    .filters{
+      display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--card-bg);
+      border:1px solid var(--border); padding:12px;border-radius:8px;
     }
-    .chart-container {
-        background-color: #fff;
-        border: 1px solid #e0e0e0;
-        border-radius: 0.5rem;
-        padding: 1.5rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        /* --- AMENDMENT: Set a fixed height for chart containers --- */
-        position: relative;
-        height: 450px; 
+    .filters .group{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .filters label{font-size:14px;color:var(--text-muted)}
+    .filters input[type="date"]{padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:#fff}
+    .btn{
+      background:var(--primary); color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer;
+      font-weight:600;
     }
-</style>
- 
-<main class="main-content">
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-        <h3>Analytics Dashboard</h3>
-        <form id="dateFilterForm" class="d-flex align-items-center gap-2">
-            <div class="dropdown">    
-                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="dateFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    Showing: <span id="date-display" class="fw-bold">This Month</span>
-                </button>
-                <ul class="dropdown-menu" aria-labelledby="dateFilterDropdown">
-                    <li><a class="dropdown-item" href="#" data-filter="today">Today</a></li>
-                    <li><a class="dropdown-item" href="#" data-filter="this_week">This Week</a></li>
-                    <li><a class="dropdown-item" href="#" data-filter="this_month">This Month</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" id="customDateBtn">Custom Range...</a></li>
-                </ul>
-            </div>
-            <div id="customDateRange" class="d-none align-items-center gap-2">
-                <input type="date" class="form-control form-control-sm" name="start_date" id="startDate" placeholder="Start Date">
-                <input type="date" class="form-control form-control-sm" name="end_date" id="endDate" placeholder="End Date">
-                <button class="btn btn-primary btn-sm" type="button" id="applyCustomDate">Apply</button>
-            </div>
-        </form>
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .grid-2{
+      display:grid; grid-template-columns:1fr; gap:16px;
+    }
+    @media(min-width:900px){ .grid-2{ grid-template-columns:1fr 1fr; } }
+
+    .left-col, .right-col{display:flex;flex-direction:column;gap:16px}
+    .card{
+      background:var(--card-bg); border:1px solid var(--border); border-radius:10px; padding:12px;
+    }
+    .kpis{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media(min-width:640px){ .kpis{grid-template-columns:repeat(4,1fr);} }
+    .kpi{
+      background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;
+    }
+    .kpi h3{margin:0 0 6px 0;font-size:13px;color:var(--text-muted)}
+    .kpi .val{font-size:22px;font-weight:700}
+    .kpi .sub{font-size:12px;color:var(--text-muted)}
+
+    .section-title{font-size:16px;margin:0 0 8px 0}
+    .iframe-wrap{
+      background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;
+    }
+    .iframe-wrap header{
+      padding:8px 10px;border-bottom:1px solid var(--border);background:var(--muted)
+    }
+    .iframe-wrap h4{margin:0;font-size:14px}
+    iframe{display:block;width:100%;height:320px;border:0;background:#fff}
+
+    table{width:100%;border-collapse:collapse}
+    thead th{
+      text-align:left;font-size:12px;color:var(--text-muted);background:var(--muted);
+      border-bottom:1px solid var(--border); padding:8px;
+    }
+    tbody td{
+      padding:10px 8px;border-bottom:1px solid var(--border);vertical-align:top;font-size:14px;
+    }
+    .pill{
+      display:inline-block;padding:2px 8px;border:1px solid var(--border);border-radius:999px;font-size:12px;background:#fff;color:var(--text-muted)
+    }
+    .notice{font-size:12px;color:var(--text-muted)}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1 class="text-balance">Hotel Analytics</h1>
+      <span class="notice">Interactive filters with Python-powered charts</span>
+    </header>
+
+     Filters 
+    <section class="filters" aria-label="Filters">
+      <div class="group" role="radiogroup" aria-label="Quick ranges">
+        <label><input type="radio" name="range" value="today" checked /> Today</label>
+        <label><input type="radio" name="range" value="yesterday" /> Yesterday</label>
+        <label><input type="radio" name="range" value="week" /> This week</label>
+        <label><input type="radio" name="range" value="month" /> This month</label>
+        <label class="pill"><input type="radio" name="range" value="custom" /> Custom</label>
+      </div>
+      <div class="group" aria-label="Custom date range">
+        <label for="start">Start</label>
+        <input type="date" id="start" />
+        <label for="end">End</label>
+        <input type="date" id="end" />
+      </div>
+      <div class="group">
+        <button id="apply" class="btn">Apply</button>
+      </div>
+    </section>
+
+    <div class="grid-2" style="margin-top:12px">
+       Left Column 
+      <section class="left-col">
+         KPI Cards 
+        <div class="kpis" aria-live="polite">
+          <div class="kpi">
+            <h3>Total Revenue</h3>
+            <div class="val" id="kpi-revenue">—</div>
+            <div class="sub">Selected range</div>
+          </div>
+          <div class="kpi">
+            <h3>Total Orders</h3>
+            <div class="val" id="kpi-orders">—</div>
+            <div class="sub">Selected range</div>
+          </div>
+          <div class="kpi">
+            <h3>Avg Order Value</h3>
+            <div class="val" id="kpi-aov">—</div>
+            <div class="sub">Revenue / Orders</div>
+          </div>
+          <div class="kpi">
+            <h3>Payment</h3>
+            <div class="val" id="kpi-payments">—</div>
+            <div class="sub"><span class="pill" id="cash-pill">Cash: —</span> <span class="pill" id="online-pill">Online: —</span></div>
+          </div>
+        </div>
+
+         Orders Table 
+        <div class="card">
+          <h2 class="section-title">Date-wise Orders</h2>
+          <div class="notice" id="table-hint">Most recent 1000 orders in range</div>
+          <div style="overflow:auto">
+            <table aria-describedby="table-hint">
+              <thead>
+                <tr>
+                  <th style="min-width:120px">Time</th>
+                  <th style="min-width:110px">Order ID</th>
+                  <th>Items</th>
+                  <th style="min-width:100px">Price</th>
+                  <th style="min-width:120px">Payment</th>
+                  <th style="min-width:110px">Status</th>
+                </tr>
+              </thead>
+              <tbody id="orders-body">
+                <tr><td colspan="6" class="notice">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+       Right Column: Python chart iframes 
+      <section class="right-col" aria-live="polite">
+        <div class="iframe-wrap">
+          <header><h4>Order Status</h4></header>
+          <iframe id="chart-status" title="Order Status Chart"></iframe>
+        </div>
+        <div class="iframe-wrap">
+          <header><h4>Top Menu Items</h4></header>
+          <iframe id="chart-top" title="Top Menu Items Chart"></iframe>
+        </div>
+        <div class="iframe-wrap">
+          <header><h4>Orders by Hour</h4></header>
+          <iframe id="chart-hour" title="Menu-wise Time Chart"></iframe>
+        </div>
+        <div class="iframe-wrap">
+          <header><h4>Day-wise Menu (Top 5)</h4></header>
+          <iframe id="chart-day-menu" title="Day-wise Menu Chart"></iframe>
+        </div>
+        <div class="iframe-wrap">
+          <header><h4>Day-wise Orders & Revenue</h4></header>
+          <iframe id="chart-day-or" title="Day-wise Orders & Revenue Chart"></iframe>
+        </div>
+      </section>
     </div>
- 
-    <div class="row mb-4">
-        <div class="col-lg-4">
-            <div class="kpi-card">
-                <h5>Total Revenue</h5>
-                <p id="total-revenue">₹0.00</p>
-            </div>
-        </div>
-        <div class="col-lg-4">
-            <div class="kpi-card">
-                <h5>Total Orders</h5>
-                <p id="total-orders">0</p>
-            </div>
-        </div>
-        <div class="col-lg-4">
-            <div class="kpi-card">
-                <h5>Average Order Value</h5>
-                <p id="avg-order-value">₹0.00</p>
-            </div>
-        </div>
-    </div>
- 
-    <div class="row">
-        <div class="col-lg-8 mb-4">
-            <div class="chart-container">
-                <h5>Top 5 Products by Order Type</h5>
-                <canvas id="topProductsChart"></canvas>
-            </div>
-        </div>
-        <div class="col-lg-4 mb-4">
-            <div class="chart-container">
-                <h5>Most Ordered Items</h5>
-                <canvas id="mostOrderedItemsChart"></canvas>
-            </div>
-        </div>
-    </div>
-</main>
- 
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const dateDisplay = document.getElementById('date-display');
-    const customDateBtn = document.getElementById('customDateBtn');
-    const customDateRangeDiv = document.getElementById('customDateRange');
-    
-    let topProductsChart, mostOrderedItemsChart;
- 
-    const renderCharts = (data) => {
-        // --- Key Metrics ---
-        document.getElementById('total-revenue').textContent = `₹${data.key_metrics.total_revenue}`;
-        document.getElementById('total-orders').textContent = data.key_metrics.total_orders;
-        document.getElementById('avg-order-value').textContent = `₹${data.key_metrics.average_order_value}`;
- 
-        // --- Top Products Chart (100% Stacked Bar) ---
-        const topProductsCtx = document.getElementById('topProductsChart').getContext('2d');
-        if (topProductsChart) topProductsChart.destroy();
-        topProductsChart = new Chart(topProductsCtx, {
-            type: 'bar',
-            data: {
-                labels: data.top_products_by_type.labels,
-                datasets: data.top_products_by_type.datasets,
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                indexAxis: 'y', // To make it horizontal
-                plugins: {
-                    title: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                if (context.parsed.x !== null) {
-                                    label += context.parsed.x.toFixed(2) + '%';
-                                }
-                                return label;
-                            }
-                        }
-                    },
-                },
-                scales: {
-                    x: {
-                        stacked: true,
-                        ticks: {
-                            callback: function(value, index, values) {
-                                return value + '%';
-                            }
-                        },
-                        title: {
-                            display: true,
-                            text: 'Percentage of Orders'
-                        }
-                    },
-                    y: {
-                        stacked: true
-                    }
-                }
+  </div>
+
+  <script>
+    // Utilities
+    function qsa(sel){ return Array.from(document.querySelectorAll(sel)); }
+    function fmtMoney(n){ if(n==null) return "—"; return "₹ " + Number(n).toLocaleString(undefined,{maximumFractionDigits:2}); }
+    function fmtInt(n){ if(n==null) return "—"; return Number(n).toLocaleString(); }
+    function currentParams(){
+      const range = (document.querySelector('input[name="range"]:checked')||{}).value || "today";
+      const params = new URLSearchParams({range});
+      if(range === "custom"){
+        const s = document.getElementById("start").value;
+        const e = document.getElementById("end").value;
+        if(s) params.set("start", s);
+        if(e) params.set("end", e);
+      }
+      return params;
+    }
+    function setLoading(yes){
+      document.getElementById("apply").disabled = !!yes;
+      document.getElementById("apply").textContent = yes ? "Loading…" : "Apply";
+    }
+    async function loadData(){
+      try{
+        setLoading(true);
+        const params = currentParams();
+        const res = await fetch(`/analytics/data?${params.toString()}`, {headers:{'Accept':'application/json'}});
+        if(!res.ok) throw new Error("Failed to fetch data");
+        const data = await res.json();
+
+        // KPIs
+        document.getElementById("kpi-revenue").textContent = fmtMoney(data.metrics.totalRevenue);
+        document.getElementById("kpi-orders").textContent = fmtInt(data.metrics.totalOrders);
+        document.getElementById("kpi-aov").textContent = fmtMoney(data.metrics.avgOrderValue);
+        document.getElementById("cash-pill").textContent = `Cash: ${fmtMoney(data.metrics.cashAmount)}`;
+        document.getElementById("online-pill").textContent = `Online: ${fmtMoney(data.metrics.onlineAmount)}`;
+
+        // Table
+        const tb = document.getElementById("orders-body");
+        tb.innerHTML = "";
+        if(!data.table || data.table.length === 0){
+          tb.innerHTML = `<tr><td class="notice" colspan="6">No orders in selected range.</td></tr>`;
+        }else{
+          for(const row of data.table){
+            const tr = document.createElement("tr");
+            const tds = [
+              new Date(row.created_at).toLocaleString(),
+              row.order_id || row.id || "—",
+              row.items_text || "—",
+              fmtMoney(row.total_price),
+              row.payment_method || "—",
+              row.order_status || row.status || "—",
+            ];
+            for(const val of tds){
+              const td = document.createElement("td");
+              td.textContent = val;
+              tr.appendChild(td);
             }
-        });
- 
-        // --- Most Ordered Items Chart (Doughnut) ---
-        const itemsCtx = document.getElementById('mostOrderedItemsChart').getContext('2d');
-        if (mostOrderedItemsChart) mostOrderedItemsChart.destroy();
-        mostOrderedItemsChart = new Chart(itemsCtx, {
-            type: 'doughnut',
-            data: {
-                labels: data.most_ordered_items.labels,
-                datasets: [{
-                    label: 'Quantity Sold',
-                    data: data.most_ordered_items.data,
-                    backgroundColor: [
-                        '#ff8100', '#ff9f40', '#ffbd6e', '#ffda9a', '#ffedc9'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false
-            }
-        });
-    };
- 
-    const fetchAnalyticsData = async (filter = 'this_month', startDate = '', endDate = '') => {
-        let url = `/api/analytics/?date_filter=${filter}`;
-        if (filter === 'custom' && startDate && endDate) {
-            url += `&start_date=${startDate}&end_date=${endDate}`;
+            tb.appendChild(tr);
+          }
         }
-        
-        try {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const data = await response.json();
-            renderCharts(data);
-        } catch (error) {
-            console.error('Failed to fetch analytics data:', error);
-        }
-    };
- 
-    // Event Listeners for Filters
-    document.querySelectorAll('.dropdown-item[data-filter]').forEach(item => {
-        item.addEventListener('click', function(e) {
-            e.preventDefault();
-            const filter = this.dataset.filter;
-            dateDisplay.textContent = this.textContent;
-            customDateRangeDiv.classList.add('d-none');
-            fetchAnalyticsData(filter);
-        });
+
+        // Charts (iframes) – pass same params
+        const qs = params.toString();
+        document.getElementById("chart-status").src = `/analytics/chart/order-status?${qs}`;
+        document.getElementById("chart-top").src = `/analytics/chart/top-menu?${qs}`;
+        document.getElementById("chart-hour").src = `/analytics/chart/menu-by-hour?${qs}`;
+        document.getElementById("chart-day-menu").src = `/analytics/chart/day-wise-menu?${qs}`;
+        document.getElementById("chart-day-or").src = `/analytics/chart/day-wise-orders-revenue?${qs}`;
+      }catch(err){
+        console.error("[v0] loadData error:", err);
+        alert("Failed to load analytics. Please check server logs.");
+      }finally{
+        setLoading(false);
+      }
+    }
+
+    // Events
+    qsa('input[name="range"]').forEach(r => {
+      r.addEventListener('change', () => {
+        const custom = r.value === 'custom';
+        document.getElementById('start').disabled = !custom;
+        document.getElementById('end').disabled = !custom;
+      });
     });
- 
-    customDateBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        customDateRangeDiv.classList.toggle('d-none');
-    });
- 
-    document.getElementById('applyCustomDate').addEventListener('click', function() {
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        if (startDate && endDate) {
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-            const options = { year: 'numeric', month: 'short', day: 'numeric' };
-            dateDisplay.textContent = `${start.toLocaleDateString('en-GB', options)} - ${end.toLocaleDateString('en-GB', options)}`;
-            fetchAnalyticsData('custom', startDate, endDate);
-        }
-    });
- 
-    // Initial load
-    fetchAnalyticsData();
-});
-</script>
-{% endblock %}
+    document.getElementById("apply").addEventListener("click", loadData);
+
+    // Init
+    (function init(){
+      // disable custom by default
+      document.getElementById('start').disabled = true;
+      document.getElementById('end').disabled = true;
+      loadData();
+    })();
+  </script>
+</body>
+</html>
