@@ -1,4 +1,4 @@
-# rohitsadavarti/vanita.lunch.home/vanita.lunch.home-67bf574c7d7ad38e1f5654be71d0a65ac5433c29/OrderMaster/OrderMaster/scripts/analytics_views.py
+# rohitsadavarti/vanita.lunch.home/vanita.lunch.home-18a4b2385f193bd0855cbb8c3cc301e885116adb/OrderMaster/OrderMaster/scripts/analytics_views.py
 
 import os
 import io
@@ -189,7 +189,8 @@ def chart_view(request, chart_type: str):
                 return f'{pct:.0f}%\n({val})'
             return my_autopct
         
-        ax.pie(sizes, labels=labels, autopct=make_autopct(sizes), startangle=140)
+        wedges, texts, autotexts = ax.pie(sizes, labels=labels, autopct=make_autopct(sizes), startangle=140, textprops={'fontsize': 8})
+        plt.setp(autotexts, size=7, weight="bold", color="white")
         ax.set_title("Order Status")
         return _png_html(fig, "Order Status")
 
@@ -204,8 +205,9 @@ def chart_view(request, chart_type: str):
         if not names: names, qtys = ["no data"], [0]
         fig, ax = plt.subplots(figsize=(8,6))
         bars = ax.barh(names[::-1], qtys[::-1], color="#1e40af")
-        ax.bar_label(bars, padding=3, fmt='%d')
-        ax.set_xlim(right=ax.get_xlim()[1] * 1.1)
+        ax.bar_label(bars, padding=5, fmt='%d', fontsize=8)
+        if qtys:
+            ax.set_xlim(right=max(qtys) * 1.15)
         ax.set_xlabel("Qty")
         ax.set_title("Top Menu Items")
         return _png_html(fig, "Top Menu Items")
@@ -220,10 +222,13 @@ def chart_view(request, chart_type: str):
         ys = [ counts.get(h,0) for h in xs ]
         fig, ax = plt.subplots(figsize=(8,3.5))
         ax.plot(xs, ys, marker="o", color="#1e40af")
-        for x, y in zip(xs, ys):
+        for i, (x, y) in enumerate(zip(xs, ys)):
             if y > 0:
-                ax.text(x, y, f' {y}', verticalalignment='bottom', fontsize=8)
-        ax.set_ylim(bottom=0, top=max(ys) * 1.15 if any(ys) else 1)
+                va = 'bottom' if i % 2 == 0 else 'top'
+                offset = 5 if va == 'bottom' else -15
+                ax.text(x, y, f' {y}', verticalalignment=va, fontsize=7, xytext=(0, offset), textcoords='offset points')
+
+        ax.set_ylim(bottom=0, top=max(ys) * 1.25 if any(ys) else 1)
         ax.set_xticks(range(0,24,2))
         ax.set_xlabel("Hour of Day")
         ax.set_ylabel("Orders")
@@ -255,7 +260,8 @@ def chart_view(request, chart_type: str):
         colors = ["#1e40af","#059669","#374151","#93c5fd","#a7f3d0"]
         for idx, (nm, vals) in enumerate(series.items()):
             bars = ax.bar(x, vals, bottom=bottom, label=nm, color=colors[idx % len(colors)])
-            ax.bar_label(bars, label_type='center', fmt='%d', fontsize=8, color='white')
+            labels = [f'{v}' if v > (sum(bottom) + max(vals))*0.05 else '' for v in vals]
+            ax.bar_label(bars, labels=labels, label_type='center', fmt='%d', fontsize=7, color='white', weight='bold')
             bottom += np.array(vals)
         ax.set_xticks(x)
         ax.set_xticklabels([d.strftime("%b %d") for d in days], rotation=45, ha="right")
@@ -279,14 +285,14 @@ def chart_view(request, chart_type: str):
         fig, ax1 = plt.subplots(figsize=(8,3.5))
         ax1.plot(days, orders, color="#1e40af", marker="o", label="Orders")
         for day, order_count in zip(days, orders):
-            ax1.text(day, order_count, f' {order_count}', verticalalignment='bottom', fontsize=8, color="#1e40af")
+            ax1.text(day, order_count, f' {order_count}', verticalalignment='top', fontsize=7, color="#1e40af")
         ax1.set_ylabel("Orders", color="#1e40af")
         ax2 = ax1.twinx()
         ax2.plot(days, revenue, color="#059669", marker="s", label="Revenue")
         for day, rev_val in zip(days, revenue):
-            ax2.text(day, rev_val, f' {rev_val:.0f}', verticalalignment='bottom', fontsize=8, color="#059669")
-        ax1.set_ylim(bottom=0, top=max(orders) * 1.2 if orders else 1)
-        ax2.set_ylim(bottom=0, top=max(revenue) * 1.2 if revenue else 1)
+            ax2.text(day, rev_val, f' {rev_val:.0f}', verticalalignment='bottom', fontsize=7, color="#059669")
+        ax1.set_ylim(bottom=0, top=max(orders) * 1.3 if orders else 1)
+        ax2.set_ylim(bottom=0, top=max(revenue) * 1.3 if revenue else 1)
         ax1.set_title("Day-wise Orders & Revenue")
         fig.autofmt_xdate(rotation=45)
         return _png_html(fig, "Day-wise Orders & Revenue")
