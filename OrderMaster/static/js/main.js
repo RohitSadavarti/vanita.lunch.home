@@ -195,3 +195,74 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+function showNewOrderPopup(orderData) {
+    const modal = new bootstrap.Modal(document.getElementById('newOrderModal'));
+    const detailsContainer = document.getElementById('newOrderDetails');
+    
+    // Parse the items if they are in a string format
+    let items;
+    try {
+        items = JSON.parse(orderData.items);
+    } catch (e) {
+        items = orderData.items; // Assume it's already an object/array
+    }
+
+    let itemsHtml = '<ul class="list-group">';
+    if (Array.isArray(items)) {
+        for (const item of items) {
+            itemsHtml += `<li class="list-group-item d-flex justify-content-between align-items-center">${item.name} <span class="badge bg-primary rounded-pill">${item.quantity}</span></li>`;
+        }
+    }
+    itemsHtml += '</ul>';
+
+    detailsContainer.innerHTML = `
+        <div class="text-center mb-3">
+            <h4 class="mb-1">Order #${orderData.order_id}</h4>
+            <p class="text-muted mb-0">From: <strong>${orderData.customer_name}</strong></p>
+        </div>
+        <div class="mb-3">
+            <h6>Order Items:</h6>
+            ${itemsHtml}
+        </div>
+        <div class="d-flex justify-content-between">
+            <h5>Total:</h5>
+            <h5><strong>₹${orderData.total_price}</strong></h5>
+        </div>
+    `;
+
+    // Add event listeners for accept/reject buttons
+    const acceptBtn = document.getElementById('acceptOrderBtn');
+    const rejectBtn = document.getElementById('rejectOrderBtn');
+
+    acceptBtn.onclick = () => handleOrderAction(orderData.id, 'accept', modal);
+    rejectBtn.onclick = () => handleOrderAction(orderData.id, 'reject', modal);
+
+    modal.show();
+}
+
+async function handleOrderAction(orderId, action, modalInstance) {
+    try {
+        const response = await fetch('/api/handle-order-action/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ order_id: orderId, action: action })
+        });
+
+        if (response.ok) {
+            modalInstance.hide();
+            // Optionally, show a success message
+            alert(`Order has been ${action}ed.`);
+            // Refresh the page to update the order lists
+            location.reload(); 
+        } else {
+            alert(`Failed to ${action} the order.`);
+        }
+    } catch (error) {
+        console.error(`Error ${action}ing order:`, error);
+        alert('An error occurred. Please try again.');
+    }
+}
