@@ -167,7 +167,7 @@ def analytics_data_view(request):
 
 def _png_html(fig, title="Chart"):
     buf = io.BytesIO()
-    fig.tight_layout(pad=0.5)
+    fig.tight_layout(pad=0.2)
     fig.savefig(buf, format="png", dpi=140, bbox_inches="tight")
     plt.close(fig)
     b64 = base64.b64encode(buf.getvalue()).decode("ascii")
