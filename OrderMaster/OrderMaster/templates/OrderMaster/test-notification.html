@@ -1,0 +1,153 @@
+<!-- Add this button to your dashboard or create a test page -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Notification Test - VLH Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="p-5">
+    <div class="container">
+        <h2>🔔 Notification System Test</h2>
+        
+        <div class="card mt-4">
+            <div class="card-body">
+                <h5 class="card-title">Step 1: Check Prerequisites</h5>
+                <button class="btn btn-primary" onclick="checkPrerequisites()">Run Checks</button>
+                <div id="prerequisiteResults" class="mt-3"></div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-body">
+                <h5 class="card-title">Step 2: Test Notification</h5>
+                <button class="btn btn-success" onclick="sendTestNotification()">Send Test Notification</button>
+                <div id="testResults" class="mt-3"></div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-body">
+                <h5 class="card-title">Step 3: Manual Popup Test</h5>
+                <button class="btn btn-warning" onclick="testPopupManually()">Show Popup Manually</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
+    
+    <script>
+        function checkPrerequisites() {
+            const results = document.getElementById('prerequisiteResults');
+            let html = '<ul class="list-group">';
+            
+            // Check 1: Firebase loaded
+            if (typeof firebase !== 'undefined') {
+                html += '<li class="list-group-item list-group-item-success">✅ Firebase SDK loaded</li>';
+            } else {
+                html += '<li class="list-group-item list-group-item-danger">❌ Firebase SDK not loaded</li>';
+            }
+            
+            // Check 2: Notification permission
+            if (Notification.permission === 'granted') {
+                html += '<li class="list-group-item list-group-item-success">✅ Notification permission granted</li>';
+            } else {
+                html += '<li class="list-group-item list-group-item-warning">⚠️ Notification permission: ' + Notification.permission + '</li>';
+                if (Notification.permission === 'default') {
+                    html += '<li class="list-group-item list-group-item-info">ℹ️ Click to request permission</li>';
+                    Notification.requestPermission().then(perm => {
+                        if (perm === 'granted') {
+                            checkPrerequisites();
+                        }
+                    });
+                }
+            }
+            
+            // Check 3: Modal exists
+            const modal = document.getElementById('newOrderModal');
+            if (modal) {
+                html += '<li class="list-group-item list-group-item-success">✅ Order modal exists</li>';
+            } else {
+                html += '<li class="list-group-item list-group-item-danger">❌ Order modal not found (ID: newOrderModal)</li>';
+            }
+            
+            // Check 4: showNewOrderPopup function
+            if (typeof window.showNewOrderPopup === 'function') {
+                html += '<li class="list-group-item list-group-item-success">✅ showNewOrderPopup function exists</li>';
+            } else {
+                html += '<li class="list-group-item list-group-item-danger">❌ showNewOrderPopup function not found</li>';
+            }
+            
+            // Check 5: Bootstrap loaded
+            if (typeof bootstrap !== 'undefined') {
+                html += '<li class="list-group-item list-group-item-success">✅ Bootstrap loaded</li>';
+            } else {
+                html += '<li class="list-group-item list-group-item-danger">❌ Bootstrap not loaded</li>';
+            }
+            
+            html += '</ul>';
+            results.innerHTML = html;
+        }
+        
+        async function sendTestNotification() {
+            const results = document.getElementById('testResults');
+            results.innerHTML = '<div class="spinner-border" role="status"></div> Sending test notification...';
+            
+            try {
+                const response = await fetch('/api/test-notification/', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    results.innerHTML = `
+                        <div class="alert alert-success">
+                            ✅ Test notification sent successfully!<br>
+                            Response: ${data.response}<br>
+                            <small>Check if you received a notification and if the popup appeared.</small>
+                        </div>
+                    `;
+                } else {
+                    results.innerHTML = `
+                        <div class="alert alert-danger">
+                            ❌ Error: ${data.error}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                results.innerHTML = `
+                    <div class="alert alert-danger">
+                        ❌ Error sending test: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        function testPopupManually() {
+            const testData = {
+                id: '999',
+                order_id: 'TEST123',
+                customer_name: 'Test Customer',
+                customer_mobile: '9999999999',
+                total_price: '350.00',
+                items: JSON.stringify([
+                    {id: 1, name: 'Test Item 1', price: 100, quantity: 2},
+                    {id: 2, name: 'Test Item 2', price: 150, quantity: 1}
+                ])
+            };
+            
+            if (typeof window.showNewOrderPopup === 'function') {
+                window.showNewOrderPopup(testData);
+            } else {
+                alert('showNewOrderPopup function not found! Check console for errors.');
+                console.error('showNewOrderPopup is not defined');
+            }
+        }
+    </script>
+</body>
+</html>
