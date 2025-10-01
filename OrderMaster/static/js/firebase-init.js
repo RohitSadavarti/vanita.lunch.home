@@ -31,6 +31,57 @@
         return cookieValue;
     }
 
+    function sendTokenToServer(token) {
+        console.log('FCM Token:', token);
+     }
+    
+ // Listen for messages when the page is in the foreground
+    messaging.onMessage((payload) => {
+        console.log('Message received in foreground. ', payload);
+
+        // Play the notification sound
+        const sound = document.getElementById('notificationSound');
+        if (sound) {
+            sound.play().catch(e => console.error("Error playing sound:", e));
+        }
+
+        // Show the custom modal pop-up
+        if (typeof showNewOrderPopup === "function") {
+            showNewOrderPopup(payload.data);
+        } else {
+            console.error('showNewOrderPopup function not found!');
+        }
+    });
+
+    requestNotificationPermission();
+
+})();
+    
+function getAndSendToken() {
+        messaging.getToken().then((currentToken) => {
+            if (currentToken) {
+                sendTokenToServer(currentToken);
+            } else {
+                console.log('No registration token available. Request permission to generate one.');
+            }
+        }).catch((err) => {
+            console.log('An error occurred while retrieving token. ', err);
+        });
+    }
+    
+    function requestNotificationPermission() {
+        Notification.requestPermission().then((permission) => {
+            if (permission === 'granted') {
+                console.log('Notification permission granted.');
+                getAndSendToken();
+            } else {
+                console.log('Unable to get permission to notify.');
+            }
+        });
+    }
+
+    
+
     // Subscribe token to topic
     function subscribeTokenToTopic(token, topic) {
         fetch('/api/subscribe-topic/', {
