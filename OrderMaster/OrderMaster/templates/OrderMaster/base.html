@@ -51,6 +51,33 @@
                     </div>
               </div>
 </div>
+                    <div class="modal fade" id="newOrderModal" tabindex="-1" aria-labelledby="newOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="newOrderModalLabel">
+                    <i class="fas fa-bell me-2"></i> New Order Received!
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="newOrderDetails">
+                    </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" id="rejectOrderBtn">
+                    <i class="fas fa-times-circle me-1"></i> Reject
+                </button>
+                <button type="button" class="btn btn-success" id="acceptOrderBtn">
+                    <i class="fas fa-check-circle me-1"></i> Accept
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
                     
                     <div style="display:flex; align-items:center; gap: 0.5rem">
                          <div style="width: 2rem; height: 2rem; background-color: var(--primary); color: var(--primary-foreground); border-radius: 9999px; display:flex; align-items: center; justify-content:center; font-weight: 600;">A</div>
@@ -98,6 +125,7 @@
     <script src="{% static 'js/firebase-init.js' %}"></script>
 </body>
 </html>
+
 
 
 
