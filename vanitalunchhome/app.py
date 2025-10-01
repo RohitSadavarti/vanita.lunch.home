@@ -12,21 +12,17 @@ from firebase_admin import credentials, messaging
 
 # --- Securely Initialize Firebase Admin SDK from Environment Variable ---
 try:
-    # Render stores JSON environment variables as a string, so we need to parse it
     firebase_key_json = os.environ.get('FIREBASE_KEY')
     if firebase_key_json:
         firebase_credentials = json.loads(firebase_key_json)
         cred = credentials.Certificate(firebase_credentials)
-        # Check if the app is already initialized to prevent errors
         if not firebase_admin._apps:
             firebase_admin.initialize_app(cred)
         print("Firebase Admin SDK initialized successfully.")
     else:
-        # If the key is not found, print a warning instead of crashing
         print("WARNING: FIREBASE_KEY environment variable not found. Firebase notifications will be disabled.")
 except Exception as e:
     print(f"Error initializing Firebase Admin SDK: {e}")
-    # Also print a warning here to prevent a crash
     print("WARNING: Firebase could not be initialized. Notifications will be disabled.")
 
 
@@ -111,32 +107,50 @@ def place_order():
         total_price = subtotal
         order_id = str(random.randint(10000000, 99999999))
 
+        # Insert order into database
         cur.execute("""
             INSERT INTO orders (order_id, customer_name, customer_mobile, items, subtotal, total_price, status, payment_method, created_at, updated_at, order_status)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
         """, (
             order_id, name, mobile, json.dumps(validated_items), subtotal, total_price, 
-            'confirmed', 'Cash', datetime.now(), datetime.now(), 'open'
+            'Pending', 'Cash', datetime.now(), datetime.now(), 'open'
         ))
         
+        # Get the database ID of the newly created order
+        new_order_db_id = cur.fetchone()[0]
         conn.commit()
 
-        # --- Send Firebase notification only if Firebase is initialized ---
+        # --- Send Firebase notification with complete order data ---
         if firebase_admin._apps:
             try:
+                # Prepare items for notification
+                items_json = json.dumps(validated_items)
+                
                 message = messaging.Message(
                     notification=messaging.Notification(
-                        title='New Order Received!',
-                        body=f'Order #{order_id} from {name} for ₹{total_price:.2f} has been placed.'
+                        title='🔔 New Order Received!',
+                        body=f'Order #{order_id} from {name} - ₹{total_price:.2f}'
                     ),
+                    data={
+                        'id': str(new_order_db_id),  # Database ID for actions
+                        'order_id': order_id,
+                        'customer_name': name,
+                        'total_price': str(total_price),
+                        'items': items_json,
+                        'click_action': 'OPEN_ORDER_DETAILS'
+                    },
                     topic='new_orders'
                 )
                 response = messaging.send(message)
-                print('Successfully sent notification:', response)
+                print(f'Successfully sent notification: {response}')
             except Exception as e:
                 print(f"Error sending Firebase notification: {e}")
 
-        return jsonify({'success': True, 'message': f'Order placed successfully! Your Order ID is: {order_id}'})
+        return jsonify({
+            'success': True, 
+            'message': f'Order placed successfully! Your Order ID is: {order_id}'
+        })
         
     except Exception as e:
         if conn: conn.rollback()
@@ -150,4 +164,3 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
-
