@@ -1,0 +1,33 @@
+/* New Order Modal Styling */
+#newOrderModal .modal-content {
+    border-radius: 0.75rem;
+    border: none;
+}
+
+#newOrderModal .modal-header {
+    border-top-left-radius: 0.75rem;
+    border-top-right-radius: 0.75rem;
+}
+
+#newOrderModal .modal-body {
+    padding: 1.5rem;
+}
+
+#newOrderModal #newOrderDetails h4 {
+    font-weight: 600;
+}
+
+#newOrderModal .list-group-item {
+    border: none;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+#newOrderModal .modal-footer {
+    border-top: none;
+    padding: 0 1.5rem 1.5rem;
+}
+
+#newOrderModal .btn {
+    width: 100px;
+}
