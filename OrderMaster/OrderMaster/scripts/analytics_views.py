@@ -280,7 +280,7 @@ def chart_view(request, chart_type: str):
             ax.axis("off")
             return _png_html(fig, "Day-wise Menu")
         # stacked bars
-        fig, ax = plt.subplots(figsize=(8,3.5))
+        fig, ax = plt.subplots(figsize=(8,6))
         import numpy as np
         x = np.arange(len(days))
         bottom = np.zeros(len(days))
