@@ -167,8 +167,8 @@ def analytics_data_view(request):
 
 def _png_html(fig, title="Chart"):
     buf = io.BytesIO()
-    fig.tight_layout(pad=0.2)
-    fig.savefig(buf, format="png", dpi=140, bbox_inches="tight")
+    fig.tight_layout(pad=0.5)
+    fig.savefig(buf, format="png", dpi=140, bbox_inches="tight", pad_inches=0.1)
     plt.close(fig)
     b64 = base64.b64encode(buf.getvalue()).decode("ascii")
     html = f"""
@@ -176,15 +176,14 @@ def _png_html(fig, title="Chart"):
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title>
 <style>
-  html,body{{margin:0;padding:0;background:#fff;height:100%}}
-  img{{display:block;width:100%;height:100%;object-fit:contain}}
+  html,body{{margin:0;padding:0;background:#fff;height:100%;overflow:hidden}}
+  img{{display:block;width:100%;height:100%;object-fit:contain;margin:0}}
 </style>
 </head><body>
 <img alt="{title}" src="data:image/png;base64,{b64}" />
 </body></html>
 """
     return HttpResponse(html, content_type="text/html; charset=utf-8")
-
 def chart_view(request, chart_type: str):
     try:
         start, end = _date_range(request.GET)
