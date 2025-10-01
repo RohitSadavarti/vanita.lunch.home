@@ -205,7 +205,7 @@ def chart_view(request, chart_type: str):
         sizes = [ r["c"] for r in rows ]
         if not labels:
             labels, sizes = ["no data"], [1]
-        fig, ax = plt.subplots(figsize=(8,5))
+        fig, ax = plt.subplots(figsize=(8,3.5))
         ax.pie(sizes, labels=labels, autopct="%1.0f%%", startangle=140)
         ax.set_title("Order Status")
         return _png_html(fig, "Order Status")
@@ -224,7 +224,7 @@ def chart_view(request, chart_type: str):
         qtys = [ r["qty"] for r in rows ]
         if not names:
             names, qtys = ["no data"], [0]
-        fig, ax = plt.subplots(figsize=(8,5))
+        fig, ax = plt.subplots(figsize=(8,3.5))
         ax.barh(names[::-1], qtys[::-1], color="#1e40af")
         ax.set_xlabel("Qty")
         ax.set_title("Top Menu Items")
@@ -241,7 +241,7 @@ def chart_view(request, chart_type: str):
         counts = { r["hr"]: r["c"] for r in rows }
         xs = list(range(0,24))
         ys = [ counts.get(h,0) for h in xs ]
-        fig, ax = plt.subplots(figsize=(8,5))
+        fig, ax = plt.subplots(figsize=(8,3.5))
         ax.plot(xs, ys, marker="o", color="#1e40af")
         ax.set_xticks(range(0,24,2))
         ax.set_xlabel("Hour of Day")
@@ -276,12 +276,12 @@ def chart_view(request, chart_type: str):
                 series[nm][i] += int(r["qty"])
         # if no data
         if not days:
-            fig, ax = plt.subplots(figsize=(8,5))
+            fig, ax = plt.subplots(figsize=(8,3.5))
             ax.text(0.5,0.5,"No data", ha="center", va="center")
             ax.axis("off")
             return _png_html(fig, "Day-wise Menu")
         # stacked bars
-        fig, ax = plt.subplots(figsize=(8,5))
+        fig, ax = plt.subplots(figsize=(8,3.5))
         import numpy as np
         x = np.arange(len(days))
         bottom = np.zeros(len(days))
@@ -307,14 +307,14 @@ def chart_view(request, chart_type: str):
             ORDER BY 1
         """, (start, end))
         if not rows:
-            fig, ax = plt.subplots(figsize=(8,5))
+            fig, ax = plt.subplots(figsize=(8,3.5))
             ax.text(0.5,0.5,"No data", ha="center", va="center")
             ax.axis("off")
             return _png_html(fig, "Day-wise Orders & Revenue")
         days = [ r["day"] for r in rows ]
         orders = [ r["orders"] for r in rows ]
         revenue = [ r["revenue"] for r in rows ]
-        fig, ax1 = plt.subplots(figsize=(8,5))
+        fig, ax1 = plt.subplots(figsize=(8,3.5))
         ax1.plot(days, orders, color="#1e40af", marker="o", label="Orders")
         ax1.set_ylabel("Orders", color="#1e40af")
         ax2 = ax1.twinx()
