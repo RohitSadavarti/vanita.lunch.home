@@ -226,7 +226,7 @@ def chart_view(request, chart_type: str):
             if y > 0:
                 va = 'bottom' if i % 2 == 0 else 'top'
                 offset = 5 if va == 'bottom' else -15
-                ax.text(x, y, f' {y}', verticalalignment=va, fontsize=7, xytext=(0, offset), textcoords='offset points')
+                ax.annotate(f' {y}', (x, y), textcoords="offset points", xytext=(0,offset), ha='center', fontsize=7)
 
         ax.set_ylim(bottom=0, top=max(ys) * 1.25 if any(ys) else 1)
         ax.set_xticks(range(0,24,2))
@@ -285,12 +285,12 @@ def chart_view(request, chart_type: str):
         fig, ax1 = plt.subplots(figsize=(8,3.5))
         ax1.plot(days, orders, color="#1e40af", marker="o", label="Orders")
         for day, order_count in zip(days, orders):
-            ax1.text(day, order_count, f' {order_count}', verticalalignment='top', fontsize=7, color="#1e40af")
+            ax1.annotate(f' {order_count}', (day, order_count), textcoords="offset points", xytext=(0,5), ha='center', fontsize=7, color="#1e40af")
         ax1.set_ylabel("Orders", color="#1e40af")
         ax2 = ax1.twinx()
         ax2.plot(days, revenue, color="#059669", marker="s", label="Revenue")
         for day, rev_val in zip(days, revenue):
-            ax2.text(day, rev_val, f' {rev_val:.0f}', verticalalignment='bottom', fontsize=7, color="#059669")
+            ax2.annotate(f' {rev_val:.0f}', (day, rev_val), textcoords="offset points", xytext=(0,-15), ha='center', fontsize=7, color="#059669")
         ax1.set_ylim(bottom=0, top=max(orders) * 1.3 if orders else 1)
         ax2.set_ylim(bottom=0, top=max(revenue) * 1.3 if revenue else 1)
         ax1.set_title("Day-wise Orders & Revenue")
