@@ -641,3 +641,166 @@ body {
 }
 
 
+
+/* Add this to your style.css file */
+
+/* New Order Modal Styling */
+#newOrderModal .modal-content {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+#newOrderModal .modal-header {
+    background: linear-gradient(135deg, #ff8100 0%, #ff9933 100%);
+    color: white;
+    border-radius: 12px 12px 0 0;
+    padding: 1.5rem;
+    border-bottom: none;
+}
+
+#newOrderModal .modal-title {
+    font-weight: 700;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#newOrderModal .modal-title::before {
+    content: "🔔";
+    font-size: 1.8rem;
+    animation: ring 1s ease-in-out infinite;
+}
+
+@keyframes ring {
+    0%, 100% { transform: rotate(0deg); }
+    10%, 30% { transform: rotate(-10deg); }
+    20%, 40% { transform: rotate(10deg); }
+}
+
+#newOrderModal .modal-body {
+    padding: 2rem;
+}
+
+#newOrderModal .order-details {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+#newOrderModal .order-details p {
+    margin-bottom: 0.5rem;
+}
+
+#newOrderModal .order-details strong {
+    color: #343a40;
+    font-weight: 600;
+}
+
+#newOrderModal .text-primary {
+    color: #ff8100 !important;
+    font-weight: 700;
+    font-size: 1.2rem;
+}
+
+#newOrderModal .text-success {
+    color: #28a745 !important;
+    font-weight: 700;
+}
+
+#newOrderModal .list-unstyled {
+    margin-top: 0.5rem;
+    padding-left: 1rem;
+}
+
+#newOrderModal .list-unstyled li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #dee2e6;
+}
+
+#newOrderModal .list-unstyled li:last-child {
+    border-bottom: none;
+}
+
+#newOrderModal .modal-footer {
+    padding: 1.5rem;
+    border-top: 1px solid #dee2e6;
+    gap: 1rem;
+}
+
+#newOrderModal #acceptOrderBtn {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border: none;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    font-size: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    transition: all 0.3s ease;
+}
+
+#newOrderModal #acceptOrderBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(40, 167, 69, 0.4);
+}
+
+#newOrderModal #rejectOrderBtn {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    border: none;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    font-size: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+    transition: all 0.3s ease;
+}
+
+#newOrderModal #rejectOrderBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(220, 53, 69, 0.4);
+}
+
+/* Toast Container Styling */
+#toastContainer {
+    z-index: 9999;
+}
+
+#toastContainer .toast {
+    min-width: 300px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Modal Animation */
+#newOrderModal.show .modal-dialog {
+    animation: slideInDown 0.4s ease-out;
+}
+
+@keyframes slideInDown {
+    from {
+        transform: translate3d(0, -100%, 0);
+        opacity: 0;
+    }
+    to {
+        transform: translate3d(0, 0, 0);
+        opacity: 1;
+    }
+}
+
+/* Pulse animation for new orders */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 129, 0, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(255, 129, 0, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 129, 0, 0);
+    }
+}
+
+.new-order-pulse {
+    animation: pulse 2s infinite;
+}
