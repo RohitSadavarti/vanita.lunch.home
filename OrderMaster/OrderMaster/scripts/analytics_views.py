@@ -223,7 +223,7 @@ def chart_view(request, chart_type: str):
         qtys = [ r["qty"] for r in rows ]
         if not names:
             names, qtys = ["no data"], [0]
-        fig, ax = plt.subplots(figsize=(8,3.5))
+        fig, ax = plt.subplots(figsize=(8,6))
         ax.barh(names[::-1], qtys[::-1], color="#1e40af")
         ax.set_xlabel("Qty")
         ax.set_title("Top Menu Items")
@@ -275,7 +275,7 @@ def chart_view(request, chart_type: str):
                 series[nm][i] += int(r["qty"])
         # if no data
         if not days:
-            fig, ax = plt.subplots(figsize=(8,3.5))
+            fig, ax = plt.subplots(figsize=(8,6))
             ax.text(0.5,0.5,"No data", ha="center", va="center")
             ax.axis("off")
             return _png_html(fig, "Day-wise Menu")
