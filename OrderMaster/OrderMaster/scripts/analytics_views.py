@@ -1,15 +1,4 @@
-# Drop-in Django module:
-# - Add to urls.py:
-#     from scripts.analytics_views import urlpatterns as analytics_urlpatterns
-#     urlpatterns += [ path("analytics/", include((analytics_urlpatterns, "analytics"))) ]
-#
-# - Set environment variable POSTGRES_URL to your database URL.
-#   Example: export POSTGRES_URL="postgresql://user:pass@host:port/db"
-#
-# Endpoints:
-#   GET /analytics/data?range=today|yesterday|week|month|custom&start=YYYY-MM-DD&end=YYYY-MM-DD
-#   GET /analytics/chart/<chart_type>?same query params as above
-#     chart_type in {order-status, top-menu, menu-by-hour, day-wise-menu, day-wise-orders-revenue}
+# rohitsadavarti/vanita.lunch.home/vanita.lunch.home-67bf574c7d7ad38e1f5654be71d0a65ac5433c29/OrderMaster/OrderMaster/scripts/analytics_views.py
 
 import os
 import io
@@ -23,19 +12,19 @@ from django.http import JsonResponse, HttpResponse
 from django.urls import path
 from django.utils.timezone import utc
 
-# Prefer psycopg2 if installed with Django; fall back to psycopg (v3) if needed.
 try:
     import psycopg2 as psycopg
     from psycopg2.extras import DictCursor
     def _connect(dsn): return psycopg.connect(dsn)
-except Exception:  # pragma: no cover
+except Exception:
     import psycopg
     from psycopg.rows import dict_row
     def _connect(dsn): return psycopg.connect(dsn, row_factory=dict_row)
 
 import matplotlib
-matplotlib.use("Agg")  # headless
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
 
 POSTGRES_URL = os.environ.get("POSTGRES_URL") or os.environ.get("DATABASE_URL")
 
@@ -45,7 +34,6 @@ def _get_conn():
     return _connect(POSTGRES_URL)
 
 def _date_range(params) -> Tuple[dt.datetime, dt.datetime]:
-    """Compute [start, end) UTC for given query params."""
     today = dt.datetime.utcnow().date()
     rng = (params.get("range") or "today").lower()
 
@@ -59,20 +47,16 @@ def _date_range(params) -> Tuple[dt.datetime, dt.datetime]:
         start = as_utc(today - dt.timedelta(days=1))
         end = as_utc(today)
     elif rng == "week":
-        # ISO week starting Monday
         start = as_utc(today - dt.timedelta(days=today.weekday()))
         end = as_utc(today + dt.timedelta(days=1))
     elif rng == "month":
         start = as_utc(today.replace(day=1))
-        # next month
         if start.month == 12:
             end = as_utc(dt.date(start.year + 1, 1, 1))
         else:
             end = as_utc(dt.date(start.year, start.month + 1, 1))
-        # clamp to today+1 so "current month"
         end = min(end, as_utc(today + dt.timedelta(days=1)))
     else:
-        # custom
         s = params.get("start")
         e = params.get("end")
         if not s or not e:
@@ -86,9 +70,9 @@ def _date_range(params) -> Tuple[dt.datetime, dt.datetime]:
 def _fetchall(sql: str, args: Tuple[Any, ...]) -> List[Dict[str, Any]]:
     with _get_conn() as conn:
         try:
-            cur = conn.cursor(cursor_factory=DictCursor)  # psycopg2
+            cur = conn.cursor(cursor_factory=DictCursor)
         except Exception:
-            cur = conn.cursor()  # psycopg3 dict_row set above
+            cur = conn.cursor()
         cur.execute(sql, args)
         rows = cur.fetchall()
         try:
@@ -113,7 +97,6 @@ def analytics_data_view(request):
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
 
-    # KPIs
     kpi_row = _fetchone("""
         SELECT
           COALESCE(SUM(total_price),0) AS revenue,
@@ -127,7 +110,6 @@ def analytics_data_view(request):
     revenue = float(kpi_row.get("revenue") or 0)
     avg_order = (revenue / orders) if orders > 0 else 0.0
 
-    # Table rows
     table_rows = _fetchall("""
         SELECT
           id, order_id, items, total_price, payment_method, order_status, status,
@@ -141,29 +123,26 @@ def analytics_data_view(request):
     for r in table_rows:
         txt = ""
         try:
-            arr = json.loads(r.get("items") or "[]")
-            names = []
-            for it in arr:
-                nm = it.get("name")
-                q = it.get("quantity", 1)
-                names.append(f"{nm} x{q}")
+            items_data = r.get("items") or []
+            if isinstance(items_data, str):
+                arr = json.loads(items_data)
+            else:
+                arr = items_data
+            
+            names = [f"{it.get('name')} x{it.get('quantity', 1)}" for it in arr]
             txt = ", ".join(names)
         except Exception:
-            txt = (r.get("items") or "")[:120]
+            txt = str(r.get("items") or "")[:120]
         r["items_text"] = txt
 
     return JsonResponse({
         "metrics": {
-            "totalRevenue": round(revenue, 2),
-            "totalOrders": orders,
-            "avgOrderValue": round(avg_order, 2),
+            "totalRevenue": round(revenue, 2), "totalOrders": orders, "avgOrderValue": round(avg_order, 2),
             "cashAmount": round(float(kpi_row.get("cash_amount") or 0), 2),
             "onlineAmount": round(float(kpi_row.get("online_amount") or 0), 2),
         },
         "table": table_rows
     })
-
-# -------- Chart helpers --------
 
 def _png_html(fig, title="Chart"):
     buf = io.BytesIO()
@@ -184,6 +163,7 @@ def _png_html(fig, title="Chart"):
 </body></html>
 """
     return HttpResponse(html, content_type="text/html; charset=utf-8")
+
 def chart_view(request, chart_type: str):
     try:
         start, end = _date_range(request.GET)
@@ -195,36 +175,37 @@ def chart_view(request, chart_type: str):
     if ct == "order-status":
         rows = _fetchall("""
             SELECT COALESCE(NULLIF(TRIM(lower(order_status)),'') , lower(status)) AS s, COUNT(*)::int AS c
-            FROM public.orders
-            WHERE created_at >= %s AND created_at < %s
-            GROUP BY 1
-            ORDER BY 2 DESC
+            FROM public.orders WHERE created_at >= %s AND created_at < %s GROUP BY 1 ORDER BY 2 DESC
         """, (start, end))
         labels = [ (r["s"] or "unknown") for r in rows ]
         sizes = [ r["c"] for r in rows ]
-        if not labels:
-            labels, sizes = ["no data"], [1]
+        if not labels: labels, sizes = ["no data"], [1]
         fig, ax = plt.subplots(figsize=(8,3.5))
-        ax.pie(sizes, labels=labels, autopct="%1.0f%%", startangle=140)
+        
+        def make_autopct(values):
+            def my_autopct(pct):
+                total = sum(values)
+                val = int(round(pct*total/100.0))
+                return f'{pct:.0f}%\n({val})'
+            return my_autopct
+        
+        ax.pie(sizes, labels=labels, autopct=make_autopct(sizes), startangle=140)
         ax.set_title("Order Status")
         return _png_html(fig, "Order Status")
 
     elif ct == "top-menu":
         rows = _fetchall("""
             SELECT it->>'name' AS name, SUM(COALESCE((it->>'quantity')::int,1))::int AS qty
-            FROM public.orders o
-            CROSS JOIN LATERAL jsonb_array_elements(o.items::jsonb) it
-            WHERE o.created_at >= %s AND o.created_at < %s
-            GROUP BY 1
-            ORDER BY qty DESC
-            LIMIT 10
+            FROM public.orders o CROSS JOIN LATERAL jsonb_array_elements(o.items::jsonb) it
+            WHERE o.created_at >= %s AND o.created_at < %s GROUP BY 1 ORDER BY qty DESC LIMIT 10
         """, (start, end))
         names = [ r["name"] for r in rows ]
         qtys = [ r["qty"] for r in rows ]
-        if not names:
-            names, qtys = ["no data"], [0]
+        if not names: names, qtys = ["no data"], [0]
         fig, ax = plt.subplots(figsize=(8,6))
-        ax.barh(names[::-1], qtys[::-1], color="#1e40af")
+        bars = ax.barh(names[::-1], qtys[::-1], color="#1e40af")
+        ax.bar_label(bars, padding=3, fmt='%d')
+        ax.set_xlim(right=ax.get_xlim()[1] * 1.1)
         ax.set_xlabel("Qty")
         ax.set_title("Top Menu Items")
         return _png_html(fig, "Top Menu Items")
@@ -232,16 +213,17 @@ def chart_view(request, chart_type: str):
     elif ct == "menu-by-hour":
         rows = _fetchall("""
             SELECT EXTRACT(HOUR FROM created_at)::int AS hr, COUNT(*)::int AS c
-            FROM public.orders
-            WHERE created_at >= %s AND created_at < %s
-            GROUP BY 1
-            ORDER BY 1
+            FROM public.orders WHERE created_at >= %s AND created_at < %s GROUP BY 1 ORDER BY 1
         """, (start, end))
         counts = { r["hr"]: r["c"] for r in rows }
         xs = list(range(0,24))
         ys = [ counts.get(h,0) for h in xs ]
         fig, ax = plt.subplots(figsize=(8,3.5))
         ax.plot(xs, ys, marker="o", color="#1e40af")
+        for x, y in zip(xs, ys):
+            if y > 0:
+                ax.text(x, y, f' {y}', verticalalignment='bottom', fontsize=8)
+        ax.set_ylim(bottom=0, top=max(ys) * 1.15 if any(ys) else 1)
         ax.set_xticks(range(0,24,2))
         ax.set_xlabel("Hour of Day")
         ax.set_ylabel("Orders")
@@ -249,44 +231,31 @@ def chart_view(request, chart_type: str):
         return _png_html(fig, "Orders by Hour")
 
     elif ct == "day-wise-menu":
-        # Build stacked bars for top 5 items across days
         day_rows = _fetchall("""
             SELECT date_trunc('day', o.created_at)::date AS day, it->>'name' AS name,
                    SUM(COALESCE((it->>'quantity')::int,1))::int AS qty
-            FROM public.orders o
-            CROSS JOIN LATERAL jsonb_array_elements(o.items::jsonb) it
-            WHERE o.created_at >= %s AND o.created_at < %s
-            GROUP BY 1,2
-            ORDER BY 1,3 DESC
+            FROM public.orders o CROSS JOIN LATERAL jsonb_array_elements(o.items::jsonb) it
+            WHERE o.created_at >= %s AND o.created_at < %s GROUP BY 1,2 ORDER BY 1,3 DESC
         """, (start, end))
-        # aggregate totals per item to find top 5
         totals = {}
-        for r in day_rows:
-            nm = r["name"]; totals[nm] = totals.get(nm,0) + int(r["qty"])
+        for r in day_rows: totals[r["name"]] = totals.get(r["name"],0) + int(r["qty"])
         top = [nm for nm,_ in sorted(totals.items(), key=lambda kv: kv[1], reverse=True)[:5]]
-        # pivot day -> item -> qty
         days = sorted({ r["day"] for r in day_rows })
         series = { nm:[0]*len(days) for nm in top }
         day_idx = { d:i for i,d in enumerate(days) }
         for r in day_rows:
-            nm = r["name"]
-            if nm in series:
-                i = day_idx[r["day"]]
-                series[nm][i] += int(r["qty"])
-        # if no data
+            if r["name"] in series:
+                series[r["name"]][day_idx[r["day"]]] += int(r["qty"])
         if not days:
-            fig, ax = plt.subplots(figsize=(8,6))
-            ax.text(0.5,0.5,"No data", ha="center", va="center")
-            ax.axis("off")
+            fig, ax = plt.subplots(figsize=(8,6)); ax.text(0.5,0.5,"No data", ha="center", va="center"); ax.axis("off")
             return _png_html(fig, "Day-wise Menu")
-        # stacked bars
         fig, ax = plt.subplots(figsize=(8,6))
-        import numpy as np
         x = np.arange(len(days))
         bottom = np.zeros(len(days))
         colors = ["#1e40af","#059669","#374151","#93c5fd","#a7f3d0"]
         for idx, (nm, vals) in enumerate(series.items()):
-            ax.bar(x, vals, bottom=bottom, label=nm, color=colors[idx % len(colors)])
+            bars = ax.bar(x, vals, bottom=bottom, label=nm, color=colors[idx % len(colors)])
+            ax.bar_label(bars, label_type='center', fmt='%d', fontsize=8, color='white')
             bottom += np.array(vals)
         ax.set_xticks(x)
         ax.set_xticklabels([d.strftime("%b %d") for d in days], rotation=45, ha="right")
@@ -298,27 +267,26 @@ def chart_view(request, chart_type: str):
     elif ct == "day-wise-orders-revenue":
         rows = _fetchall("""
             SELECT date_trunc('day', created_at)::date AS day,
-                   COUNT(*)::int AS orders,
-                   COALESCE(SUM(total_price),0)::float AS revenue
-            FROM public.orders
-            WHERE created_at >= %s AND created_at < %s
-            GROUP BY 1
-            ORDER BY 1
+                   COUNT(*)::int AS orders, COALESCE(SUM(total_price),0)::float AS revenue
+            FROM public.orders WHERE created_at >= %s AND created_at < %s GROUP BY 1 ORDER BY 1
         """, (start, end))
         if not rows:
-            fig, ax = plt.subplots(figsize=(8,3.5))
-            ax.text(0.5,0.5,"No data", ha="center", va="center")
-            ax.axis("off")
+            fig, ax = plt.subplots(figsize=(8,3.5)); ax.text(0.5,0.5,"No data", ha="center", va="center"); ax.axis("off")
             return _png_html(fig, "Day-wise Orders & Revenue")
         days = [ r["day"] for r in rows ]
         orders = [ r["orders"] for r in rows ]
         revenue = [ r["revenue"] for r in rows ]
         fig, ax1 = plt.subplots(figsize=(8,3.5))
         ax1.plot(days, orders, color="#1e40af", marker="o", label="Orders")
+        for day, order_count in zip(days, orders):
+            ax1.text(day, order_count, f' {order_count}', verticalalignment='bottom', fontsize=8, color="#1e40af")
         ax1.set_ylabel("Orders", color="#1e40af")
         ax2 = ax1.twinx()
         ax2.plot(days, revenue, color="#059669", marker="s", label="Revenue")
-        ax2.set_ylabel("Revenue (₹)", color="#059669")
+        for day, rev_val in zip(days, revenue):
+            ax2.text(day, rev_val, f' {rev_val:.0f}', verticalalignment='bottom', fontsize=8, color="#059669")
+        ax1.set_ylim(bottom=0, top=max(orders) * 1.2 if orders else 1)
+        ax2.set_ylim(bottom=0, top=max(revenue) * 1.2 if revenue else 1)
         ax1.set_title("Day-wise Orders & Revenue")
         fig.autofmt_xdate(rotation=45)
         return _png_html(fig, "Day-wise Orders & Revenue")
@@ -326,7 +294,6 @@ def chart_view(request, chart_type: str):
     else:
         return HttpResponse(f"<p>Unknown chart type: {chart_type}</p>", status=400)
 
-# Django URL patterns for easy include
 urlpatterns = [
     path("data", analytics_data_view, name="analytics-data"),
     path("chart/<str:chart_type>", chart_view, name="analytics-chart"),
