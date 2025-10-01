@@ -38,26 +38,18 @@
 
     // Handle incoming messages when page is in foreground
     messaging.onMessage((payload) => {
-        console.log('Message received. ', payload);
+       console.log('Message received. ', payload);
         
         // Show the popup with order details
-        if (payload.data) {
+        if (typeof showNewOrderPopup === "function") {
             showNewOrderPopup(payload.data);
         }
 
         // Also show a browser notification
-        if (Notification.permission === 'granted') {
-            const notificationTitle = payload.notification?.title || 'New Order Received!';
-            const notificationOptions = {
-                body: payload.notification?.body || 'A new order has been placed',
-                icon: '/static/favicon.ico',
-                badge: '/static/favicon.ico',
-                tag: 'new-order-' + payload.data?.order_id,
-                requireInteraction: true
-            };
-            
-            new Notification(notificationTitle, notificationOptions);
-        }
+        const notification = new Notification(payload.notification.title, {
+            body: payload.notification.body,
+            icon: '/static/favicon.ico'
+        });
     });
 
     function getCookie(name) {
@@ -74,7 +66,6 @@
         }
         return cookieValue;
     }
-
     function subscribeTokenToTopic(token, topic) {
         fetch('/api/subscribe-topic/', {
             method: 'POST',
@@ -96,7 +87,7 @@
             console.error('Error subscribing to topic:', error);
         });
     }
-
+})();
     // Function to show the new order popup
     function showNewOrderPopup(orderData) {
         console.log('Showing popup for order:', orderData);
