@@ -1,3 +1,5 @@
+# OrderMaster/vanita_lunch/settings.py
+
 """
 Django settings for vanita_lunch project.
 """
@@ -39,7 +41,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # 'django.middleware.clickjacking.XFrameOptionsMiddleware', # Comment out or remove this line
 ]
 
 ROOT_URLCONF = 'vanita_lunch.urls'
@@ -47,8 +49,6 @@ ROOT_URLCONF = 'vanita_lunch.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        # --- PATH CORRECTION 1 ---
-        # This tells Django where to find the index.html from the React build
         'DIRS': [os.path.join(BASE_DIR, 'OrderMaster', 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -72,8 +72,6 @@ DATABASES = {
     )
 }
 
-# (Keep the rest of your settings.py file the same)
-# ...
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -91,8 +89,6 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# --- CORRECTED PATH ---
-# This path now correctly points to your 'static' folder.
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
@@ -143,11 +139,3 @@ LOGGING = {
         },
     },
 }
-
-
-
-
-
-
-
-
