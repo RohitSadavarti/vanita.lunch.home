@@ -1,4 +1,4 @@
-# rohitsadavarti/vanita.lunch.home/vanita.lunch.home-18a4b2385f193bd0855cbb8c3cc301e885116adb/OrderMaster/OrderMaster/scripts/analytics_views.py
+# rohitsadavarti/vanita.lunch.home/vanita.lunch.home-7beddfbc82c193fcdab3732f1eaecacb90c173b4/OrderMaster/OrderMaster/scripts/analytics_views.py
 
 import os
 import io
@@ -24,6 +24,7 @@ except Exception:
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import numpy as np
 
 POSTGRES_URL = os.environ.get("POSTGRES_URL") or os.environ.get("DATABASE_URL")
@@ -191,7 +192,7 @@ def chart_view(request, chart_type: str):
         
         wedges, texts, autotexts = ax.pie(sizes, labels=labels, autopct=make_autopct(sizes), startangle=140, textprops={'fontsize': 8})
         plt.setp(autotexts, size=7, weight="bold", color="white")
-        ax.set_title("Order Status")
+        # ax.set_title("Order Status")
         return _png_html(fig, "Order Status")
 
     elif ct == "top-menu":
@@ -209,7 +210,7 @@ def chart_view(request, chart_type: str):
         if qtys:
             ax.set_xlim(right=max(qtys) * 1.15)
         ax.set_xlabel("Qty")
-        ax.set_title("Top Menu Items")
+        # ax.set_title("Top Menu Items")
         return _png_html(fig, "Top Menu Items")
 
     elif ct == "menu-by-hour":
@@ -227,12 +228,13 @@ def chart_view(request, chart_type: str):
                 va = 'bottom' if i % 2 == 0 else 'top'
                 offset = 5 if va == 'bottom' else -15
                 ax.annotate(f' {y}', (x, y), textcoords="offset points", xytext=(0,offset), ha='center', fontsize=7)
-
-        ax.set_ylim(bottom=0, top=max(ys) * 1.25 if any(ys) else 1)
+        
         ax.set_xticks(range(0,24,2))
+        ax.set_xticklabels([f"{h % 12 if h % 12 != 0 else 12} {'AM' if h < 12 else 'PM'}" for h in range(0,24,2)])
+        ax.set_ylim(bottom=0, top=max(ys) * 1.25 if any(ys) else 1)
         ax.set_xlabel("Hour of Day")
         ax.set_ylabel("Orders")
-        ax.set_title("Orders by Hour (All Menu)")
+        # ax.set_title("Orders by Hour (All Menu)")
         return _png_html(fig, "Orders by Hour")
 
     elif ct == "day-wise-menu":
@@ -264,9 +266,9 @@ def chart_view(request, chart_type: str):
             ax.bar_label(bars, labels=labels, label_type='center', fmt='%d', fontsize=7, color='white', weight='bold')
             bottom += np.array(vals)
         ax.set_xticks(x)
-        ax.set_xticklabels([d.strftime("%b %d") for d in days], rotation=45, ha="right")
+        ax.set_xticklabels([d.strftime("%m-%d") for d in days], rotation=45, ha="right")
         ax.set_ylabel("Qty")
-        ax.set_title("Day-wise Menu (Top 5)")
+        # ax.set_title("Day-wise Menu (Top 5)")
         ax.legend(fontsize=8, ncols=2)
         return _png_html(fig, "Day-wise Menu")
 
@@ -293,7 +295,10 @@ def chart_view(request, chart_type: str):
             ax2.annotate(f' {rev_val:.0f}', (day, rev_val), textcoords="offset points", xytext=(0,-15), ha='center', fontsize=7, color="#059669")
         ax1.set_ylim(bottom=0, top=max(orders) * 1.3 if orders else 1)
         ax2.set_ylim(bottom=0, top=max(revenue) * 1.3 if revenue else 1)
-        ax1.set_title("Day-wise Orders & Revenue")
+        # ax1.set_title("Day-wise Orders & Revenue")
+        
+        # Format the x-axis to show month-day
+        ax1.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
         fig.autofmt_xdate(rotation=45)
         return _png_html(fig, "Day-wise Orders & Revenue")
 
