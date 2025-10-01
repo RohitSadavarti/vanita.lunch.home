@@ -25,6 +25,34 @@
 </style>
 
 <main class="main-content">
+    <div class="container-fluid mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <h1 class="h3 mb-0 text-gray-800">Order Management</h1>
+        <div class="d-flex align-items-center">
+            <div class="dropdown me-2">
+                <button class="btn btn-secondary dropdown-toggle" type="button" id="dateFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    {{ date_display_str }}
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="dateFilterDropdown">
+                    <li><a class="dropdown-item" href="?date_filter=today">Today</a></li>
+                    <li><a class="dropdown-item" href="?date_filter=yesterday">Yesterday</a></li>
+                    <li><a class="dropdown-item" href="?date_filter=this_week">This Week</a></li>
+                    <li><a class="dropdown-item" href="?date_filter=this_month">This Month</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" id="customDateBtn">Custom Range</a></li>
+                </ul>
+            </div>
+            <div id="customDateRange" class="d-none align-items-center">
+                <form class="d-flex align-items-center" method="get">
+                    <input type="hidden" name="date_filter" value="custom">
+                    <input type="date" class="form-control me-2" name="start_date" value="{{ start_date_val }}">
+                    <input type="date" class="form-control me-2" name="end_date" value="{{ end_date_val }}">
+                    <button type="submit" class="btn btn-primary">Apply</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
     <div class="row align-items-start">
         <div class="col-lg-4 mb-4">
             <div class="card shadow-sm">
@@ -266,5 +294,6 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 {% endblock %}
+
 
 
