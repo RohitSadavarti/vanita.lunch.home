@@ -282,7 +282,9 @@ def chart_view(request, chart_type: str):
         days = [ r["day"] for r in rows ]
         orders = [ r["orders"] for r in rows ]
         revenue = [ r["revenue"] for r in rows ]
-        fig, ax1 = plt.subplots(figsize=(8,3.d ay, order_count in zip(days, orders):
+        fig, ax1 = plt.subplots(figsize=(8,3.5))
+        ax1.plot(days, orders, color="#1e40af", marker="o", label="Orders")
+        for day, order_count in zip(days, orders):
             ax1.text(day, order_count, f' {order_count}', verticalalignment='top', fontsize=7, color="#1e40af")
         ax1.set_ylabel("Orders", color="#1e40af")
         ax2 = ax1.twinx()
