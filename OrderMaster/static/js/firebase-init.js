@@ -1,11 +1,6 @@
 // OrderMaster/static/js/firebase-init.js
 
-// OrderMaster/static/js/firebase-init.js
-
-// OrderMaster/static/js/firebase-init.js
-
 (function() {
-    // Make sure this configuration is correct and your keys are secured
     const firebaseConfig = {
         apiKey: "AIzaSyBnYYq_K3TL9MxyKaCNPkB8SRqAIucF0rI",
         authDomain: "vanita-lunch-home.firebaseapp.com",
@@ -15,73 +10,50 @@
         appId: "1:86193565341:web:b9c234bda59b37ee366e74"
     };
 
-    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const messaging = firebase.messaging();
 
-    // Function to get CSRF token
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
+    // Request permission to show notifications
+    Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+            console.log('Notification permission granted.');
+            messaging.getToken().then((currentToken) => {
+                if (currentToken) {
+                    console.log('FCM Token:', currentToken);
+                } else {
+                    console.log('No registration token available.');
                 }
-            }
+            }).catch((err) => {
+                console.log('An error occurred while retrieving token. ', err);
+            });
+        } else {
+            console.log('Unable to get permission to notify.');
         }
-        return cookieValue;
-    }
+    });
 
-    // Function to request permission and get token
-    function requestNotificationPermission() {
-        Notification.requestPermission().then((permission) => {
-            if (permission === 'granted') {
-                console.log('Notification permission granted.');
-                messaging.getToken().then((currentToken) => {
-                    if (currentToken) {
-                        console.log('FCM Token:', currentToken);
-                        // You should send this token to your server to subscribe to topics
-                    } else {
-                        console.log('No registration token available. Request permission to generate one.');
-                    }
-                }).catch((err) => {
-                    console.log('An error occurred while retrieving token. ', err);
-                });
-            } else {
-                console.log('Unable to get permission to notify.');
-            }
-        });
-    }
-
-    // --- THIS IS THE MOST IMPORTANT PART ---
-    // Listen for messages when the page is in the foreground
+    // --- THIS IS THE CRITICAL FIX ---
+    // Handle messages when the page is open
     messaging.onMessage((payload) => {
-        console.log('Message received in foreground. ', payload);
+        console.log('Message received in foreground.', payload);
 
-        // Play the notification sound
+        // Play sound
         const sound = document.getElementById('notificationSound');
         if (sound) {
             sound.play().catch(e => console.error("Error playing sound:", e));
         }
 
-        // Show the custom modal pop-up
+        // Show our custom pop-up
         if (typeof showNewOrderPopup === "function") {
             showNewOrderPopup(payload.data);
         } else {
-            console.error('showNewOrderPopup function is not defined or not found!');
+            console.error('showNewOrderPopup function is not defined!');
         }
         
-        // We DO NOT reload the page here.
-        // location.reload(); <-- THIS WAS THE PROBLEM. IT HAS BEEN REMOVED.
+        // The line below was causing the issue. It has been removed.
+        // location.reload(); 
     });
 
-    // Request permission as soon as the script loads
-    requestNotificationPermission();
-
-})();   
+})();
     
 
  
