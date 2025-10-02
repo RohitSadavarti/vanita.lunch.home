@@ -88,17 +88,23 @@
         }
     }
 
-    // --- Listen for foreground messages ---
-    messaging.onMessage((payload) => {
-        console.log('Foreground message received: ', payload);
-        if (window.handleNewOrderNotification) {
-        // The message data is inside payload.data
-            window.handleNewOrderNotification(payload.data);
+// --- Listen for foreground messages ---
+messaging.onMessage((payload) => {
+    console.log('Foreground message received: ', payload);
+    
+    // ADD THIS NEW LOG
+    console.log('Attempting to show popup with data:', payload.data);
+
+    if (window.handleNewOrderNotification) {
+        window.handleNewOrderNotification(payload.data);
+    } else {
+        console.error('ERROR: The popup handler function is not available.');
     }
 });
-
+    
     // --- Start the initialization process ---
     initializeFirebaseMessaging();
 
 })();
+
 
