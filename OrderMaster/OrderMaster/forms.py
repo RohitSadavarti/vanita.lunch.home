@@ -1,35 +1,31 @@
-# OrderMaster/forms.py
-
+# OrderMaster/OrderMaster/forms.py
 from django import forms
-from .models import MenuItem
+from .models import MenuItem, Order
 
+class LoginForm(forms.Form):
+    username = forms.CharField(max_length=150)
+    password = forms.CharField(widget=forms.PasswordInput)
+
+# --- THIS IS THE CORRECTED PART ---
 class MenuItemForm(forms.ModelForm):
     class Meta:
         model = MenuItem
-        # --- ADDED: 'image_url' to the fields list ---
-        fields = ['item_name', 'description', 'price', 'category', 'veg_nonveg', 'meal_type', 'availability_time', 'image_url']
+        # These fields now correctly match the fields in your models.py file
+        fields = ['name', 'description', 'price', 'category', 'image', 'is_available']
         widgets = {
-            'item_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Chicken Biryani'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'A short description of the item'}),
-            'price': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'e.g., 250.00'}),
-            'category': forms.Select(attrs={'class': 'form-select'}, choices=[
-                ('Main Course', 'Main Course'),
-                ('Starters', 'Starters'),
-                ('Beverages', 'Beverages'),
-                ('Desserts', 'Desserts'),
-            ]),
-            'veg_nonveg': forms.Select(attrs={'class': 'form-select'}, choices=[
-                ('Veg', 'Veg'),
-                ('Non-Veg', 'Non-Veg'),
-                ('Contains Egg', 'Contains Egg'),
-            ]),
-            'meal_type': forms.Select(attrs={'class': 'form-select'}, choices=[
-                ('Breakfast', 'Breakfast'),
-                ('Lunch', 'Lunch'),
-                ('Dinner', 'Dinner'),
-                ('All Day', 'All Day'),
-            ]),
-            'availability_time': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., 12 PM - 10 PM'}),
-            # --- ADDED: Widget for the new image_url field ---
-            'image_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://example.com/image.jpg'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'price': forms.NumberInput(attrs={'class': 'form-control'}),
+            'category': forms.Select(attrs={'class': 'form-select'}),
+            'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'is_available': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+# ------------------------------------
+
+class OrderStatusForm(forms.ModelForm):
+    class Meta:
+        model = Order
+        fields = ['order_status']
+        widgets = {
+            'order_status': forms.Select(attrs={'class': 'form-control'}),
         }
