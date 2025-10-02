@@ -581,3 +581,4 @@ def handle_order_action(request):
     except Exception as e:
         logger.error(f"Error handling order action: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
