@@ -56,21 +56,37 @@ def subscribe_to_topic(request):
         token = data.get('token')
 
         if not token:
-            return JsonResponse({'error': 'Token required'}, status=400)
+            logger.error("No token provided in request")
+            return JsonResponse({'success': False, 'error': 'Token required'}, status=400)
 
+        logger.info(f"Attempting to subscribe token to new_orders topic")
+        
+        # Subscribe the token to the topic
         response = messaging.subscribe_to_topic([token], 'new_orders')
+        
+        logger.info(f"Firebase response - Success: {response.success_count}, Failure: {response.failure_count}")
 
         if response.failure_count > 0:
-            logger.error(f"Failed to subscribe token: {response.errors}")
-            return JsonResponse({'error': 'Subscription failed'}, status=500)
+            error_msg = f"Failed to subscribe {response.failure_count} token(s)"
+            if response.errors:
+                error_details = [str(err) for err in response.errors]
+                logger.error(f"Subscription errors: {error_details}")
+                error_msg += f": {', '.join(error_details)}"
+            return JsonResponse({'success': False, 'error': error_msg}, status=500)
 
         logger.info(f"Successfully subscribed token to new_orders topic")
-        return JsonResponse({'success': True, 'message': 'Subscribed to notifications'})
+        return JsonResponse({
+            'success': True, 
+            'message': 'Subscribed to notifications',
+            'success_count': response.success_count
+        })
 
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in request: {e}")
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
     except Exception as e:
-        logger.error(f"Topic subscription error: {e}")
-        return JsonResponse({'error': str(e)}, status=500)
-
+        logger.error(f"Topic subscription error: {type(e).__name__} - {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 def customer_order_view(request):
     menu_items = MenuItem.objects.all()
@@ -579,6 +595,7 @@ def handle_order_action(request):
     except Exception as e:
         logger.error(f"Error handling order action: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 
 
