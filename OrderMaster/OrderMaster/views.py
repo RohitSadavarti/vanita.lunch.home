@@ -61,7 +61,12 @@ def dashboard(request):
     return render(request, 'OrderMaster/dashboard.html', context)
 
 
+# In OrderMaster/OrderMaster/views.py
+
 def login_view(request):
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+
     if request.method == 'POST':
         form = LoginForm(request.POST)
         if form.is_valid():
@@ -77,6 +82,7 @@ def login_view(request):
         form = LoginForm()
     return render(request, 'OrderMaster/login.html', {'form': form})
 
+# (Keep all other functions in views.py exactly as they are)
 def logout_view(request):
     logout(request)
     return redirect('login')
@@ -303,3 +309,4 @@ def update_order_status(request):
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
             
     return JsonResponse({'success': False, 'error': 'Invalid Method'}, status=405)
+
