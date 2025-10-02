@@ -199,36 +199,44 @@ document.addEventListener('DOMContentLoaded', function() {
 function showNewOrderPopup(orderData) {
     const modalElement = document.getElementById('newOrderModal');
     if (!modalElement) {
-        console.error('New Order Modal element not found in the DOM.');
+        console.error('Modal element not found!');
         return;
     }
 
-    const modal = new bootstrap.Modal(modalElement);
+    // --- THIS MAKES THE POP-UP PERSISTENT ---
+    // Configure the modal to be static (cannot be closed by clicking outside)
+    const modal = new bootstrap.Modal(modalElement, {
+        backdrop: 'static', // Prevents closing on backdrop click
+        keyboard: false      // Prevents closing with the Esc key
+    });
+    // ------------------------------------------
+
     const detailsContainer = document.getElementById('newOrderDetails');
     
     let items;
     try {
-        // Data from FCM is often stringified, so we need to parse it.
         items = typeof orderData.items === 'string' ? JSON.parse(orderData.items) : orderData.items;
     } catch (e) {
-        console.error("Failed to parse order items:", e);
-        items = []; // Default to an empty array on error
+        console.error("Failed to parse items:", e);
+        items = [];
     }
 
     let itemsHtml = '<ul class="list-group">';
-    if (Array.isArray(items) && items.length > 0) {
+    if (Array.isArray(items) && items.length) {
         items.forEach(item => {
-            itemsHtml += `<li class="list-group-item d-flex justify-content-between align-items-center">${item.name} <span class="badge bg-primary rounded-pill">${item.quantity}</span></li>`;
+            // Adjust for different possible item structures
+            const name = item.name || item.menu_item__name;
+            itemsHtml += `<li class="list-group-item d-flex justify-content-between align-items-center">${name} <span class="badge bg-primary rounded-pill">${item.quantity}</span></li>`;
         });
     } else {
-        itemsHtml += '<li class="list-group-item">No items found in this order.</li>';
+        itemsHtml += '<li class="list-group-item">No items information.</li>';
     }
     itemsHtml += '</ul>';
 
     detailsContainer.innerHTML = `
         <div class="text-center mb-3">
-            <h4 class="mb-1">Order #${orderData.order_id || 'N/A'}</h4>
-            <p class="text-muted mb-0">From: <strong>${orderData.customer_name || 'Unknown'}</strong></p>
+            <h4 class="mb-1">Order #${orderData.order_id}</h4>
+            <p class="text-muted mb-0">From: <strong>${orderData.customer_name}</strong></p>
         </div>
         <div class="mb-3">
             <h6>Order Items:</h6>
@@ -236,17 +244,17 @@ function showNewOrderPopup(orderData) {
         </div>
         <div class="d-flex justify-content-between">
             <h5>Total:</h5>
-            <h5><strong>₹${orderData.total_price || '0.00'}</strong></h5>
+            <h5><strong>₹${orderData.total_price}</strong></h5>
         </div>
     `;
 
     const acceptBtn = document.getElementById('acceptOrderBtn');
     const rejectBtn = document.getElementById('rejectOrderBtn');
 
-    // Use .cloneNode(true) to remove old event listeners before adding new ones
+    // Clear old listeners before adding new ones
     const newAcceptBtn = acceptBtn.cloneNode(true);
-    const newRejectBtn = rejectBtn.cloneNode(true);
     acceptBtn.parentNode.replaceChild(newAcceptBtn, acceptBtn);
+    const newRejectBtn = rejectBtn.cloneNode(true);
     rejectBtn.parentNode.replaceChild(newRejectBtn, rejectBtn);
 
     newAcceptBtn.addEventListener('click', () => handleOrderAction(orderData.id, 'accept', modal));
@@ -255,6 +263,22 @@ function showNewOrderPopup(orderData) {
     modal.show();
 }
 async function handleOrderAction(orderId, action, modalInstance) {
+    // First, tell the server this order is being acknowledged
+    try {
+        await fetch('/api/acknowledge-order/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ order_id: orderId })
+        });
+    } catch (error) {
+        console.error('Failed to acknowledge order:', error);
+        // We can still proceed with the action even if acknowledgement fails
+    }
+
+    // Now, perform the original accept/reject action
     try {
         const response = await fetch('/api/handle-order-action/', {
             method: 'POST',
@@ -267,16 +291,19 @@ async function handleOrderAction(orderId, action, modalInstance) {
 
         if (response.ok) {
             modalInstance.hide();
-            // Optionally, show a success message
-            alert(`Order has been ${action}ed.`);
-            // Refresh the page to update the order lists
-            location.reload(); 
+            // We need to manually remove the backdrop after a static modal is hidden
+            const backdrop = document.querySelector('.modal-backdrop');
+            if(backdrop) backdrop.remove();
+            
+            // Reload the page to reflect the order's new status in the lists
+            location.reload();
         } else {
-            alert(`Failed to ${action} the order.`);
+            alert(`Failed to ${action} the order. Please try again.`);
         }
     } catch (error) {
-        console.error(`Error ${action}ing order:`, error);
-        alert('An error occurred. Please try again.');
+        console.error(`Error during order action:`, error);
+        alert('An error occurred. Please check the console and try again.');
     }
 }
+
 
