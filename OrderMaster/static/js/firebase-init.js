@@ -1,7 +1,6 @@
 // OrderMaster/static/js/firebase-init.js
 
 (function() {
-    // Your web app's Firebase configuration
     const firebaseConfig = {
       apiKey: "AIzaSyBnYYq_K3TL9MxyKaCNPkB8SRqAIucF0rI",
       authDomain: "vanita-lunch-home.firebaseapp.com",
@@ -56,7 +55,7 @@
             console.log('✅ Service Worker is active and ready.');
             
             const currentToken = await messaging.getToken({ 
-                vapidKey: 'BKjH1TPFhqWc4b0ClYHjgp7maojaR8TD1FnsI7eZCRGSPWul3aNtMs4Gd9wvER8Vlcs65I5jGDhFHzLN9DAxBqA', // Replace with your actual key
+                vapidKey: 'BKjH1TPFhqWc4b0ClYHjgp7maojaR8TD1FnsI7eZCRGSPWul3aNtMs4Gd9wvER8Vlcs65I5jGDhFHzLN9DAxBqA', // MAKE SURE YOU HAVE PLACED YOUR KEY HERE
                 serviceWorkerRegistration: registration 
             });
             
@@ -73,14 +72,12 @@
 
     messaging.onMessage((payload) => {
         console.log('Foreground message received: ', payload);
-        console.log('Attempting to show popup with data:', payload.data);
         if (window.handleNewOrderNotification) {
             window.handleNewOrderNotification(payload.data);
         } else {
-            console.error('ERROR: The popup handler function is not available.');
+            console.error('ERROR: The popup handler function (handleNewOrderNotification) was not found. Check that persistent-popup.js is loaded before firebase-init.js.');
         }
     });
 
     initializeFirebaseMessaging();
 })();
-
