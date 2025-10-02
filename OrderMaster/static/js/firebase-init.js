@@ -15,7 +15,6 @@
     firebase.initializeApp(firebaseConfig);
     const messaging = firebase.messaging();
 
-    // --- Helper function to get CSRF token ---
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -31,87 +30,65 @@
         return cookieValue;
     }
 
-    // --- Helper function to send the token to your server ---
-    function subscribeTokenToTopic(token) {
-        console.log('📤 Attempting to subscribe token to topic...');
-        
+    function subscribeTokenToTopic(token, topic) {
         fetch('/api/subscribe-topic/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCookie('csrftoken')
             },
-            body: JSON.stringify({ token: token })
+            body: JSON.stringify({ token: token, topic: topic })
         })
-        .then(response => {
-            console.log('📥 Response status:', response.status);
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             if (data.success) {
-                console.log('✅ Successfully subscribed to new_orders topic');
+                console.log('Successfully subscribed to topic:', topic);
             } else {
-                console.error('❌ Failed to subscribe to topic:', data.error);
+                console.error('Failed to subscribe to topic:', data.error);
             }
         })
         .catch(error => {
-            console.error('❌ Network error subscribing to topic:', error);
+            console.error('Error subscribing to topic:', error);
         });
     }
 
-    // --- Main function to initialize notifications ---
-    async function initializeFirebaseMessaging() {
-        try {
-            // 1. Ask for permission first.
-            const permission = await Notification.requestPermission();
-            if (permission !== 'granted') {
-                console.log('❌ Notification permission not granted.');
-                return;
-            }
-            console.log('✅ Notification permission granted.');
+    // This is the main function to start the notification process
+    function startNotifications() {
+        Notification.requestPermission().then((permission) => {
+            if (permission === 'granted') {
+                console.log('Notification permission granted.');
+                
+                messaging.getToken({ vapidKey: 'YOUR_VAPID_KEY' }) // Optional but recommended
+                .then((currentToken) => {
+                    if (currentToken) {
+                        console.log('FCM Token:', currentToken);
+                        subscribeTokenToTopic(currentToken, 'new_orders');
+                    } else {
+                        console.log('No registration token available. Request permission to generate one.');
+                    }
+                }).catch((err) => {
+                    console.log('An error occurred while retrieving token.', err);
+                });
 
-            // 2. Wait for the Service Worker to be fully ready and active.
-            const registration = await navigator.serviceWorker.ready;
-            console.log('✅ Service Worker is active and ready:', registration);
-
-            // 3. Now that the service worker is active, get the token.
-            const currentToken = await messaging.getToken({ 
-                vapidKey: 'BKjH1TPFhqWc4b0ClYHjgp7maojaR8TD1FnsI7eZCRGSPWul3aNtMs4Gd9wvER8Vlcs65I5jGDhFHzLN9DAxBqA',
-                serviceWorkerRegistration: registration 
-            });
-            
-            if (currentToken) {
-                console.log('✅ FCM Token retrieved:', currentToken);
-                subscribeTokenToTopic(currentToken);
             } else {
-                console.warn('⚠️ Could not get FCM token. Is the VAPID key set?');
+                console.log('Unable to get permission to notify.');
             }
-        } catch (err) {
-            console.error('❌ An error occurred during Firebase Messaging setup:', err);
-        }
+        });
     }
-
-    // --- Listen for foreground messages ---
+    
+    // This handles messages when the page is in the foreground
     messaging.onMessage((payload) => {
-        console.log('📬 Foreground message received:', payload);
-        console.log('📦 Message data:', payload.data);
+        console.log('Foreground message received. ', payload);
 
-        // Make this function globally available
+        // This is where we trigger the persistent popup
         if (window.handleNewOrderNotification) {
             window.handleNewOrderNotification(payload.data);
         } else {
-            console.error('❌ ERROR: The popup handler function is not available.');
-            // Fallback: show browser notification
-            if (payload.notification) {
-                new Notification(payload.notification.title, {
-                    body: payload.notification.body,
-                    icon: '/static/favicon.ico'
-                });
-            }
+            console.error('The function handleNewOrderNotification was not found.');
         }
     });
     
-    // --- Start the initialization process ---
-    initializeFirebaseMessaging();
+    // Start the process
+    startNotifications();
 
 })();
