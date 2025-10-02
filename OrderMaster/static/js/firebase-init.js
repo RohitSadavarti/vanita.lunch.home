@@ -1,5 +1,7 @@
 // OrderMaster/static/js/firebase-init.js
 
+// Updated OrderMaster/static/js/firebase-init.js
+
 (function() {
     // Your web app's Firebase configuration
     const firebaseConfig = {
@@ -35,22 +37,42 @@
         }
     });
 
-    // Handle incoming messages
+    // Handle incoming messages when app is in foreground
     messaging.onMessage((payload) => {
-    console.log('Message received. ', payload);
-    
-    // Show the popup with order details
-    showNewOrderPopup(payload.data);
+        console.log('Message received. ', payload);
+        
+        // Extract order data from payload
+        const orderData = {
+            id: parseInt(payload.data.id),
+            order_id: payload.data.order_id,
+            customer_name: payload.data.customer_name,
+            customer_mobile: payload.data.customer_mobile || 'N/A',
+            total_price: parseFloat(payload.data.total_price),
+            items: JSON.parse(payload.data.items),
+            created_at: new Date().toLocaleString()
+        };
 
-    // Also show a browser notification
-    const notification = new Notification(payload.notification.title, {
-        body: payload.notification.body,
-        icon: '/static/favicon.ico'
-    });
-});
+        // Show browser notification
+        if (Notification.permission === 'granted') {
+            const notification = new Notification(payload.notification.title, {
+                body: payload.notification.body,
+                icon: '/static/favicon.ico',
+                tag: 'order-' + orderData.order_id,
+                requireInteraction: true
+            });
 
-        // Optional: Refresh the page to show the new order
-        location.reload();
+            notification.onclick = function() {
+                window.focus();
+                notification.close();
+            };
+        }
+
+        // Add to popup queue
+        if (typeof window.handleNewOrderNotification === 'function') {
+            window.handleNewOrderNotification(orderData);
+        } else {
+            console.error('handleNewOrderNotification function not found');
+        }
     });
 
     function getCookie(name) {
