@@ -30,22 +30,19 @@ logger = logging.getLogger(__name__)
 try:
     if not firebase_admin._apps:
         firebase_creds = os.environ.get('FIREBASE_CREDENTIALS')
-
         if firebase_creds:
             cred_dict = json.loads(firebase_creds)
             cred = credentials.Certificate(cred_dict)
-            firebase_admin.initialize_app(cred)
-            print("✅ Firebase Admin SDK initialized with service account")
-        else:
-            # Fallback for local development
-            cred = credentials.ApplicationDefault()
+            # FORCE THE CORRECT PROJECT ID HERE
             firebase_admin.initialize_app(cred, {
-                'projectId': "vanita-lunch-home",
+                'projectId': 'vanita-lunch-home', # Replace with your actual Project ID
             })
-            print("⚠️  Firebase Admin SDK initialized with default credentials")
+            logger.info("✅ Firebase Admin SDK initialized with service account")
+        else:
+            logger.error("⚠️ FIREBASE_CREDENTIALS environment variable not set.")
 except Exception as e:
-    print(f"ERROR: Failed to initialize Firebase Admin SDK: {e}")
-    # ==============================================================================
+    logger.error(f"❌ Failed to initialize Firebase Admin SDK: {e}")
+# ==============================================================================
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -595,6 +592,7 @@ def handle_order_action(request):
     except Exception as e:
         logger.error(f"Error handling order action: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 
 
