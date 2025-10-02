@@ -10,7 +10,7 @@ from .scripts.analytics_views import urlpatterns as analytics_urlpatterns
 def firebase_messaging_sw(request):
     try:
         return HttpResponse(
-            render_to_string('OrderMaster/firebase-messaging-sw.js'),
+            render_to_string('firebase-messaging-sw.js'),
             content_type='application/javascript'
         )
     except Exception as e:
@@ -47,3 +47,4 @@ urlpatterns = [
     # Customer-facing URL
     path('customer-order/', views.customer_order_view, name='customer_home'),
 ]
+
