@@ -1,6 +1,5 @@
 # vanita_lunch/urls.py
 
-from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
@@ -10,19 +9,25 @@ from django.template.loader import render_to_string
 # This view dynamically serves the Firebase Service Worker JS file
 def firebase_messaging_sw(request):
     """
-    Renders the firebase-messaging-sw.js file with the correct context.
-    This ensures your Firebase config is correctly injected.
+    Renders the firebase-messaging-sw.js file.
+    This is the correct way to serve the service worker in Django.
     """
-    return HttpResponse(
-        render_to_string('firebase-messaging-sw.js'),
-        content_type='application/javascript'
-    )
+    try:
+        # We will create this template in the next step
+        return HttpResponse(
+            render_to_string('OrderMaster/firebase-messaging-sw.js'),
+            content_type='application/javascript'
+        )
+    except Exception as e:
+        # This helps debug if the template is not found
+        print(f"Error rendering service worker: {e}")
+        return HttpResponse(status=500)
 
 urlpatterns = [
-    # URL for the service worker
+    # This URL is critical for Firebase to work
     path('firebase-messaging-sw.js', firebase_messaging_sw, name='firebase-messaging-sw'),
     
-    # Include your app's URLs
+    # This includes all your other app URLs like the dashboard, login, etc.
     path('', include('OrderMaster.urls')),
 ]
 
