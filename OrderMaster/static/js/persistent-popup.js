@@ -6,15 +6,14 @@
     let pendingOrdersQueue = [];
     let isPopupVisible = false;
 
-    // This function is called by firebase-init.js when a message is received
-    window.handleNewOrderNotification = function(orderData) {
-    // Add the new order to the queue
-        pendingOrdersQueue.push(orderData);
-    // If a popup isn't already showing, display the next one
-        if (!isPopupVisible) {
-            showNextOrderPopup();
+    // --- Listen for foreground messages ---
+messaging.onMessage((payload) => {
+    console.log('Foreground message received: ', payload);
+    if (window.handleNewOrderNotification) {
+        // The message data is inside payload.data
+        window.handleNewOrderNotification(payload.data);
     }
-};
+});
 
     function showNextOrderPopup() {
         if (pendingOrdersQueue.length === 0) {
