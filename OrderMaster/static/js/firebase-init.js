@@ -92,12 +92,14 @@
     messaging.onMessage((payload) => {
         console.log('Foreground message received: ', payload);
         if (window.handleNewOrderNotification) {
+        // The message data is inside payload.data
             window.handleNewOrderNotification(payload.data);
-        }
-    });
+    }
+});
 
     // --- Start the initialization process ---
     initializeFirebaseMessaging();
 
 })();
+
 
