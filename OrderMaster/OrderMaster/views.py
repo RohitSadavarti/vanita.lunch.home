@@ -10,14 +10,16 @@ from django.utils import timezone
 from datetime import timedelta
 import json
 from firebase_admin import messaging
-from django.db.models import Count, Sum, F, ExpressionWrapper, DecimalField
-from django.db.models.functions import TruncDate
-from .scripts.analytics_views import get_analytics_data
 import logging
 
 logger = logging.getLogger(__name__)
 
-# --- NEW FUNCTION TO ACKNOWLEDGE ORDERS ---
+# --- THIS IS THE CORRECTED PART ---
+# We have removed the problematic import:
+# from .scripts.analytics_views import get_analytics_data  <-- THIS LINE WAS REMOVED
+# ------------------------------------
+
+
 @csrf_exempt
 def acknowledge_order(request):
     if request.method == 'POST':
@@ -33,15 +35,11 @@ def acknowledge_order(request):
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
     return JsonResponse({'success': False, 'error': 'Invalid request method.'}, status=400)
-# ------------------------------------------
 
 @login_required
 def dashboard(request):
-    # --- MODIFIED LOGIC ---
-    # Check for the oldest unacknowledged order
     unacknowledged_order = Order.objects.filter(is_acknowledged=False, order_status='pending').order_by('created_at').first()
     
-    # If there is one, serialize its data for the pop-up
     unacknowledged_order_data = None
     if unacknowledged_order:
         items = list(unacknowledged_order.items.values('menu_item__name', 'quantity'))
@@ -53,15 +51,13 @@ def dashboard(request):
             'items': json.dumps(items)
         }
 
-    # Your existing dashboard logic
     today = timezone.now().date()
     live_orders = Order.objects.filter(created_at__date=today, order_status__in=['pending', 'preparing']).order_by('-created_at')
     
     context = {
         'live_orders': live_orders,
-        'unacknowledged_order': json.dumps(unacknowledged_order_data) # Pass data to template
+        'unacknowledged_order': json.dumps(unacknowledged_order_data)
     }
-    # ----------------------
     return render(request, 'OrderMaster/dashboard.html', context)
 
 
@@ -87,7 +83,6 @@ def logout_view(request):
     
 @login_required
 def order_management_view(request):
-    # --- MODIFIED LOGIC for persistence on this page too ---
     unacknowledged_order = Order.objects.filter(is_acknowledged=False, order_status='pending').order_by('created_at').first()
     unacknowledged_order_data = None
     if unacknowledged_order:
@@ -100,7 +95,6 @@ def order_management_view(request):
             'items': json.dumps(items)
         }
 
-    # Your existing order management logic
     date_filter = request.GET.get('date_filter', 'today')
     today = timezone.now().date()
     
@@ -138,7 +132,7 @@ def order_management_view(request):
         'date_display_str': date_display_str,
         'start_date_val': start_date_str,
         'end_date_val': end_date_str,
-        'unacknowledged_order': json.dumps(unacknowledged_order_data) # Pass data here too
+        'unacknowledged_order': json.dumps(unacknowledged_order_data)
     }
     return render(request, 'OrderMaster/order_management.html', context)
 
@@ -180,10 +174,11 @@ def delete_menu_item(request, item_id):
         return redirect('menu_management')
     return redirect('menu_management')
     
-@login_required
-def analytics_view(request):
-    context = get_analytics_data(request)
-    return render(request, 'OrderMaster/analytics.html', context)
+# --- THIS IS THE CORRECTED PART ---
+# The original analytics_view was causing the crash.
+# The analytics page is now handled by the code in analytics_views.py,
+# so this view is no longer needed here. It has been removed.
+# ------------------------------------
 
 # --- API VIEWS ---
 def send_new_order_notification(order):
