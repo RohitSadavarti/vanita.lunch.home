@@ -10,6 +10,7 @@ urlpatterns = [
     path('orders/', views.order_management_view, name='order_management'),
     path('menu/', views.menu_management_view, name='menu_management'),
     path('menu/delete/<int:item_id>/', views.delete_menu_item_view, name='delete_menu_item'),
+    path('api/pending-orders/', views.get_pending_orders, name='get_pending_orders'),
     re_path(r'^analytics/$', views.analytics_view, name='analytics'),
     path('analytics/', include(analytics_urlpatterns)),
     
@@ -28,3 +29,4 @@ urlpatterns = [
     # Customer-facing URL
     path('customer-order/', views.customer_order_view, name='customer_home'),
 ]
+
