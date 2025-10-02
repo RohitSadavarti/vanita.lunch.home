@@ -44,7 +44,8 @@ try:
             })
             print("⚠️  Firebase Admin SDK initialized with default credentials")
 except Exception as e:
-    print(f"ERROR: Failed to initialize Firebase Admin SDK: {e}")# ==============================================================================
+    print(f"ERROR: Failed to initialize Firebase Admin SDK: {e}")
+    # ==============================================================================
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -578,5 +579,6 @@ def handle_order_action(request):
     except Exception as e:
         logger.error(f"Error handling order action: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 
