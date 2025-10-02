@@ -8,7 +8,7 @@ from django.views.decorators.http import require_POST, require_http_methods
 from django.utils import timezone
 from .models import MenuItem, Order, VlhAdmin, models
 from .forms import MenuItemForm
-from .decorators import admin_required 
+from .decorators import admin_required
 from datetime import datetime, timedelta
 from django.db.models import Count, Sum
 from collections import Counter
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 try:
     if not firebase_admin._apps:
         firebase_creds = os.environ.get('FIREBASE_CREDENTIALS')
-        
+
         if firebase_creds:
             cred_dict = json.loads(firebase_creds)
             cred = credentials.Certificate(cred_dict)
@@ -56,19 +56,19 @@ def subscribe_to_topic(request):
     try:
         data = json.loads(request.body)
         token = data.get('token')
-        
+
         if not token:
             return JsonResponse({'error': 'Token required'}, status=400)
-        
+
         response = messaging.subscribe_to_topic([token], 'new_orders')
-        
+
         if response.failure_count > 0:
             logger.error(f"Failed to subscribe token: {response.errors}")
             return JsonResponse({'error': 'Subscription failed'}, status=500)
-        
+
         logger.info(f"Successfully subscribed token to new_orders topic")
         return JsonResponse({'success': True, 'message': 'Subscribed to notifications'})
-        
+
     except Exception as e:
         logger.error(f"Topic subscription error: {e}")
         return JsonResponse({'error': str(e)}, status=500)
@@ -100,7 +100,7 @@ def handle_order_action(request):
             order.status = 'Rejected'
             order.items = []
             order.total_price = 0
-        
+
         order.save()
         return JsonResponse({'success': True, 'message': f'Order {action}ed successfully.'})
 
@@ -157,7 +157,7 @@ def analytics_api_view(request):
     date_filter = request.GET.get('date_filter', 'this_month')
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
- 
+
     now = timezone.now()
     if date_filter == 'today':
         start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -174,39 +174,39 @@ def analytics_api_view(request):
     else:
         start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         end_date = now
- 
+
     completed_orders = Order.objects.filter(order_status='pickedup', created_at__range=(start_date, end_date))
- 
+
     total_revenue = completed_orders.aggregate(total=Sum('total_price'))['total'] or 0
     total_orders_count = completed_orders.count()
     average_order_value = total_revenue / total_orders_count if total_orders_count > 0 else 0
- 
+
     item_counter = Counter()
     for order in completed_orders:
         items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
         for item in items_list:
             item_counter[item['name']] += item['quantity']
-        
+
     most_common_items = item_counter.most_common(5)
     item_labels = [item[0] for item in most_common_items]
     item_quantities = [item[1] for item in most_common_items]
- 
+
     top_5_names = [item[0] for item in most_common_items]
-    order_types = ['Dine In', 'Take Away', 'Delivery'] 
-    
+    order_types = ['Dine In', 'Take Away', 'Delivery']
+
     stacked_bar_raw_data = {ot: {name: 0 for name in top_5_names} for ot in order_types}
- 
+
     for order in completed_orders:
         items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
-        order_type = getattr(order, 'order_type', 'Take Away') 
+        order_type = getattr(order, 'order_type', 'Take Away')
         if order_type in order_types:
             for item in items_list:
                 if item['name'] in top_5_names:
                     stacked_bar_raw_data[order_type][item['name']] += item['quantity']
-        
+
     stacked_bar_datasets = []
     colors = {'Dine In': '#ff8100', 'Take Away': '#ffbd6e', 'Delivery': '#ffda9a'}
- 
+
     for order_type in order_types:
         percentages = []
         for name in top_5_names:
@@ -216,13 +216,13 @@ def analytics_api_view(request):
                 percentages.append(round(percentage, 2))
             else:
                 percentages.append(0)
-            
+
         stacked_bar_datasets.append({
             'label': order_type,
             'data': percentages,
             'backgroundColor': colors.get(order_type, '#cccccc')
         })
- 
+
     data = {
         'key_metrics': {
             'total_revenue': f'{total_revenue:,.2f}',
@@ -305,12 +305,12 @@ def update_order_status(request):
 
         order = get_object_or_404(Order, pk=order_pk)
         order.order_status = new_status
-        
+
         if new_status == 'ready':
             order.ready_time = timezone.now()
         elif new_status == 'pickedup':
             order.pickup_time = timezone.now()
-            
+
         order.save()
         return JsonResponse({'success': True})
     except Order.DoesNotExist:
@@ -330,7 +330,7 @@ def menu_management_view(request):
             messages.error(request, 'Please correct the errors below.')
     else:
         form = MenuItemForm()
-    
+
     context = {
         'menu_items': MenuItem.objects.all().order_by('-created_at'),
         'add_item_form': form,
@@ -351,7 +351,7 @@ def delete_menu_item_view(request, item_id):
 @admin_required
 def api_menu_item_detail(request, item_id):
     item = get_object_or_404(MenuItem, id=item_id)
-    
+
     if request.method == 'GET':
         data = {
             'id': item.id,
@@ -365,7 +365,7 @@ def api_menu_item_detail(request, item_id):
             'image_url': item.image_url if item.image_url else ''
         }
         return JsonResponse(data)
-        
+
     if request.method == 'POST':
         form = MenuItemForm(request.POST, instance=item)
         if form.is_valid():
@@ -373,7 +373,7 @@ def api_menu_item_detail(request, item_id):
             return JsonResponse({'success': True, 'message': 'Item updated successfully!'})
         else:
             return JsonResponse({'success': False, 'errors': form.errors}, status=400)
-            
+
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 
@@ -383,7 +383,7 @@ def api_menu_items(request):
             'id', 'item_name', 'description', 'price', 'category',
             'veg_nonveg', 'meal_type', 'availability_time', 'image_url'
         ).order_by('category', 'item_name')
-        
+
         items_list = [
             {**item, 'price': float(item['price'])} for item in menu_items
         ]
@@ -419,9 +419,9 @@ def api_place_order(request):
             item_total = menu_item.price * quantity
             calculated_subtotal += item_total
             validated_items_for_db.append({
-                'id': menu_item.id, 
+                'id': menu_item.id,
                 'name': menu_item.item_name,
-                'price': float(menu_item.price), 
+                'price': float(menu_item.price),
                 'quantity': quantity,
             })
 
@@ -465,8 +465,8 @@ def api_place_order(request):
             logger.error(f"Error sending FCM message: {e}")
 
         return JsonResponse({
-            'success': True, 
-            'order_id': order_id, 
+            'success': True,
+            'order_id': order_id,
             'message': 'Order placed successfully!'
         })
 
@@ -478,7 +478,7 @@ def api_place_order(request):
     except Exception as e:
         logger.error(f"Place order error: {e}")
         return JsonResponse({'error': 'An unexpected server error occurred.'}, status=500)
-        
+
 @admin_required
 def analytics_view(request):
     """Renders the analytics page."""
@@ -527,7 +527,7 @@ def get_pending_orders(request):
         pending_orders = Order.objects.filter(
             status='Pending'
         ).order_by('created_at')
-        
+
         orders_data = []
         for order in pending_orders:
             items_list = order.items if isinstance(order.items, list) else json.loads(order.items)
@@ -540,7 +540,7 @@ def get_pending_orders(request):
                 'total_price': float(order.total_price),
                 'created_at': order.created_at.strftime('%b %d, %Y, %I:%M %p')
             })
-        
+
         return JsonResponse({'success': True, 'orders': orders_data})
     except Exception as e:
         logger.error(f"Error fetching pending orders: {e}")
@@ -569,11 +569,11 @@ def handle_order_action(request):
             message = f'Order #{order.order_id} rejected.'
         else:
             return JsonResponse({'success': False, 'error': 'Invalid action'}, status=400)
-        
+
         order.save()
-        
+
         return JsonResponse({
-            'success': True, 
+            'success': True,
             'message': message,
             'order_id': order.order_id
         })
