@@ -516,3 +516,68 @@ def get_orders_api(request):
     except Exception as e:
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
+
+# Add this new API endpoint to your views.py
+
+@admin_required
+def get_pending_orders(request):
+    """API endpoint to fetch pending orders that need admin action."""
+    try:
+        # Get all pending orders that haven't been accepted or rejected
+        pending_orders = Order.objects.filter(
+            status='Pending'
+        ).order_by('created_at')
+        
+        orders_data = []
+        for order in pending_orders:
+            items_list = order.items if isinstance(order.items, list) else json.loads(order.items)
+            orders_data.append({
+                'id': order.id,
+                'order_id': order.order_id,
+                'customer_name': order.customer_name,
+                'customer_mobile': order.customer_mobile,
+                'items': items_list,
+                'total_price': float(order.total_price),
+                'created_at': order.created_at.strftime('%b %d, %Y, %I:%M %p')
+            })
+        
+        return JsonResponse({'success': True, 'orders': orders_data})
+    except Exception as e:
+        logger.error(f"Error fetching pending orders: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@admin_required
+@require_POST
+def handle_order_action(request):
+    """Updated version with better handling"""
+    try:
+        data = json.loads(request.body)
+        order_id = data.get('order_id')  # This is the database ID, not order_id field
+        action = data.get('action')
+
+        order = get_object_or_404(Order, id=order_id)
+
+        if action == 'accept':
+            order.status = 'Confirmed'
+            order.order_status = 'open'  # Move to preparing
+            message = f'Order #{order.order_id} accepted successfully.'
+        elif action == 'reject':
+            order.status = 'Rejected'
+            order.order_status = 'cancelled'
+            message = f'Order #{order.order_id} rejected.'
+        else:
+            return JsonResponse({'success': False, 'error': 'Invalid action'}, status=400)
+        
+        order.save()
+        
+        return JsonResponse({
+            'success': True, 
+            'message': message,
+            'order_id': order.order_id
+        })
+
+    except Exception as e:
+        logger.error(f"Error handling order action: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
