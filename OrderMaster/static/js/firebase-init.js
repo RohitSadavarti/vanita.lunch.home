@@ -73,7 +73,7 @@
             // 3. Now that the service worker is active, get the token.
             // Remember to add your VAPID key here from the Firebase console!
             const currentToken = await messaging.getToken({ 
-                vapidKey: 'YOUR_VAPID_KEY_FROM_FIREBASE_CONSOLE',
+                vapidKey: 'BKjH1TPFhqWc4b0ClYHjgp7maojaR8TD1FnsI7eZCRGSPWul3aNtMs4Gd9wvER8Vlcs65I5jGDhFHzLN9DAxBqA',
                 serviceWorkerRegistration: registration 
             });
             
@@ -100,3 +100,4 @@
     initializeFirebaseMessaging();
 
 })();
+
