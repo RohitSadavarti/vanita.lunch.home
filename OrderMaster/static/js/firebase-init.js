@@ -11,11 +11,9 @@
       appId: "1:86193565341:web:b9c234bda59b37ee366e74"
     };
 
-    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const messaging = firebase.messaging();
 
-    // --- Helper function to get CSRF token ---
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -31,33 +29,22 @@
         return cookieValue;
     }
 
-    // --- Helper function to send the token to your server ---
     function subscribeTokenToTopic(token, topic) {
         fetch('/api/subscribe-topic/', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
             body: JSON.stringify({ token: token, topic: topic })
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                console.log('✅ Successfully subscribed to topic:', topic);
-            } else {
-                console.error('❌ Failed to subscribe to topic:', data.error);
-            }
+            if (data.success) console.log('✅ Successfully subscribed to topic:', topic);
+            else console.error('❌ Failed to subscribe to topic:', data.error);
         })
-        .catch(error => {
-            console.error('❌ Error subscribing to topic:', error);
-        });
+        .catch(error => console.error('❌ Error subscribing to topic:', error));
     }
 
-    // --- Main function to initialize notifications ---
     async function initializeFirebaseMessaging() {
         try {
-            // 1. Ask for permission first.
             const permission = await Notification.requestPermission();
             if (permission !== 'granted') {
                 console.log('Permission not granted.');
@@ -65,15 +52,11 @@
             }
             console.log('Notification permission granted.');
 
-            // 2. Wait for the Service Worker to be fully ready and active.
-            // This is the key change that solves the race condition.
             const registration = await navigator.serviceWorker.ready;
-            console.log('✅ Service Worker is active and ready:', registration);
-
-            // 3. Now that the service worker is active, get the token.
-            // Remember to add your VAPID key here from the Firebase console!
+            console.log('✅ Service Worker is active and ready.');
+            
             const currentToken = await messaging.getToken({ 
-                vapidKey: 'BKjH1TPFhqWc4b0ClYHjgp7maojaR8TD1FnsI7eZCRGSPWul3aNtMs4Gd9wvER8Vlcs65I5jGDhFHzLN9DAxBqA',
+                vapidKey: 'YOUR_VAPID_KEY_FROM_FIREBASE_CONSOLE', // Replace with your actual key
                 serviceWorkerRegistration: registration 
             });
             
@@ -88,24 +71,15 @@
         }
     }
 
-    // --- Listen for foreground messages ---
     messaging.onMessage((payload) => {
         console.log('Foreground message received: ', payload);
-    
-    // ADD THIS NEW LOG
         console.log('Attempting to show popup with data:', payload.data);
-
         if (window.handleNewOrderNotification) {
             window.handleNewOrderNotification(payload.data);
         } else {
             console.error('ERROR: The popup handler function is not available.');
-    }
-});
+        }
+    });
 
-    // --- Start the initialization process ---
     initializeFirebaseMessaging();
-
 })();
-
-
-
