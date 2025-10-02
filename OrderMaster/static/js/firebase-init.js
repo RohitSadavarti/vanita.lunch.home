@@ -58,7 +58,7 @@
             if (permission === 'granted') {
                 console.log('Notification permission granted.');
                 
-                messaging.getToken({ vapidKey: 'YOUR_VAPID_KEY' }) // Optional but recommended
+                messaging.getToken({ vapidKey: 'BKjH1TPFhqWc4b0ClYHjgp7maojaR8TD1FnsI7eZCRGSPWul3aNtMs4Gd9wvER8Vlcs65I5jGDhFHzLN9DAxBqA' }) // Optional but recommended
                 .then((currentToken) => {
                     if (currentToken) {
                         console.log('FCM Token:', currentToken);
@@ -92,3 +92,4 @@
     startNotifications();
 
 })();
+
