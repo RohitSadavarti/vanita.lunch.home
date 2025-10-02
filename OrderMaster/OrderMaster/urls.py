@@ -4,8 +4,14 @@ from . import views
 
 urlpatterns = [
     # Page URLs
-    path('', views.dashboard, name='dashboard'),
-    path('login/', views.login_view, name='login'),
+    # --- THIS IS THE FIX ---
+    # The login page redirects to 'dashboard'. This path now correctly
+    # maps the name 'dashboard' to the URL '/dashboard/'.
+    path('dashboard/', views.dashboard, name='dashboard'),
+    # We also keep the login page at the root
+    path('', views.login_view, name='login'),
+    # -----------------------
+    
     path('logout/', views.logout_view, name='logout'),
     path('orders/', views.order_management_view, name='order_management'),
     path('menu/', views.menu_management_view, name='menu_management'),
