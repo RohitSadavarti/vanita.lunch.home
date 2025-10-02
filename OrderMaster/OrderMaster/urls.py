@@ -1,8 +1,26 @@
+# OrderMaster/OrderMaster/urls.py
+
 from django.urls import path, include, re_path
+from django.http import HttpResponse
+from django.template.loader import render_to_string
 from . import views
-from OrderMaster.scripts.analytics_views import urlpatterns as analytics_urlpatterns
+from .scripts.analytics_views import urlpatterns as analytics_urlpatterns
+
+# This view dynamically serves the Firebase Service Worker JS file
+def firebase_messaging_sw(request):
+    try:
+        return HttpResponse(
+            render_to_string('OrderMaster/firebase-messaging-sw.js'),
+            content_type='application/javascript'
+        )
+    except Exception as e:
+        print(f"FATAL: Could not render service worker. Error: {e}")
+        return HttpResponse(status=500)
 
 urlpatterns = [
+    # Firebase Service Worker URL (CRITICAL - MUST BE AT THE ROOT)
+    path('firebase-messaging-sw.js', firebase_messaging_sw, name='firebase-messaging-sw'),
+
     # Admin URLs
     path('', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
@@ -11,7 +29,7 @@ urlpatterns = [
     path('menu/', views.menu_management_view, name='menu_management'),
     path('menu/delete/<int:item_id>/', views.delete_menu_item_view, name='delete_menu_item'),
     path('api/pending-orders/', views.get_pending_orders, name='get_pending_orders'),
-    re_path(r'^analytics/$', views.analytics_view, name='analytics'),
+    path('analytics/', views.analytics_view, name='analytics'),
     path('analytics/', include(analytics_urlpatterns)),
     
     path('settings/', views.settings_view, name='settings'),
@@ -29,4 +47,3 @@ urlpatterns = [
     # Customer-facing URL
     path('customer-order/', views.customer_order_view, name='customer_home'),
 ]
-
