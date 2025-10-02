@@ -36,18 +36,15 @@ try:
             cred = credentials.Certificate(cred_dict)
             firebase_admin.initialize_app(cred)
             print("✅ Firebase Admin SDK initialized with service account")
-            logger.info("Firebase Admin SDK initialized successfully")
         else:
             # Fallback for local development
             cred = credentials.ApplicationDefault()
             firebase_admin.initialize_app(cred, {
                 'projectId': "vanita-lunch-home",
             })
-            print("⚠️ Firebase Admin SDK initialized with default credentials")
+            print("⚠️  Firebase Admin SDK initialized with default credentials")
 except Exception as e:
-    logger.error(f"❌ Failed to initialize Firebase Admin SDK: {e}")
-    print(f"ERROR: Failed to initialize Firebase Admin SDK: {e}")
-# ==============================================================================
+    print(f"ERROR: Failed to initialize Firebase Admin SDK: {e}")# ==============================================================================
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -581,4 +578,5 @@ def handle_order_action(request):
     except Exception as e:
         logger.error(f"Error handling order action: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
