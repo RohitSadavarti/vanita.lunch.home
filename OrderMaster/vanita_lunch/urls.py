@@ -11,13 +11,10 @@ from django.views.generic import TemplateView
 urlpatterns = [
     path('admin/', admin.site.urls),
 
-    # --- THIS IS THE CRITICAL FIX ---
-    # This now correctly points to the analytics script as a module,
-    # which is how Django's include() function is designed to work.
+    # This correctly points to the analytics script.
     path('analytics/', include('OrderMaster.scripts.analytics_views')),
-    # ------------------------------------
-
-    # This correctly serves the Firebase service worker file.
+    
+    # This serves the Firebase service worker file.
     path(
         "firebase-messaging-sw.js",
         TemplateView.as_view(
@@ -27,10 +24,13 @@ urlpatterns = [
         name="firebase-messaging-sw.js",
     ),
 
-    # This includes all your main app URLs like the dashboard and login page.
+    # --- THIS IS THE CRITICAL FIX ---
+    # This single line includes all of your application's main URLs 
+    # (login, dashboard, orders, etc.) and makes them accessible.
     path('', include('OrderMaster.urls')),
+    # -----------------------------------
 ]
 
-# This is for serving images during development
+# This is for serving images during development.
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
