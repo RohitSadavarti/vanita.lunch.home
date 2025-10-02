@@ -15,6 +15,7 @@
     firebase.initializeApp(firebaseConfig);
     const messaging = firebase.messaging();
 
+    // --- Helper function to get CSRF token ---
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -30,6 +31,7 @@
         return cookieValue;
     }
 
+    // --- Helper function to send the token to your server ---
     function subscribeTokenToTopic(token, topic) {
         fetch('/api/subscribe-topic/', {
             method: 'POST',
@@ -52,43 +54,45 @@
         });
     }
 
-    // This is the main function to start the notification process
-    function startNotifications() {
-        Notification.requestPermission().then((permission) => {
-            if (permission === 'granted') {
-                console.log('Notification permission granted.');
-                
-                messaging.getToken({ vapidKey: 'YOUR_VAPID_KEY' }) // Optional but recommended
-                .then((currentToken) => {
-                    if (currentToken) {
-                        console.log('FCM Token:', currentToken);
-                        subscribeTokenToTopic(currentToken, 'new_orders');
-                    } else {
-                        console.log('No registration token available. Request permission to generate one.');
-                    }
-                }).catch((err) => {
-                    console.log('An error occurred while retrieving token.', err);
-                });
+    // --- Main function to initialize notifications ---
+    async function initializeFirebaseMessaging() {
+        try {
+            // 1. Register the service worker and wait for it to be ready.
+            const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            console.log('Service Worker registered successfully:', registration);
 
-            } else {
-                console.log('Unable to get permission to notify.');
+            // 2. Request permission from the user.
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                console.log('Notification permission not granted.');
+                return;
             }
-        });
+            console.log('Notification permission granted.');
+
+            // 3. NOW that the service worker is ready, get the token.
+            const currentToken = await messaging.getToken({ serviceWorkerRegistration: registration });
+            if (currentToken) {
+                console.log('FCM Token retrieved:', currentToken);
+                subscribeTokenToTopic(currentToken, 'new_orders');
+            } else {
+                console.log('No registration token available. Request permission to generate one.');
+            }
+        } catch (err) {
+            console.error('An error occurred during Firebase Messaging setup:', err);
+        }
     }
-    
-    // This handles messages when the page is in the foreground
+
+    // --- Listen for foreground messages ---
     messaging.onMessage((payload) => {
         console.log('Foreground message received. ', payload);
-
-        // This is where we trigger the persistent popup
         if (window.handleNewOrderNotification) {
             window.handleNewOrderNotification(payload.data);
         } else {
             console.error('The function handleNewOrderNotification was not found.');
         }
     });
-    
-    // Start the process
-    startNotifications();
+
+    // --- Start the initialization process ---
+    initializeFirebaseMessaging();
 
 })();
