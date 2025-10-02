@@ -56,7 +56,7 @@
             console.log('✅ Service Worker is active and ready.');
             
             const currentToken = await messaging.getToken({ 
-                vapidKey: 'YOUR_VAPID_KEY_FROM_FIREBASE_CONSOLE', // Replace with your actual key
+                vapidKey: 'BKjH1TPFhqWc4b0ClYHjgp7maojaR8TD1FnsI7eZCRGSPWul3aNtMs4Gd9wvER8Vlcs65I5jGDhFHzLN9DAxBqA', // Replace with your actual key
                 serviceWorkerRegistration: registration 
             });
             
@@ -83,3 +83,4 @@
 
     initializeFirebaseMessaging();
 })();
+
