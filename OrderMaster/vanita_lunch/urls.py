@@ -1,44 +1,43 @@
+# OrderMaster/vanita_lunch/urls.py
+"""
+URL configuration for vanita_lunch project.
+
+The `urlpatterns` list routes URLs to views. For more information please see:
+    https://docs.djangoproject.com/en/5.0/topics/urls/
+Examples:
+Function views
+    1. Add an import:  from my_app import views
+    2. Add a URL to urlpatterns:  path('', views.home, name='home')
+Class-based views
+    1. Add an import:  from other_app.views import Home
+    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
+Including another URLconf
+    1. Import the include() function: from django.urls import include, path
+    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+"""
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.http import HttpResponse
-from django.views.decorators.cache import never_cache
 
-@never_cache
-def firebase_sw(request):
-    js_code = """
-importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
-importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
+# --- THIS IS THE CORRECTED PART ---
+# We now correctly import the analytics URLs from the scripts folder.
+from OrderMaster.scripts import analytics_views
+# ------------------------------------
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBnYYq_K3TL9MxyKaCNPkB8SRqAIucF0rI",
-  authDomain: "vanita-lunch-home.firebaseapp.com",
-  projectId: "vanita-lunch-home",
-  storageBucket: "vanita-lunch-home.firebasestorage.app",
-  messagingSenderId: "86193565341",
-  appId: "1:86193565341:web:b9c234bda59b37ee366e74"
-};
-
-firebase.initializeApp(firebaseConfig);
-const messaging = firebase.messaging();
-
-messaging.onBackgroundMessage((payload) => {
-  console.log('Background message received:', payload);
-  const title = payload.notification.title;
-  const options = {
-    body: payload.notification.body,
-    icon: '/static/favicon.ico'
-  };
-  self.registration.showNotification(title, options);
-});
-"""
-    return HttpResponse(js_code, content_type='application/javascript')
 
 urlpatterns = [
-    path('firebase-messaging-sw.js', firebase_sw, name='firebase-sw'),
+    path('admin/', admin.site.urls),
+
+    # --- AND WE ADD THE CORRECT PATH HERE ---
+    # This tells Django to look inside analytics_views.py for any URL starting with 'analytics/'
+    path('analytics/', include(analytics_views.urlpatterns)),
+    # ----------------------------------------
+    
+    # This includes all the main app URLs (dashboard, orders, etc.)
     path('', include('OrderMaster.urls')),
 ]
 
+# This is important for serving images during development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
