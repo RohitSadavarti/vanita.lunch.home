@@ -8,13 +8,13 @@
 
     // This function is called by firebase-init.js when a message is received
     window.handleNewOrderNotification = function(orderData) {
-        // Add the new order to the queue
+    // Add the new order to the queue
         pendingOrdersQueue.push(orderData);
-        // If a popup isn't already showing, display the next one
+    // If a popup isn't already showing, display the next one
         if (!isPopupVisible) {
             showNextOrderPopup();
-        }
-    };
+    }
+};
 
     function showNextOrderPopup() {
         if (pendingOrdersQueue.length === 0) {
