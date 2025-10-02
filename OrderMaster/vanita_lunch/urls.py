@@ -6,23 +6,22 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.views.generic import TemplateView # Import TemplateView
+from django.views.generic import TemplateView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
 
     # --- THIS IS THE CRITICAL FIX ---
-    # This line correctly includes all the URLs from your OrderMaster app,
-    # such as the dashboard, orders, menu, and all the APIs.
+    # This line tells Django that for any URL that isn't 'admin/', 'analytics/', 
+    # or the firebase file, it should look for a match inside your 
+    # OrderMaster app's urls.py file. This is what makes '/dashboard/' work.
     path('', include('OrderMaster.urls')),
     # ------------------------------------
 
-    # This handles the analytics page separately
+    # This handles the analytics page separately.
     path('analytics/', include('OrderMaster.scripts.analytics_views.urlpatterns')),
     
-    # --- FIX FOR FIREBASE SERVICE WORKER ---
-    # This serves the firebase-messaging-sw.js file from the root directory,
-    # which is required by Firebase for background notifications to work.
+    # This correctly serves the Firebase service worker file from the root.
     path(
         "firebase-messaging-sw.js",
         TemplateView.as_view(
@@ -31,9 +30,8 @@ urlpatterns = [
         ),
         name="firebase-messaging-sw.js",
     ),
-    # -----------------------------------------
 ]
 
-# This is important for serving images during development
+# This is for serving images during development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
