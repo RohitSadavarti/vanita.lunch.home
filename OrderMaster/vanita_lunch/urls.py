@@ -14,7 +14,7 @@ urlpatterns = [
     # This correctly points to the analytics script.
     path('analytics/', include('OrderMaster.scripts.analytics_views')),
     
-    # This serves the Firebase service worker file.
+    # This serves the Firebase service worker file, which is required for notifications.
     path(
         "firebase-messaging-sw.js",
         TemplateView.as_view(
@@ -26,11 +26,11 @@ urlpatterns = [
 
     # --- THIS IS THE CRITICAL FIX ---
     # This single line includes all of your application's main URLs 
-    # (login, dashboard, orders, etc.) and makes them accessible.
+    # (login, dashboard, orders, etc.) and makes them accessible from the root.
     path('', include('OrderMaster.urls')),
     # -----------------------------------
 ]
 
-# This is for serving images during development.
+# This is necessary for serving media files (like menu item images) during development.
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
