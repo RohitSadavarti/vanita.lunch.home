@@ -14,12 +14,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# --- THIS IS THE CORRECTED PART ---
-# We have removed the problematic import:
-# from .scripts.analytics_views import get_analytics_data  <-- THIS LINE WAS REMOVED
-# ------------------------------------
-
-
 @csrf_exempt
 def acknowledge_order(request):
     if request.method == 'POST':
@@ -61,8 +55,6 @@ def dashboard(request):
     return render(request, 'OrderMaster/dashboard.html', context)
 
 
-# In OrderMaster/OrderMaster/views.py
-
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
@@ -82,7 +74,6 @@ def login_view(request):
         form = LoginForm()
     return render(request, 'OrderMaster/login.html', {'form': form})
 
-# (Keep all other functions in views.py exactly as they are)
 def logout_view(request):
     logout(request)
     return redirect('login')
@@ -179,14 +170,7 @@ def delete_menu_item(request, item_id):
         item.delete()
         return redirect('menu_management')
     return redirect('menu_management')
-    
-# --- THIS IS THE CORRECTED PART ---
-# The original analytics_view was causing the crash.
-# The analytics page is now handled by the code in analytics_views.py,
-# so this view is no longer needed here. It has been removed.
-# ------------------------------------
 
-# --- API VIEWS ---
 def send_new_order_notification(order):
     try:
         items_list = list(order.items.values('menu_item__name', 'quantity'))
@@ -309,4 +293,3 @@ def update_order_status(request):
             return JsonResponse({'success': False, 'error': str(e)}, status=500)
             
     return JsonResponse({'success': False, 'error': 'Invalid Method'}, status=405)
-
