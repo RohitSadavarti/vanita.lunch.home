@@ -96,3 +96,31 @@
         </div>
     </div>
 {% endblock %}
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Safely parse the JSON data from the template
+    let unacknowledgedOrderData = null;
+    try {
+        unacknowledgedOrderData = JSON.parse('{{ unacknowledged_order|safe }}');
+    } catch (e) {
+        console.error("Could not parse unacknowledged order data:", e);
+    }
+
+    // If there is an unacknowledged order, show the pop-up immediately
+    if (unacknowledgedOrderData) {
+        console.log("Unacknowledged order found on page load. Showing pop-up.");
+        // We need to re-parse the 'items' string inside the data
+        if (typeof unacknowledgedOrderData.items === 'string') {
+            try {
+                unacknowledgedOrderData.items = JSON.parse(unacknowledgedOrderData.items);
+            } catch (e) {
+                console.error("Could not parse items string:", e);
+                unacknowledgedOrderData.items = [];
+            }
+        }
+        showNewOrderPopup(unacknowledgedOrderData);
+    }
+});
+</script>
+{% endblock %}
