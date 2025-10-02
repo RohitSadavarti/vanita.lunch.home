@@ -1,9 +1,9 @@
-// OrderMaster/templates/firebase-messaging-sw.js
+// OrderMaster/OrderMaster/templates/OrderMaster/firebase-messaging-sw.js
 
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
 
-// IMPORTANT: Your actual Firebase config is injected here
+// IMPORTANT: Replace this with your actual Firebase config from the console
 const firebaseConfig = {
   apiKey: "AIzaSyBnYYq_K3TL9MxyKaCNPkB8SRqAIucF0rI",
   authDomain: "vanita-lunch-home.firebaseapp.com",
@@ -19,12 +19,12 @@ const messaging = firebase.messaging();
 
 // This handler is for notifications received when the app is in the background
 messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+  console.log('[firebase-messaging-sw.js] Received background message: ', payload);
 
   const notificationTitle = payload.notification.title;
   const notificationOptions = {
     body: payload.notification.body,
-    icon: '/static/favicon.ico' // Optional: Add a path to your icon
+    icon: '/static/favicon.ico' // Ensure you have a favicon at this path
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
