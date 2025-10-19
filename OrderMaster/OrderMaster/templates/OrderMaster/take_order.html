@@ -1,0 +1,478 @@
+{% extends 'OrderMaster/base.html' %}
+{% load static %}
+
+{% block title %}Take Order{% endblock %}
+
+{% block content %}
+<style>
+    .menu-item-card {
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 2px solid transparent;
+    }
+    .menu-item-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .menu-item-card.selected {
+        border-color: #ff8100;
+        background-color: #fff5e6;
+    }
+    .cart-item {
+        border-bottom: 1px solid #e5e7eb;
+        padding: 0.75rem 0;
+    }
+    .cart-summary {
+        position: sticky;
+        top: 100px;
+    }
+    .quantity-badge {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background: #ff8100;
+        color: white;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">Take Customer Order</h1>
+            <p class="text-muted">Create orders manually for walk-in or phone customers</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Menu Items Section -->
+        <div class="col-lg-8">
+            <!-- Search and Filter -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <input type="text" id="searchMenu" class="form-control" placeholder="Search menu items...">
+                        </div>
+                        <div class="col-md-6">
+                            <select id="categoryFilter" class="form-select">
+                                <option value="">All Categories</option>
+                                <option value="Main Course">Main Course</option>
+                                <option value="Starters">Starters</option>
+                                <option value="Beverages">Beverages</option>
+                                <option value="Desserts">Desserts</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Menu Items Grid -->
+            <div id="menuItemsGrid" class="row g-3">
+                {% for item in menu_items %}
+                <div class="col-md-6 col-lg-4 menu-item" data-category="{{ item.category }}" data-name="{{ item.item_name|lower }}">
+                    <div class="card menu-item-card h-100" data-item-id="{{ item.id }}" data-item-name="{{ item.item_name }}" data-item-price="{{ item.price }}">
+                        <div class="card-body position-relative">
+                            <span class="quantity-badge d-none">0</span>
+                            <h5 class="card-title">{{ item.item_name }}</h5>
+                            <p class="card-text text-muted small">{{ item.description|truncatewords:10 }}</p>
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <span class="h5 mb-0 text-primary">₹{{ item.price }}</span>
+                                <span class="badge bg-secondary">{{ item.category }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Order Cart Section -->
+        <div class="col-lg-4">
+            <div class="card shadow-lg cart-summary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Current Order</h5>
+                </div>
+                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                    <div id="cartItems">
+                        <p class="text-center text-muted py-4" id="emptyCartMessage">
+                            Click on menu items to add them to the order
+                        </p>
+                    </div>
+                </div>
+                <div class="card-footer bg-light">
+                    <!-- Cart Summary -->
+                    <div id="cartSummary" class="d-none">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Subtotal:</span>
+                            <strong id="subtotalAmount">₹0.00</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <span class="h5 mb-0">Total:</span>
+                            <strong class="h5 mb-0 text-primary" id="totalAmount">₹0.00</strong>
+                        </div>
+                        <hr>
+                    </div>
+
+                    <!-- Customer Details Form -->
+                    <div id="customerDetailsForm" class="d-none">
+                        <h6 class="mb-3">Customer Details</h6>
+                        <div class="mb-2">
+                            <input type="text" id="customerName" class="form-control form-control-sm" placeholder="Customer Name" required>
+                        </div>
+                        <div class="mb-2">
+                            <input type="tel" id="customerMobile" class="form-control form-control-sm" placeholder="Mobile Number" pattern="[0-9]{10}" required>
+                        </div>
+                        <div class="mb-3">
+                            <select id="paymentMethod" class="form-select form-select-sm">
+                                <option value="Cash">Cash</option>
+                                <option value="Card">Card</option>
+                                <option value="UPI">UPI</option>
+                            </select>
+                        </div>
+                        <button id="placeOrderBtn" class="btn btn-success w-100">
+                            <i class="fas fa-check"></i> Place Order
+                        </button>
+                        <button id="clearCartBtn" class="btn btn-outline-danger w-100 mt-2">
+                            <i class="fas fa-trash"></i> Clear Cart
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div class="modal fade" id="successModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">Order Created Successfully!</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <i class="fas fa-check-circle text-success" style="font-size: 48px;"></i>
+                <h4 class="mt-3">Order #<span id="successOrderId"></span></h4>
+                <p class="text-muted">Total: ₹<span id="successOrderTotal"></span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="printInvoiceBtn">
+                    <i class="fas fa-print"></i> Print Invoice
+                </button>
+                <button type="button" class="btn btn-secondary" id="newOrderBtn">
+                    <i class="fas fa-plus"></i> New Order
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let cart = [];
+    let currentOrderId = null;
+
+    // Get CSRF Token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Add item to cart
+    document.querySelectorAll('.menu-item-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const itemId = parseInt(this.dataset.itemId);
+            const itemName = this.dataset.itemName;
+            const itemPrice = parseFloat(this.dataset.itemPrice);
+
+            const existingItem = cart.find(item => item.id === itemId);
+            
+            if (existingItem) {
+                existingItem.quantity++;
+            } else {
+                cart.push({
+                    id: itemId,
+                    name: itemName,
+                    price: itemPrice,
+                    quantity: 1
+                });
+            }
+
+            updateCart();
+            this.classList.add('selected');
+            
+            // Update quantity badge
+            const badge = this.querySelector('.quantity-badge');
+            const quantity = cart.find(item => item.id === itemId).quantity;
+            badge.textContent = quantity;
+            badge.classList.remove('d-none');
+        });
+    });
+
+    // Update cart display
+    function updateCart() {
+        const cartItemsDiv = document.getElementById('cartItems');
+        const emptyMessage = document.getElementById('emptyCartMessage');
+        const cartSummary = document.getElementById('cartSummary');
+        const customerForm = document.getElementById('customerDetailsForm');
+
+        if (cart.length === 0) {
+            emptyMessage.classList.remove('d-none');
+            cartSummary.classList.add('d-none');
+            customerForm.classList.add('d-none');
+            cartItemsDiv.innerHTML = '<p class="text-center text-muted py-4" id="emptyCartMessage">Click on menu items to add them to the order</p>';
+            return;
+        }
+
+        emptyMessage.classList.add('d-none');
+        cartSummary.classList.remove('d-none');
+        customerForm.classList.remove('d-none');
+
+        let html = '';
+        let subtotal = 0;
+
+        cart.forEach(item => {
+            const itemTotal = item.price * item.quantity;
+            subtotal += itemTotal;
+
+            html += `
+                <div class="cart-item">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="mb-0">${item.name}</h6>
+                            <small class="text-muted">₹${item.price.toFixed(2)} each</small>
+                        </div>
+                        <button class="btn btn-sm btn-link text-danger remove-item" data-item-id="${item.id}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between mt-2">
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-secondary decrease-qty" data-item-id="${item.id}">-</button>
+                            <button class="btn btn-outline-secondary" disabled>${item.quantity}</button>
+                            <button class="btn btn-outline-secondary increase-qty" data-item-id="${item.id}">+</button>
+                        </div>
+                        <strong>₹${itemTotal.toFixed(2)}</strong>
+                    </div>
+                </div>
+            `;
+        });
+
+        cartItemsDiv.innerHTML = html;
+
+        // Update totals
+        document.getElementById('subtotalAmount').textContent = `₹${subtotal.toFixed(2)}`;
+        document.getElementById('totalAmount').textContent = `₹${subtotal.toFixed(2)}`;
+
+        // Attach event listeners
+        attachCartEventListeners();
+    }
+
+    // Attach event listeners to cart buttons
+    function attachCartEventListeners() {
+        document.querySelectorAll('.remove-item').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const itemId = parseInt(this.dataset.itemId);
+                removeItem(itemId);
+            });
+        });
+
+        document.querySelectorAll('.decrease-qty').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const itemId = parseInt(this.dataset.itemId);
+                updateQuantity(itemId, -1);
+            });
+        });
+
+        document.querySelectorAll('.increase-qty').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const itemId = parseInt(this.dataset.itemId);
+                updateQuantity(itemId, 1);
+            });
+        });
+    }
+
+    // Update item quantity
+    function updateQuantity(itemId, change) {
+        const item = cart.find(i => i.id === itemId);
+        if (item) {
+            item.quantity += change;
+            if (item.quantity <= 0) {
+                removeItem(itemId);
+            } else {
+                updateCart();
+                updateMenuItemBadge(itemId, item.quantity);
+            }
+        }
+    }
+
+    // Remove item from cart
+    function removeItem(itemId) {
+        cart = cart.filter(item => item.id !== itemId);
+        updateCart();
+        
+        // Update menu item card
+        const card = document.querySelector(`.menu-item-card[data-item-id="${itemId}"]`);
+        if (card) {
+            card.classList.remove('selected');
+            card.querySelector('.quantity-badge').classList.add('d-none');
+        }
+    }
+
+    // Update menu item badge
+    function updateMenuItemBadge(itemId, quantity) {
+        const card = document.querySelector(`.menu-item-card[data-item-id="${itemId}"]`);
+        if (card) {
+            const badge = card.querySelector('.quantity-badge');
+            badge.textContent = quantity;
+        }
+    }
+
+    // Place Order
+    document.getElementById('placeOrderBtn').addEventListener('click', async function() {
+        const customerName = document.getElementById('customerName').value.trim();
+        const customerMobile = document.getElementById('customerMobile').value.trim();
+        const paymentMethod = document.getElementById('paymentMethod').value;
+
+        if (!customerName || !customerMobile) {
+            alert('Please enter customer name and mobile number');
+            return;
+        }
+
+        if (!/^\d{10}$/.test(customerMobile)) {
+            alert('Please enter a valid 10-digit mobile number');
+            return;
+        }
+
+        if (cart.length === 0) {
+            alert('Cart is empty');
+            return;
+        }
+
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
+
+        try {
+            const response = await fetch('/api/create-manual-order/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    customer_name: customerName,
+                    customer_mobile: customerMobile,
+                    items: cart,
+                    payment_method: paymentMethod
+                })
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                currentOrderId = result.order_pk;
+                document.getElementById('successOrderId').textContent = result.order_id;
+                document.getElementById('successOrderTotal').textContent = result.total.toFixed(2);
+                
+                const modal = new bootstrap.Modal(document.getElementById('successModal'));
+                modal.show();
+            } else {
+                alert(result.error || 'Failed to create order');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred while placing the order');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i> Place Order';
+        }
+    });
+
+    // Clear Cart
+    document.getElementById('clearCartBtn').addEventListener('click', function() {
+        if (confirm('Are you sure you want to clear the cart?')) {
+            cart = [];
+            updateCart();
+            document.querySelectorAll('.menu-item-card').forEach(card => {
+                card.classList.remove('selected');
+                card.querySelector('.quantity-badge').classList.add('d-none');
+            });
+            document.getElementById('customerName').value = '';
+            document.getElementById('customerMobile').value = '';
+        }
+    });
+
+    // Print Invoice
+    document.getElementById('printInvoiceBtn').addEventListener('click', function() {
+        if (currentOrderId) {
+            window.open(`/invoice/${currentOrderId}/`, '_blank');
+        }
+    });
+
+    // New Order
+    document.getElementById('newOrderBtn').addEventListener('click', function() {
+        cart = [];
+        updateCart();
+        document.querySelectorAll('.menu-item-card').forEach(card => {
+            card.classList.remove('selected');
+            card.querySelector('.quantity-badge').classList.add('d-none');
+        });
+        document.getElementById('customerName').value = '';
+        document.getElementById('customerMobile').value = '';
+        currentOrderId = null;
+        
+        const modal = bootstrap.Modal.getInstance(document.getElementById('successModal'));
+        modal.hide();
+    });
+
+    // Search functionality
+    document.getElementById('searchMenu').addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        filterMenuItems();
+    });
+
+    // Category filter
+    document.getElementById('categoryFilter').addEventListener('change', function() {
+        filterMenuItems();
+    });
+
+    function filterMenuItems() {
+        const searchTerm = document.getElementById('searchMenu').value.toLowerCase();
+        const category = document.getElementById('categoryFilter').value;
+
+        document.querySelectorAll('.menu-item').forEach(item => {
+            const itemName = item.dataset.name;
+            const itemCategory = item.dataset.category;
+
+            const matchesSearch = !searchTerm || itemName.includes(searchTerm);
+            const matchesCategory = !category || itemCategory === category;
+
+            if (matchesSearch && matchesCategory) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
