@@ -14,6 +14,7 @@ from django.db.models import Count, Sum
 from collections import Counter
 import os
 import json
+import random
 import uuid
 from decimal import Decimal
 import logging
@@ -698,6 +699,7 @@ def generate_invoice_view(request, order_id):
     }
     
     return render(request, 'OrderMaster/invoice.html', context)
+
 
 
 
