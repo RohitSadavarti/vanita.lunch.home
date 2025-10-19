@@ -1,0 +1,109 @@
+/* ==============================================
+  Mobile Responsive Styles for Admin Portal
+  ==============================================
+*/
+
+/* Apply styles for screens smaller than 992px (tablets and phones) */
+@media (max-width: 991.98px) {
+    .app-layout {
+        /* On mobile, the sidebar is hidden by default */
+        grid-template-columns: 0 1fr; 
+    }
+
+    .app-layout.sidebar-visible {
+        /* When the sidebar is toggled on, it takes up the full width */
+        grid-template-columns: 260px 1fr;
+    }
+
+    .admin-sidebar {
+        /* Position the sidebar off-screen to the left */
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100%;
+        z-index: 1050; /* Higher than the main content */
+    }
+
+    .app-layout.sidebar-visible .admin-sidebar {
+        /* Slide the sidebar into view when toggled */
+        transform: translateX(0);
+        box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    }
+    
+    .main-content-wrapper {
+        padding-left: 0; /* No left padding when sidebar is hidden */
+    }
+
+    .admin-header .header-brand {
+        /* Hide the brand text by default on mobile to save space */
+        display: none;
+    }
+    
+    .header-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    /* Show the hamburger toggle button only on mobile */
+    .sidebar-mobile-toggle {
+        display: block !important;
+    }
+
+    /* Hide the desktop toggle button on mobile */
+    #sidebar-toggle-btn {
+        display: none !important;
+    }
+
+    /* Make stat cards full width on mobile */
+    .dashboard-stat-card {
+        margin-bottom: 1rem;
+    }
+
+    /* Make order columns in Order Management stack vertically */
+    .order-column {
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Overlay for when the mobile menu is open */
+    .mobile-sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1040; /* Below the sidebar but above content */
+        display: none; /* Hidden by default */
+    }
+
+    .app-layout.sidebar-visible .mobile-sidebar-overlay {
+        display: block; /* Show the overlay when sidebar is visible */
+    }
+}
+
+/* Specific adjustments for very small screens */
+@media (max-width: 576px) {
+    .admin-header {
+        padding: 0.75rem;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    .page-header .btn {
+        margin-top: 0.5rem;
+        width: 100%;
+    }
+    .date-filter-form {
+        flex-direction: column;
+    }
+    .date-filter-form .form-control, .date-filter-form .form-select, .date-filter-form .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+}
