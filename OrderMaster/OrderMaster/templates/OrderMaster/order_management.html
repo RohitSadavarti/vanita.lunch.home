@@ -9,51 +9,81 @@
         color: inherit;
         font-size: 1.5rem;
         line-height: 1;
-        cursor: pointer; /* Ensures it looks clickable */
+        cursor: pointer;
     }
 
     /* Timer Colors */
     .timer-green {
-        color: #198754; /* Bootstrap success green */
+        color: #198754;
     }
     .timer-amber {
-        color: #ffc107; /* Bootstrap warning yellow */
+        color: #ffc107;
     }
     .timer-red {
-        color: #dc3545; /* Bootstrap danger red */
+        color: #dc3545;
+    }
+
+    /* Order card styling */
+    .order-list-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        max-height: 70vh;
+        overflow-y: auto;
+        padding: 1rem;
+    }
+
+    /* Action buttons container */
+    .order-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: stretch;
+    }
+
+    /* Invoice button styling */
+    .invoice-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
+        font-size: 0.875rem;
+        white-space: nowrap;
     }
 </style>
 
 <main class="main-content">
     <div class="container-fluid mb-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <h1 class="h3 mb-0 text-gray-800">Order Management</h1>
-        <div class="d-flex align-items-center">
-            <div class="dropdown me-2">
-                <button class="btn btn-secondary dropdown-toggle" type="button" id="dateFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    {{ date_display_str }}
-                </button>
-                <ul class="dropdown-menu" aria-labelledby="dateFilterDropdown">
-                    <li><a class="dropdown-item" href="?date_filter=today">Today</a></li>
-                    <li><a class="dropdown-item" href="?date_filter=yesterday">Yesterday</a></li>
-                    <li><a class="dropdown-item" href="?date_filter=this_week">This Week</a></li>
-                    <li><a class="dropdown-item" href="?date_filter=this_month">This Month</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" id="customDateBtn">Custom Range</a></li>
-                </ul>
-            </div>
-            <div id="customDateRange" class="d-none align-items-center">
-                <form class="d-flex align-items-center" method="get">
-                    <input type="hidden" name="date_filter" value="custom">
-                    <input type="date" class="form-control me-2" name="start_date" value="{{ start_date_val }}">
-                    <input type="date" class="form-control me-2" name="end_date" value="{{ end_date_val }}">
-                    <button type="submit" class="btn btn-primary">Apply</button>
-                </form>
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="h3 mb-0 text-gray-800">Order Management</h1>
+            <div class="d-flex align-items-center">
+                <div class="dropdown me-2">
+                    <button class="btn btn-secondary dropdown-toggle" type="button" id="dateFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        {{ date_display_str }}
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="dateFilterDropdown">
+                        <li><a class="dropdown-item" href="?date_filter=today">Today</a></li>
+                        <li><a class="dropdown-item" href="?date_filter=yesterday">Yesterday</a></li>
+                        <li><a class="dropdown-item" href="?date_filter=this_week">This Week</a></li>
+                        <li><a class="dropdown-item" href="?date_filter=this_month">This Month</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" id="customDateBtn">Custom Range</a></li>
+                    </ul>
+                </div>
+                <div id="customDateRange" class="d-none align-items-center">
+                    <form class="d-flex align-items-center" method="get">
+                        <input type="hidden" name="date_filter" value="custom">
+                        <input type="date" class="form-control me-2" name="start_date" value="{{ start_date_val }}">
+                        <input type="date" class="form-control me-2" name="end_date" value="{{ end_date_val }}">
+                        <button type="submit" class="btn btn-primary">Apply</button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
-</div>
+    
     <div class="row align-items-start">
+        <!-- Preparing Orders Column -->
         <div class="col-lg-4 mb-4">
             <div class="card shadow-sm">
                 <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
@@ -66,20 +96,30 @@
                     <div class="card-body order-list-container">
                         {% for order in preparing_orders %}
                         <div class="card mb-3" data-order-id="{{ order.id }}" data-created-at="{{ order.created_at.isoformat }}">
-                            <div class="card-body d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
-                                    <ul class="list-unstyled mb-2">
-                                        {% for item in order.items_list %}
-                                            <li>{{ item.quantity }} x {{ item.name }}</li>
-                                        {% endfor %}
-                                    </ul>
-                                    <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
-                                    <p class="card-text mb-0 timer">Preparing for: <span class="fw-bold">00:00:00</span></p>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                        <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
+                                        <ul class="list-unstyled mb-2">
+                                            {% for item in order.items_list %}
+                                                <li><small>{{ item.quantity }} x {{ item.name }}</small></li>
+                                            {% endfor %}
+                                        </ul>
+                                        <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                                        <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
+                                        <p class="card-text mb-0 timer">Preparing for: <span class="fw-bold">00:00:00</span></p>
+                                    </div>
+                                    <div class="order-actions">
+                                        <a href="#" class="mark-ready-btn badge bg-warning text-dark text-decoration-none p-2 text-center">
+                                            Mark Ready
+                                        </a>
+                                        <a href="{% url 'generate_invoice' order.id %}" target="_blank" 
+                                           class="invoice-btn badge bg-info text-white text-decoration-none p-2">
+                                            <i class="fas fa-file-invoice"></i> Invoice
+                                        </a>
+                                    </div>
                                 </div>
-                                <a href="#" class="mark-ready-btn badge bg-warning text-dark text-decoration-none p-2">
-                                    Mark Ready
-                                </a>
                             </div>
                         </div>
                         {% empty %}
@@ -90,32 +130,43 @@
             </div>
         </div>
 
+        <!-- Ready for Pickup Column -->
         <div class="col-lg-4 mb-4">
-             <div class="card shadow-sm">
+            <div class="card shadow-sm">
                 <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Ready for Pickup ({{ ready_orders.count }})</h5>
                     <a class="card-header-action" data-bs-toggle="collapse" href="#readyCollapse" role="button" aria-expanded="true" aria-controls="readyCollapse">
-                         <span class="chevron">-</span>
+                        <span class="chevron">-</span>
                     </a>
                 </div>
                 <div class="collapse show" id="readyCollapse">
                     <div class="card-body order-list-container">
                         {% for order in ready_orders %}
                         <div class="card mb-3" data-order-id="{{ order.id }}" data-ready-at="{{ order.ready_time.isoformat }}">
-                            <div class="card-body d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
-                                    <ul class="list-unstyled mb-2">
-                                        {% for item in order.items_list %}
-                                            <li>{{ item.quantity }} x {{ item.name }}</li>
-                                        {% endfor %}
-                                    </ul>
-                                    <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
-                                    <p class="card-text mb-0 timer">Ready for: <span class="fw-bold">00:00:00</span></p>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                        <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
+                                        <ul class="list-unstyled mb-2">
+                                            {% for item in order.items_list %}
+                                                <li><small>{{ item.quantity }} x {{ item.name }}</small></li>
+                                            {% endfor %}
+                                        </ul>
+                                        <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                                        <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
+                                        <p class="card-text mb-0 timer">Ready for: <span class="fw-bold">00:00:00</span></p>
+                                    </div>
+                                    <div class="order-actions">
+                                        <a href="#" class="mark-pickedup-btn badge bg-success text-white text-decoration-none p-2 text-center">
+                                            Picked up
+                                        </a>
+                                        <a href="{% url 'generate_invoice' order.id %}" target="_blank" 
+                                           class="invoice-btn badge bg-info text-white text-decoration-none p-2">
+                                            <i class="fas fa-file-invoice"></i> Invoice
+                                        </a>
+                                    </div>
                                 </div>
-                                <a href="#" class="mark-pickedup-btn badge bg-success text-white text-decoration-none p-2">
-                                    Picked up
-                                </a>
                             </div>
                         </div>
                         {% empty %}
@@ -126,29 +177,43 @@
             </div>
         </div>
 
+        <!-- Delivered Orders Column -->
         <div class="col-lg-4 mb-4">
-             <div class="card shadow-sm">
+            <div class="card shadow-sm">
                 <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Delivered ({{ pickedup_orders.count }})</h5>
-                     <a class="card-header-action" data-bs-toggle="collapse" href="#deliveredCollapse" role="button" aria-expanded="true" aria-controls="deliveredCollapse">
-                         <span class="chevron">-</span>
+                    <a class="card-header-action" data-bs-toggle="collapse" href="#deliveredCollapse" role="button" aria-expanded="true" aria-controls="deliveredCollapse">
+                        <span class="chevron">-</span>
                     </a>
                 </div>
                 <div class="collapse show" id="deliveredCollapse">
                     <div class="card-body order-list-container">
                         {% for order in pickedup_orders %}
                         <div class="card mb-3" data-order-id="{{ order.id }}">
-                            <div class="card-body d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
-                                    <ul class="list-unstyled mb-0">
-                                        {% for item in order.items_list %}
-                                            <li>{{ item.quantity }} x {{ item.name }}</li>
-                                        {% endfor %}
-                                    </ul>
-                                    <p class="card-text mt-2 mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                        <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
+                                        <ul class="list-unstyled mb-0">
+                                            {% for item in order.items_list %}
+                                                <li><small>{{ item.quantity }} x {{ item.name }}</small></li>
+                                            {% endfor %}
+                                        </ul>
+                                        <p class="card-text mt-2 mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                                        <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
+                                        {% if order.pickup_time %}
+                                        <p class="card-text mb-0"><small class="text-muted">Completed: {{ order.pickup_time|date:"h:i A" }}</small></p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="order-actions">
+                                        <span class="badge bg-secondary p-2 text-center">Delivered</span>
+                                        <a href="{% url 'generate_invoice' order.id %}" target="_blank" 
+                                           class="invoice-btn badge bg-info text-white text-decoration-none p-2">
+                                            <i class="fas fa-file-invoice"></i> Invoice
+                                        </a>
+                                    </div>
                                 </div>
-                                <span class="badge bg-secondary p-2">Delivered</span>
                             </div>
                         </div>
                         {% empty %}
@@ -170,9 +235,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const collapseTarget = document.querySelector(this.getAttribute('href'));
             const isCurrentlyOpen = collapseTarget.classList.contains('show');
             
-            // We check the state *before* the toggle happens.
-            // If it's currently open and will be closed, show '+'.
-            // If it's currently closed and will be opened, show '-'.
             if (isCurrentlyOpen) {
                 chevron.textContent = '+';
             } else {
@@ -200,15 +262,25 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- ORDER STATUS UPDATE ---
     const handleStatusUpdate = async (button, newStatus) => {
         const orderCard = button.closest('.card[data-order-id]');
-        if (!orderCard) return;
-
+        
+        if (!orderCard) {
+            console.error('Could not find the parent order card element.');
+            alert('An error occurred. Could not identify the order.');
+            return;
+        }
+        
         const orderId = orderCard.dataset.orderId;
+        if (!orderId) {
+            console.error('Order ID is missing from the card element.');
+            alert('An error occurred. Order ID is missing.');
+            return;
+        }
 
         try {
             const response = await fetch('/api/update-order-status/', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
+                headers: { 
+                    'Content-Type': 'application/json', 
                     'X-CSRFToken': getCookie('csrftoken')
                 },
                 body: JSON.stringify({ id: orderId, status: newStatus })
@@ -217,22 +289,25 @@ document.addEventListener('DOMContentLoaded', function () {
             if (response.ok) {
                 orderCard.style.transition = 'opacity 0.5s ease';
                 orderCard.style.opacity = '0';
-                setTimeout(() => window.location.reload(), 500);
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
             } else {
                 alert('Error updating status. Please try again.');
             }
         } catch (error) {
             console.error('Failed to update order status:', error);
+            alert('A network error occurred. Please check the console for details.');
         }
     };
-
+    
     document.querySelectorAll('.mark-ready-btn').forEach(button => {
         button.addEventListener('click', (e) => {
             e.preventDefault();
             handleStatusUpdate(e.target, 'ready');
         });
     });
-
+    
     document.querySelectorAll('.mark-pickedup-btn').forEach(button => {
         button.addEventListener('click', (e) => {
             e.preventDefault();
@@ -240,10 +315,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-            const updateTimers = () => {
+    // --- TIMER FUNCTIONALITY ---
+    const updateTimers = () => {
         const setTimer = (card, startTime) => {
             const now = new Date();
-            const diff = now - startTime; // difference in milliseconds
+            const diff = now - startTime;
             const totalMinutes = Math.floor(diff / (1000 * 60));
 
             const seconds = Math.floor((diff / 1000) % 60);
@@ -276,10 +352,8 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     setInterval(updateTimers, 1000);
-    updateTimers(); // initial call
+    updateTimers();
 
-
-    
     // --- DATE FILTER ---
     const customDateBtn = document.getElementById('customDateBtn');
     const customDateRangeDiv = document.getElementById('customDateRange');
@@ -294,6 +368,3 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 {% endblock %}
-
-
-
