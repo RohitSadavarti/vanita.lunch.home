@@ -581,3 +581,106 @@ def handle_order_action(request):
     except Exception as e:
         logger.error(f"Error handling order action: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+@admin_required
+def take_order_view(request):
+    """View for staff to manually take customer orders"""
+    menu_items = MenuItem.objects.all().order_by('category', 'item_name')
+    
+    context = {
+        'menu_items': menu_items,
+        'active_page': 'take_order',
+    }
+    return render(request, 'OrderMaster/take_order.html', context)
+
+
+@csrf_exempt
+@admin_required
+@require_POST
+def create_manual_order(request):
+    """API endpoint to create a manual order from staff interface"""
+    try:
+        data = json.loads(request.body)
+        
+        customer_name = data.get('customer_name', '').strip()
+        customer_mobile = data.get('customer_mobile', '').strip()
+        items = data.get('items', [])
+        payment_method = data.get('payment_method', 'Cash')
+        
+        if not all([customer_name, customer_mobile, items]):
+            return JsonResponse({'error': 'Missing required fields'}, status=400)
+        
+        if not (customer_mobile.isdigit() and len(customer_mobile) == 10):
+            return JsonResponse({'error': 'Invalid mobile number format'}, status=400)
+        
+        validated_items = []
+        subtotal = Decimal('0.00')
+        
+        for item in items:
+            try:
+                menu_item = MenuItem.objects.get(id=item['id'])
+                quantity = int(item['quantity'])
+                
+                if quantity <= 0:
+                    continue
+                
+                item_total = menu_item.price * quantity
+                subtotal += item_total
+                
+                validated_items.append({
+                    'id': menu_item.id,
+                    'name': menu_item.item_name,
+                    'price': float(menu_item.price),
+                    'quantity': quantity,
+                })
+            except MenuItem.DoesNotExist:
+                return JsonResponse({'error': f'Menu item not found'}, status=400)
+        
+        if not validated_items:
+            return JsonResponse({'error': 'No valid items in order'}, status=400)
+        
+        order_id = f"VLH{timezone.now().strftime('%y%m%d%H%M')}{str(uuid.uuid4())[:4].upper()}"
+        
+        new_order = Order.objects.create(
+            order_id=order_id,
+            customer_name=customer_name,
+            customer_mobile=customer_mobile,
+            items=validated_items,
+            subtotal=subtotal,
+            discount=Decimal('0.00'),
+            total_price=subtotal,
+            status='Confirmed',
+            payment_method=payment_method,
+            payment_id=payment_method,
+            order_status='open'
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'order_id': order_id,
+            'order_pk': new_order.id,
+            'total': float(subtotal),
+            'message': 'Order created successfully!'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error creating manual order: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@admin_required
+def generate_invoice_view(request, order_id):
+    """Generate printable invoice for an order"""
+    order = get_object_or_404(Order, id=order_id)
+    
+    if isinstance(order.items, str):
+        order.items_list = json.loads(order.items)
+    else:
+        order.items_list = order.items
+    
+    context = {
+        'order': order,
+        'print_date': timezone.now(),
+    }
+    
+    return render(request, 'OrderMaster/invoice.html', context)
