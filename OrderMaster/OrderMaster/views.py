@@ -118,23 +118,27 @@ def admin_required(view_func):
     return wrapper
 
 def login_view(request):
-    if request.session.get('is_authenticated'):
-        return redirect('dashboard')
+    """Handles the admin login functionality."""
     if request.method == 'POST':
-        mobile = request.POST.get('username')
+        mobile = request.POST.get('username')  # Using 'username' for mobile
         password = request.POST.get('password')
+        
         try:
+            # Authenticate against the custom VlhAdmin model
             admin_user = VlhAdmin.objects.get(mobile=mobile)
             if admin_user.check_password(password):
-                request.session['is_authenticated'] = True
+                # Set session variables for custom authentication state
+                request.session['admin_id'] = admin_user.id
                 request.session['admin_mobile'] = admin_user.mobile
+                request.session['is_authenticated'] = True
                 return redirect('dashboard')
             else:
                 messages.error(request, 'Invalid mobile number or password.')
         except VlhAdmin.DoesNotExist:
             messages.error(request, 'Invalid mobile number or password.')
+            
     return render(request, 'OrderMaster/login.html')
-
+    
 @admin_required
 def logout_view(request):
     request.session.flush()
@@ -581,3 +585,4 @@ def handle_order_action(request):
     except Exception as e:
         logger.error(f"Error handling order action: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
