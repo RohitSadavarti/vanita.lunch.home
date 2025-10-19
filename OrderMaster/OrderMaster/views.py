@@ -81,12 +81,11 @@ def customer_order_view(request):
             Order.objects.create(...)
             return JsonResponse({'status': 'success'})
         except Exception as e:
-            logger.error(f"Customer order error: {e}")
-            return JsonResponse({'status': 'error'}, status=500)
-
+            ...
     menu_items = MenuItem.objects.all()
     return render(request, 'OrderMaster/customer_order.html', {'menu_items': menu_items})
-@csrf_exempt
+    
+    @csrf_exempt
 def firebase_messaging_sw(request):
     return render(request, 'firebase-messaging-sw.js', content_type='application/javascript')
 
@@ -593,5 +592,6 @@ def handle_order_action(request):
     except Exception as e:
         logger.error(f"Error handling order action: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 
