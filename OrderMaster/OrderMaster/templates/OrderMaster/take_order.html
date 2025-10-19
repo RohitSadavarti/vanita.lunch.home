@@ -197,15 +197,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Add item to cart when clicking the card
-    document.querySelectorAll('.menu-item-card').forEach(card => {
-        card.addEventListener('click', function(event) {
-            // Prevent adding if clicking on buttons inside the cart
-            if (event.target.closest('.btn-group') || event.target.closest('.remove-item')) {
-                return;
-            }
-            const itemId = parseInt(this.dataset.itemId);
-            updateQuantity(itemId, 1); // Use updateQuantity to handle adding/incrementing
-        });
+    document.addEventListener('click', function(event) {
+        const card = event.target.closest('.menu-item-card');
+        if (card && !event.target.closest('.btn-group') && !event.target.closest('.remove-item')) {
+            const itemId = parseInt(card.dataset.itemId);
+            updateQuantity(itemId, 1);
+        }
     });
 
     // Update cart display
@@ -222,7 +219,7 @@ document.addEventListener('DOMContentLoaded', function() {
             cartSummaryDiv.classList.add('d-none');
             customerForm.classList.add('d-none');
             cartItemsDiv.innerHTML = '<p class="text-center text-muted py-4" id="emptyCartMessage">Click on menu items to add them to the order</p>';
-            updateAllMenuItemBadges(); // Reset badges when cart is empty
+            updateAllMenuItemBadges();
             return;
         }
 
@@ -266,54 +263,45 @@ document.addEventListener('DOMContentLoaded', function() {
         totalAmountEl.textContent = `₹${subtotal.toFixed(2)}`;
 
         attachCartEventListeners();
-        updateAllMenuItemBadges(); // Update all badges after cart changes
+        updateAllMenuItemBadges();
     }
 
-    // Attach event listeners to cart buttons (needs to be called after cart is rendered)
+    // Attach event listeners to cart buttons
     function attachCartEventListeners() {
         document.querySelectorAll('.remove-item').forEach(btn => {
-            btn.removeEventListener('click', handleRemoveItem); // Prevent duplicate listeners
-            btn.addEventListener('click', handleRemoveItem);
+            btn.onclick = function() {
+                const itemId = parseInt(this.dataset.itemId);
+                removeItem(itemId);
+            };
         });
+        
         document.querySelectorAll('.decrease-qty').forEach(btn => {
-            btn.removeEventListener('click', handleDecreaseQty);
-            btn.addEventListener('click', handleDecreaseQty);
+            btn.onclick = function() {
+                const itemId = parseInt(this.dataset.itemId);
+                updateQuantity(itemId, -1);
+            };
         });
+        
         document.querySelectorAll('.increase-qty').forEach(btn => {
-            btn.removeEventListener('click', handleIncreaseQty);
-            btn.addEventListener('click', handleIncreaseQty);
+            btn.onclick = function() {
+                const itemId = parseInt(this.dataset.itemId);
+                updateQuantity(itemId, 1);
+            };
         });
     }
 
-    // Handlers for cart buttons
-    function handleRemoveItem(event) {
-        const itemId = parseInt(event.currentTarget.dataset.itemId);
-        removeItem(itemId);
-    }
-    function handleDecreaseQty(event) {
-        const itemId = parseInt(event.currentTarget.dataset.itemId);
-        updateQuantity(itemId, -1);
-    }
-    function handleIncreaseQty(event) {
-        const itemId = parseInt(event.currentTarget.dataset.itemId);
-        updateQuantity(itemId, 1);
-    }
-
-    // Update item quantity (Handles adding, increasing, decreasing)
+    // Update item quantity
     function updateQuantity(itemId, change) {
         const itemIndex = cart.findIndex(i => i.id === itemId);
 
         if (itemIndex > -1) {
-            // Item exists, update quantity
             cart[itemIndex].quantity += change;
             if (cart[itemIndex].quantity <= 0) {
-                // If quantity drops to 0 or less, remove it
-                removeItem(itemId); // removeItem calls updateCart and badge updates
+                removeItem(itemId);
             } else {
-                updateCart(); // Update display and reattach listeners
+                updateCart();
             }
         } else if (change > 0) {
-            // Item doesn't exist and we're adding (change is positive)
             const menuItemCard = document.querySelector(`.menu-item-card[data-item-id="${itemId}"]`);
             if (menuItemCard) {
                 const itemName = menuItemCard.dataset.itemName;
@@ -322,21 +310,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     id: itemId,
                     name: itemName,
                     price: itemPrice,
-                    quantity: 1 // Start with quantity 1
+                    quantity: 1
                 });
-                updateCart(); // Update display and reattach listeners
+                updateCart();
             }
         }
-        // If item doesn't exist and change is negative, do nothing
     }
 
     // Remove item from cart
     function removeItem(itemId) {
         cart = cart.filter(item => item.id !== itemId);
-        updateCart(); // Update display, reattach listeners, and update badges
+        updateCart();
     }
 
-    // Update ALL menu item badges based on current cart
+    // Update ALL menu item badges
     function updateAllMenuItemBadges() {
         document.querySelectorAll('.menu-item-card').forEach(card => {
             const itemId = parseInt(card.dataset.itemId);
@@ -388,7 +375,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({
                     customer_name: customerName,
                     customer_mobile: customerMobile,
-                    items: cart, // Send the updated cart array
+                    items: cart,
                     payment_method: paymentMethod
                 })
             });
@@ -396,18 +383,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await response.json();
 
             if (response.ok && result.success) {
-                currentOrderId = result.order_pk; // Store the primary key for the invoice link
+                currentOrderId = result.order_pk;
                 document.getElementById('successOrderId').textContent = result.order_id;
                 document.getElementById('successOrderTotal').textContent = result.total.toFixed(2);
 
                 const successModal = new bootstrap.Modal(document.getElementById('successModal'));
                 successModal.show();
 
-                // Clear form and cart *after* success
                 clearCartAndForm();
-
             } else {
-                 // Display specific error from backend if available
                 alert(result.error || `Failed to create order. Status: ${response.status}`);
                 console.error('Order creation failed:', result);
             }
@@ -420,7 +404,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Clear Cart Button Action
+    // Clear Cart Button
     document.getElementById('clearCartBtn').addEventListener('click', function() {
         if (confirm('Are you sure you want to clear the cart and customer details?')) {
             clearCartAndForm();
@@ -430,34 +414,31 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to clear cart and reset form
     function clearCartAndForm() {
         cart = [];
-        updateCart(); // This will also update badges
+        updateCart();
         document.getElementById('customerName').value = '';
         document.getElementById('customerMobile').value = '';
-        document.getElementById('paymentMethod').value = 'Cash'; // Reset payment method
+        document.getElementById('paymentMethod').value = 'Cash';
     }
 
-
-    // Print Invoice Button in Modal
+    // Print Invoice Button
     document.getElementById('printInvoiceBtn').addEventListener('click', function() {
         if (currentOrderId) {
-            // Open invoice in a new tab
             window.open(`/invoice/${currentOrderId}/`, '_blank');
         } else {
             alert('Cannot print invoice, order ID not found.');
         }
     });
 
-    // New Order Button in Modal
+    // New Order Button
     document.getElementById('newOrderBtn').addEventListener('click', function() {
-        // Form should already be clear from clearCartAndForm() called on success
-        currentOrderId = null; // Reset order ID
+        currentOrderId = null;
         const successModal = bootstrap.Modal.getInstance(document.getElementById('successModal'));
         if (successModal) {
             successModal.hide();
         }
     });
 
-    // --- Search and Filter ---
+    // Search and Filter
     document.getElementById('searchMenu').addEventListener('input', filterMenuItems);
     document.getElementById('categoryFilter').addEventListener('change', filterMenuItems);
 
@@ -466,7 +447,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const category = document.getElementById('categoryFilter').value;
 
         document.querySelectorAll('.menu-item').forEach(itemDiv => {
-            const itemName = itemDiv.dataset.name || ''; // Ensure dataset.name exists
+            const itemName = itemDiv.dataset.name || '';
             const itemCategory = itemDiv.dataset.category || '';
 
             const matchesSearch = !searchTerm || itemName.includes(searchTerm);
@@ -476,7 +457,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Initial cart render in case of page reload with data (though unlikely here)
+    // Initial render
     updateCart();
 });
 </script>
