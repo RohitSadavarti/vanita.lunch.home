@@ -234,5 +234,14 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- INITIALIZATION ---
     fetchMenu();
 });
+const response = await fetch('/api/place-order/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken') // <-- It tries to get the token
+            },
+            body: JSON.stringify(orderData)
+        });
+
 
 
