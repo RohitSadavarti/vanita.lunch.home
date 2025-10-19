@@ -301,29 +301,40 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- UI UPDATE FUNCTIONS ---
 
     function updateCartDisplay() {
+        // Get elements (these might be null if IDs are wrong or elements are missing)
         const emptyMessage = document.getElementById('emptyCartMessage');
         const cartSummaryDiv = document.getElementById('cartSummary');
         const customerForm = document.getElementById('customerDetailsForm');
         const subtotalAmountEl = document.getElementById('subtotalAmount');
         const totalAmountEl = document.getElementById('totalAmount');
 
+        // Check if critical elements exist before proceeding
+        if (!cartItemsDiv) {
+             console.error("Cart items container (cartItemsDiv) not found! Cannot update display.");
+             return; // Stop execution if main container is missing
+        }
+
         if (cart.length === 0) {
             cartItemsDiv.innerHTML = '<p class="text-center text-muted py-4" id="emptyCartMessage">Click on menu items to add them to the order</p>';
-            emptyMessage.classList.remove('d-none');
-            cartSummaryDiv.classList.add('d-none');
-            customerForm.classList.add('d-none');
+            // Safely update classList only if elements exist
+            if (emptyMessage) emptyMessage.classList.remove('d-none'); else console.warn("emptyMessage element not found");
+            if (cartSummaryDiv) cartSummaryDiv.classList.add('d-none'); else console.warn("cartSummaryDiv element not found");
+            if (customerForm) customerForm.classList.add('d-none'); else console.warn("customerForm element not found");
         } else {
             let html = '';
             let subtotal = 0;
             cart.forEach(item => {
-                const itemTotal = item.price * item.quantity;
+                const itemTotal = (item.price || 0) * (item.quantity || 0); // Add default values
                 subtotal += itemTotal;
+                const itemName = item.name || 'Unknown Item';
+                const itemPrice = item.price || 0;
+                const itemQuantity = item.quantity || 0;
                 html += `
                     <div class="cart-item">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="flex-grow-1">
-                                <h6 class="mb-0">${item.name}</h6>
-                                <small class="text-muted">₹${item.price.toFixed(2)} each</small>
+                                <h6 class="mb-0">${itemName}</h6>
+                                <small class="text-muted">₹${itemPrice.toFixed(2)} each</small>
                             </div>
                             <button class="btn btn-sm btn-link text-danger remove-item" data-item-id="${item.id}">
                                 <i class="fas fa-times"></i>
@@ -332,7 +343,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="d-flex align-items-center justify-content-between mt-2">
                             <div class="btn-group btn-group-sm">
                                 <button class="btn btn-outline-secondary decrease-qty" data-item-id="${item.id}">-</button>
-                                <button class="btn btn-outline-secondary" disabled>${item.quantity}</button>
+                                <button class="btn btn-outline-secondary" disabled>${itemQuantity}</button>
                                 <button class="btn btn-outline-secondary increase-qty" data-item-id="${item.id}">+</button>
                             </div>
                             <strong>₹${itemTotal.toFixed(2)}</strong>
@@ -341,16 +352,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
             });
             cartItemsDiv.innerHTML = html;
-            subtotalAmountEl.textContent = `₹${subtotal.toFixed(2)}`;
-            totalAmountEl.textContent = `₹${subtotal.toFixed(2)}`;
 
-            emptyMessage.classList.add('d-none');
-            cartSummaryDiv.classList.remove('d-none');
-            customerForm.classList.remove('d-none');
+            // Safely update totals only if elements exist
+            if (subtotalAmountEl) subtotalAmountEl.textContent = `₹${subtotal.toFixed(2)}`; else console.warn("subtotalAmountEl not found");
+            if (totalAmountEl) totalAmountEl.textContent = `₹${subtotal.toFixed(2)}`; else console.warn("totalAmountEl not found");
+
+             // Safely update classList only if elements exist
+            if (emptyMessage) emptyMessage.classList.add('d-none'); else console.warn("emptyMessage element not found during non-empty update");
+            if (cartSummaryDiv) cartSummaryDiv.classList.remove('d-none'); else console.warn("cartSummaryDiv element not found during non-empty update");
+            if (customerForm) customerForm.classList.remove('d-none'); else console.warn("customerForm element not found during non-empty update");
         }
         updateAllMenuItemBadges(); // Update badges on menu items
+        console.log("Cart display updated."); // DEBUG
     }
-
     function updateAllMenuItemBadges() {
         document.querySelectorAll('.menu-item-card').forEach(card => {
             const itemId = parseInt(card.dataset.itemId);
