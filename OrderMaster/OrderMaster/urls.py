@@ -18,38 +18,30 @@ def firebase_messaging_sw(request):
         return HttpResponse(status=500)
 
 urlpatterns = [
-    # Firebase Service Worker URL (CRITICAL - MUST BE AT THE ROOT)
-    path('firebase-messaging-sw.js', firebase_messaging_sw, name='firebase-messaging-sw'),
+    # Customer URL - Changed from root to /order/
+    path('order/', views.customer_order_view, name='customer_order'),
 
-    # Admin URLs
+    # Admin Auth URLs - Root path now goes to login
     path('', views.login_view, name='login'),
-    path('login/', views.login_view, name='login'),
+    path('login/', views.login_view, name='login'), # Keep this for explicit /login/ URL
     path('logout/', views.logout_view, name='logout'),
-    path('dashboard/', views.dashboard, name='dashboard'),
+
+    # Admin Panel URLs
     path('dashboard/', views.dashboard_view, name='dashboard'),
     path('orders/', views.order_management_view, name='order_management'),
     path('menu/', views.menu_management_view, name='menu_management'),
+    path('menu/edit/<int:item_id>/', views.edit_menu_item_view, name='edit_menu_item'),
     path('menu/delete/<int:item_id>/', views.delete_menu_item_view, name='delete_menu_item'),
-    path('api/pending-orders/', views.get_pending_orders, name='get_pending_orders'),
     path('analytics/', views.analytics_view, name='analytics'),
-    path('analytics/', include(analytics_urlpatterns)),
-    path('', views.customer_order_view, name='customer_order'),
     path('settings/', views.settings_view, name='settings'),
-    path('api/subscribe-topic/', views.subscribe_to_topic, name='subscribe_topic'),
-    path('api/analytics/', views.analytics_api_view, name='analytics_api'),
-    path('api/handle-order-action/', views.handle_order_action, name='handle_order_action'),
-    
-    # Other API URLs
-    path('api/menu-item/<int:item_id>/', views.api_menu_item_detail, name='api_menu_item_detail'),
-    path('api/update-order-status/', views.update_order_status, name='update_order_status'),
+
+    # API URLs
     path('api/get_orders/', views.get_orders_api, name='get_orders_api'),
-    path('api/menu-items/', views.api_menu_items, name='api_menu_items'),
-    path('api/place-order/', views.api_place_order, name='api_place_order'),
+    path('api/update_order_status/', views.update_order_status, name='update_order_status'),
 
-    # Customer-facing URL
-    path('customer-order/', views.customer_order_view, name='customer_home'),
-    path('customer-order/', views.customer_home, name='customer_home'),
+    # You might need these APIs depending on which customer view/js you are using
+    # path('api/menu-items/', views.api_menu_items, name='api_menu_items'),
+    # path('api/place-order/', views.api_place_order, name='api_place_order'),
 ]
-
 
 
