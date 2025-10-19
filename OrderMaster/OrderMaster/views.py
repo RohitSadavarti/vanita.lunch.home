@@ -600,32 +600,32 @@ def create_manual_order(request):
     """API endpoint to create a manual order from staff interface"""
     try:
         data = json.loads(request.body)
-        
+
         customer_name = data.get('customer_name', '').strip()
         customer_mobile = data.get('customer_mobile', '').strip()
         items = data.get('items', [])
         payment_method = data.get('payment_method', 'Cash')
-        
+
         if not all([customer_name, customer_mobile, items]):
             return JsonResponse({'error': 'Missing required fields'}, status=400)
-        
+
         if not (customer_mobile.isdigit() and len(customer_mobile) == 10):
             return JsonResponse({'error': 'Invalid mobile number format'}, status=400)
-        
+
         validated_items = []
         subtotal = Decimal('0.00')
-        
+
         for item in items:
             try:
                 menu_item = MenuItem.objects.get(id=item['id'])
                 quantity = int(item['quantity'])
-                
+
                 if quantity <= 0:
                     continue
-                
+
                 item_total = menu_item.price * quantity
                 subtotal += item_total
-                
+
                 validated_items.append({
                     'id': menu_item.id,
                     'name': menu_item.item_name,
@@ -634,12 +634,14 @@ def create_manual_order(request):
                 })
             except MenuItem.DoesNotExist:
                 return JsonResponse({'error': f'Menu item not found'}, status=400)
-        
+
         if not validated_items:
             return JsonResponse({'error': 'No valid items in order'}, status=400)
-        
-        order_id = f"VLH{timezone.now().strftime('%y%m%d%H%M')}{str(uuid.uuid4())[:4].upper()}"
-        
+
+        # --- THIS LINE IS CHANGED ---
+        order_id = str(random.randint(10000000, 99999999))
+        # --- END OF CHANGE ---
+
         new_order = Order.objects.create(
             order_id=order_id,
             customer_name=customer_name,
@@ -650,22 +652,24 @@ def create_manual_order(request):
             total_price=subtotal,
             status='Confirmed',
             payment_method=payment_method,
-            payment_id=payment_method,
+            payment_id=payment_method, # Assuming payment_id should just be the method for manual orders
             order_status='open'
         )
-        
+
         return JsonResponse({
             'success': True,
             'order_id': order_id,
-            'order_pk': new_order.id,
+            'order_pk': new_order.id, # Send the database primary key for the invoice URL
             'total': float(subtotal),
             'message': 'Order created successfully!'
         })
-        
+
     except Exception as e:
         logger.error(f"Error creating manual order: {e}")
-        return JsonResponse({'error': str(e)}, status=500)
-
+        # Add more specific error logging if needed
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': 'An internal server error occurred.'}, status=500)
 
 @admin_required
 def generate_invoice_view(request, order_id):
@@ -683,4 +687,5 @@ def generate_invoice_view(request, order_id):
     }
     
     return render(request, 'OrderMaster/invoice.html', context)
+
 
