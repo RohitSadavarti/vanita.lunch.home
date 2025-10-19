@@ -249,7 +249,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- UTILITY: Get CSRF Token ---
     const getCookie = (name) => {
-        // (This function remains the same)
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
             const cookies = document.cookie.split(';');
@@ -274,7 +273,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const orderId = orderCard.dataset.orderId;
 
         try {
-            const response = await fetch('/update-order-status/', {
+            // *** THIS IS THE FIX: Changed URL to include '/api/' ***
+            const response = await fetch('/api/update-order-status/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
