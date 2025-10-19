@@ -46,5 +46,9 @@ urlpatterns = [
 
     # Customer-facing URL
     path('customer-order/', views.customer_order_view, name='customer_home'),
+    path('take-order/', views.take_order_view, name='take_order'),
+    path('api/create-manual-order/', views.create_manual_order, name='create_manual_order'),
+    path('invoice/<int:order_id>/', views.generate_invoice_view, name='generate_invoice'),
 ]
+
 
