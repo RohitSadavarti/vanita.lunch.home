@@ -23,9 +23,19 @@
         padding: 0.75rem 0;
     }
     .cart-summary {
+        /* On large screens, it's sticky */
         position: sticky;
-        top: 100px;
+        top: 100px; 
     }
+    
+    /* On mobile, remove the sticky behavior so it scrolls normally */
+    @media (max-width: 991.98px) { /* This is the 'lg' breakpoint */
+        .cart-summary {
+            position: relative;
+            top: auto;
+        }
+    }
+
     .quantity-badge {
         position: absolute;
         top: -8px;
@@ -52,16 +62,14 @@
     </div>
 
     <div class="row">
-        <!-- Menu Items Section -->
-        <div class="col-lg-8">
-            <!-- Search and Filter -->
+        <div class="col-lg-8 col-12 mb-3 mb-lg-0">
             <div class="card shadow-sm mb-4">
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
+                    <div class="row g-2">
+                        <div class="col-12 col-md-6 mb-2 mb-md-0">
                             <input type="text" id="searchMenu" class="form-control" placeholder="Search menu items...">
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-12 col-md-6">
                             <select id="categoryFilter" class="form-select">
                                 <option value="">All Categories</option>
                                 <option value="Main Course">Main Course</option>
@@ -74,10 +82,9 @@
                 </div>
             </div>
 
-            <!-- Menu Items Grid -->
-            <div id="menuItemsGrid" class="row g-3">
+            <div id="menuItemsGrid" class="row g-2">
                 {% for item in menu_items %}
-                <div class="col-md-6 col-lg-4 menu-item" data-category="{{ item.category }}" data-name="{{ item.item_name|lower }}">
+                <div class="col-12 col-sm-6 col-lg-4 menu-item" data-category="{{ item.category }}" data-name="{{ item.item_name|lower }}">
                     <div class="card menu-item-card h-100" data-item-id="{{ item.id }}" data-item-name="{{ item.item_name }}" data-item-price="{{ item.price }}">
                         <div class="card-body position-relative">
                             <span class="quantity-badge d-none">0</span>
@@ -94,13 +101,11 @@
             </div>
         </div>
 
-        <!-- Order Cart Section -->
-        <div class="col-lg-4">
-            <div class="card shadow-lg cart-summary">
+        <div class="col-lg-4 col-12"> <div class="card shadow-lg cart-summary">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">Current Order</h5>
                 </div>
-                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                <div class="card-body" style="max-height: 500px; overflow-y: auto;">
                     <div id="cartItems">
                         <p class="text-center text-muted py-4" id="emptyCartMessage">
                             Click on menu items to add them to the order
@@ -108,7 +113,6 @@
                     </div>
                 </div>
                 <div class="card-footer bg-light">
-                    <!-- Cart Summary -->
                     <div id="cartSummary" class="d-none">
                         <div class="d-flex justify-content-between mb-2">
                             <span>Subtotal:</span>
@@ -121,7 +125,6 @@
                         <hr>
                     </div>
 
-                    <!-- Customer Details Form -->
                     <div id="customerDetailsForm" class="d-none">
                         <h6 class="mb-3">Customer Details</h6>
                         <div class="mb-2">
@@ -150,7 +153,6 @@
     </div>
 </div>
 
-<!-- Success Modal -->
 <div class="modal fade" id="successModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -204,65 +206,81 @@ document.addEventListener('DOMContentLoaded', function() {
     const newOrderBtn = document.getElementById('newOrderBtn');
     const searchInput = document.getElementById('searchMenu');
     const categoryFilter = document.getElementById('categoryFilter');
+    const successModalEl = document.getElementById('successModal');
+    const successModal = successModalEl ? new bootstrap.Modal(successModalEl) : null;
+
 
     // --- EVENT LISTENERS using Delegation ---
+    if (menuItemsGrid) {
+        menuItemsGrid.addEventListener('click', function(event) {
+            const card = event.target.closest('.menu-item-card');
+            if (card) {
+                const itemId = parseInt(card.dataset.itemId);
+                if (!isNaN(itemId)) {
+                    updateQuantity(itemId, 1); // Add or increment
+                }
+            }
+        });
+    }
 
-    // Add item by clicking on menu card
-    menuItemsGrid.addEventListener('click', function(event) {
-        const card = event.target.closest('.menu-item-card');
-        if (card) {
-            const itemId = parseInt(card.dataset.itemId);
-            updateQuantity(itemId, 1); // Add or increment
-        }
-    });
+    if (cartItemsDiv) {
+        cartItemsDiv.addEventListener('click', function(event) {
+            const button = event.target.closest('button[data-item-id]');
+            if (!button) return;
+            const itemId = parseInt(button.dataset.itemId);
+            if (isNaN(itemId)) return;
 
-    // Handle clicks within the cart (+, -, remove)
-    cartItemsDiv.addEventListener('click', function(event) {
-        const button = event.target.closest('button');
-        if (!button) return;
-
-        const itemId = parseInt(button.dataset.itemId);
-
-        if (button.classList.contains('increase-qty')) {
-            updateQuantity(itemId, 1);
-        } else if (button.classList.contains('decrease-qty')) {
-            updateQuantity(itemId, -1);
-        } else if (button.classList.contains('remove-item')) {
-            removeItem(itemId);
-        }
-    });
+            if (button.classList.contains('increase-qty')) {
+                updateQuantity(itemId, 1);
+            } else if (button.classList.contains('decrease-qty')) {
+                updateQuantity(itemId, -1);
+            } else if (button.classList.contains('remove-item')) {
+                removeItem(itemId);
+            }
+        });
+    }
 
     // Place Order Button
-    placeOrderBtn.addEventListener('click', placeOrder);
+    if (placeOrderBtn) {
+        placeOrderBtn.addEventListener('click', placeOrder);
+    }
 
     // Clear Cart Button
-    clearCartBtn.addEventListener('click', function() {
-        if (confirm('Are you sure you want to clear the cart and customer details?')) {
-            clearCartAndForm();
-        }
-    });
+    if (clearCartBtn) {
+        clearCartBtn.addEventListener('click', function() {
+            if (confirm('Are you sure you want to clear the cart and customer details?')) {
+                clearCartAndForm();
+            }
+        });
+    }
 
     // Modal Buttons
-    printInvoiceBtn.addEventListener('click', function() {
-        if (currentOrderId) {
-            window.open(`/invoice/${currentOrderId}/`, '_blank');
-        } else {
-            alert('Cannot print invoice, order ID not found.');
-        }
-    });
+    if (printInvoiceBtn) {
+        printInvoiceBtn.addEventListener('click', function() {
+            if (currentOrderId) {
+                window.open(`/invoice/${currentOrderId}/`, '_blank');
+            } else {
+                alert('Cannot print invoice, order ID not found.');
+            }
+        });
+    }
 
-    newOrderBtn.addEventListener('click', function() {
-        currentOrderId = null; // Reset order ID
-        const successModal = bootstrap.Modal.getInstance(document.getElementById('successModal'));
-        if (successModal) {
-            successModal.hide();
-        }
-        // Form is already cleared on successful order placement
-    });
+    if (newOrderBtn) {
+        newOrderBtn.addEventListener('click', function() {
+            currentOrderId = null; // Reset order ID
+            if (successModal) {
+                successModal.hide();
+            }
+        });
+    }
 
     // Search and Filter Listeners
-    searchInput.addEventListener('input', filterMenuItems);
-    categoryFilter.addEventListener('change', filterMenuItems);
+    if (searchInput) {
+        searchInput.addEventListener('input', filterMenuItems);
+    }
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', filterMenuItems);
+    }
 
     // --- CART LOGIC FUNCTIONS ---
 
@@ -292,49 +310,48 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function clearCartAndForm() {
         cart = [];
-        document.getElementById('customerName').value = '';
-        document.getElementById('customerMobile').value = '';
-        document.getElementById('paymentMethod').value = 'Cash'; // Reset payment method
+        const customerNameEl = document.getElementById('customerName');
+        const customerMobileEl = document.getElementById('customerMobile');
+        const paymentMethodEl = document.getElementById('paymentMethod');
+        
+        if (customerNameEl) customerNameEl.value = '';
+        if (customerMobileEl) customerMobileEl.value = '';
+        if (paymentMethodEl) paymentMethodEl.value = 'Cash'; // Reset payment method
+        
         updateCartDisplay(); // Update UI
     }
 
     // --- UI UPDATE FUNCTIONS ---
-
+    // *** THIS FUNCTION IS UPDATED WITH CHECKS ***
     function updateCartDisplay() {
-        // Get elements (these might be null if IDs are wrong or elements are missing)
         const emptyMessage = document.getElementById('emptyCartMessage');
         const cartSummaryDiv = document.getElementById('cartSummary');
         const customerForm = document.getElementById('customerDetailsForm');
         const subtotalAmountEl = document.getElementById('subtotalAmount');
         const totalAmountEl = document.getElementById('totalAmount');
 
-        // Check if critical elements exist before proceeding
         if (!cartItemsDiv) {
-             console.error("Cart items container (cartItemsDiv) not found! Cannot update display.");
-             return; // Stop execution if main container is missing
+            console.error("cartItemsDiv not found!");
+            return;
         }
 
         if (cart.length === 0) {
             cartItemsDiv.innerHTML = '<p class="text-center text-muted py-4" id="emptyCartMessage">Click on menu items to add them to the order</p>';
-            // Safely update classList only if elements exist
-            if (emptyMessage) emptyMessage.classList.remove('d-none'); else console.warn("emptyMessage element not found");
-            if (cartSummaryDiv) cartSummaryDiv.classList.add('d-none'); else console.warn("cartSummaryDiv element not found");
-            if (customerForm) customerForm.classList.add('d-none'); else console.warn("customerForm element not found");
+            if (emptyMessage) emptyMessage.classList.remove('d-none');
+            if (cartSummaryDiv) cartSummaryDiv.classList.add('d-none');
+            if (customerForm) customerForm.classList.add('d-none');
         } else {
             let html = '';
             let subtotal = 0;
             cart.forEach(item => {
-                const itemTotal = (item.price || 0) * (item.quantity || 0); // Add default values
+                const itemTotal = (item.price || 0) * (item.quantity || 0);
                 subtotal += itemTotal;
-                const itemName = item.name || 'Unknown Item';
-                const itemPrice = item.price || 0;
-                const itemQuantity = item.quantity || 0;
                 html += `
                     <div class="cart-item">
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="flex-grow-1">
-                                <h6 class="mb-0">${itemName}</h6>
-                                <small class="text-muted">₹${itemPrice.toFixed(2)} each</small>
+                                <h6 class="mb-0">${item.name || 'Unknown Item'}</h6>
+                                <small class="text-muted">₹${(item.price || 0).toFixed(2)} each</small>
                             </div>
                             <button class="btn btn-sm btn-link text-danger remove-item" data-item-id="${item.id}">
                                 <i class="fas fa-times"></i>
@@ -343,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="d-flex align-items-center justify-content-between mt-2">
                             <div class="btn-group btn-group-sm">
                                 <button class="btn btn-outline-secondary decrease-qty" data-item-id="${item.id}">-</button>
-                                <button class="btn btn-outline-secondary" disabled>${itemQuantity}</button>
+                                <button class="btn btn-outline-secondary" disabled>${item.quantity || 0}</button>
                                 <button class="btn btn-outline-secondary increase-qty" data-item-id="${item.id}">+</button>
                             </div>
                             <strong>₹${itemTotal.toFixed(2)}</strong>
@@ -352,33 +369,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
             });
             cartItemsDiv.innerHTML = html;
-
-            // Safely update totals only if elements exist
-            if (subtotalAmountEl) subtotalAmountEl.textContent = `₹${subtotal.toFixed(2)}`; else console.warn("subtotalAmountEl not found");
-            if (totalAmountEl) totalAmountEl.textContent = `₹${subtotal.toFixed(2)}`; else console.warn("totalAmountEl not found");
-
-             // Safely update classList only if elements exist
-            if (emptyMessage) emptyMessage.classList.add('d-none'); else console.warn("emptyMessage element not found during non-empty update");
-            if (cartSummaryDiv) cartSummaryDiv.classList.remove('d-none'); else console.warn("cartSummaryDiv element not found during non-empty update");
-            if (customerForm) customerForm.classList.remove('d-none'); else console.warn("customerForm element not found during non-empty update");
+            
+            if (subtotalAmountEl) subtotalAmountEl.textContent = `₹${subtotal.toFixed(2)}`;
+            if (totalAmountEl) totalAmountEl.textContent = `₹${subtotal.toFixed(2)}`;
+            
+            if (emptyMessage) emptyMessage.classList.add('d-none');
+            if (cartSummaryDiv) cartSummaryDiv.classList.remove('d-none');
+            if (customerForm) customerForm.classList.remove('d-none');
         }
         updateAllMenuItemBadges(); // Update badges on menu items
-        console.log("Cart display updated."); // DEBUG
     }
+
+
     function updateAllMenuItemBadges() {
         document.querySelectorAll('.menu-item-card').forEach(card => {
             const itemId = parseInt(card.dataset.itemId);
             const cartItem = cart.find(item => item.id === itemId);
             const badge = card.querySelector('.quantity-badge');
 
-            if (cartItem && cartItem.quantity > 0) {
-                badge.textContent = cartItem.quantity;
-                badge.classList.remove('d-none');
-                card.classList.add('selected');
-            } else {
-                badge.textContent = '0';
-                badge.classList.add('d-none');
-                card.classList.remove('selected');
+            if (badge) { // Check if badge exists
+                if (cartItem && cartItem.quantity > 0) {
+                    badge.textContent = cartItem.quantity;
+                    badge.classList.remove('d-none');
+                    card.classList.add('selected');
+                } else {
+                    badge.textContent = '0';
+                    badge.classList.add('d-none');
+                    card.classList.remove('selected');
+                }
             }
         });
     }
@@ -400,8 +418,10 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Cart is empty'); return;
         }
 
-        placeOrderBtn.disabled = true;
-        placeOrderBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
+        if (placeOrderBtn) {
+            placeOrderBtn.disabled = true;
+            placeOrderBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
+        }
 
         try {
             const response = await fetch('/api/create-manual-order/', {
@@ -421,10 +441,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (response.ok && result.success) {
                 currentOrderId = result.order_pk; // Store the Primary Key for invoice link
-                document.getElementById('successOrderId').textContent = result.order_id;
-                document.getElementById('successOrderTotal').textContent = result.total.toFixed(2);
-                const successModal = new bootstrap.Modal(document.getElementById('successModal'));
-                successModal.show();
+                const successOrderIdEl = document.getElementById('successOrderId');
+                const successOrderTotalEl = document.getElementById('successOrderTotal');
+                
+                if (successOrderIdEl) successOrderIdEl.textContent = result.order_id;
+                if (successOrderTotalEl) successOrderTotalEl.textContent = result.total.toFixed(2);
+
+                if (successModal) {
+                    successModal.show();
+                }
                 clearCartAndForm(); // Clear after success
             } else {
                 alert(result.error || `Failed to create order. Status: ${response.status}`);
@@ -434,15 +459,17 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error during fetch:', error);
             alert('An unexpected error occurred. Check console.');
         } finally {
-            placeOrderBtn.disabled = false;
-            placeOrderBtn.innerHTML = '<i class="fas fa-check"></i> Place Order';
+            if (placeOrderBtn) {
+                placeOrderBtn.disabled = false;
+                placeOrderBtn.innerHTML = '<i class="fas fa-check"></i> Place Order';
+            }
         }
     }
 
     // --- FILTERING ---
     function filterMenuItems() {
-        const searchTerm = searchInput.value.toLowerCase();
-        const category = categoryFilter.value;
+        const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
+        const category = categoryFilter ? categoryFilter.value : "";
 
         document.querySelectorAll('.menu-item').forEach(itemDiv => {
             const itemName = (itemDiv.dataset.name || '').toLowerCase();
