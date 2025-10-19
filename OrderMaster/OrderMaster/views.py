@@ -429,19 +429,18 @@ def api_place_order(request):
         order_id = f"VLH{timezone.now().strftime('%y%m%d%H%M')}{str(uuid.uuid4())[:4].upper()}"
 
         new_order = Order.objects.create(
-            order_id=order_id,
-            customer_name=data['customer_name'],
-            customer_mobile=data['customer_mobile'],
-            items=validated_items_for_db,
-            subtotal=calculated_subtotal,
-            discount=Decimal('0.00'),
-            total_price=final_total_server,
-            status='Pending',  # Use the default 'Pending'
-            payment_method='COD',
-            payment_id=data.get('payment_id', 'COD'),
-            order_status='open'
+            order_id=order_id,             # This expects a CharField (string) - OK
+            customer_name=customer_name,   # CharField - OK
+            customer_mobile=customer_mobile, # CharField - OK
+            items=validated_items,       # JSONField - OK
+            subtotal=subtotal,             # DecimalField - OK
+            discount=Decimal('0.00'),    # DecimalField - OK
+            total_price=subtotal,          # DecimalField - OK
+            status='Confirmed',            # CharField - OK
+            payment_method=payment_method, # CharField - OK
+            payment_id=payment_method,     # <--- PROBLEM IS LIKELY HERE
+            order_status='open'            # CharField - OK
         )
-
         # Send Firebase Cloud Messaging notification with data payload
         try:
             items_json = json.dumps(new_order.items)
@@ -684,3 +683,4 @@ def generate_invoice_view(request, order_id):
     }
     
     return render(request, 'OrderMaster/invoice.html', context)
+
