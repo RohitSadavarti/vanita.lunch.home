@@ -1,5 +1,3 @@
-# OrderMaster/vanita_lunch/settings.py
-
 """
 Django settings for vanita_lunch project.
 """
@@ -15,9 +13,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-b9j01@*vxpl=+zr2@3uq)*=0&o7q7&t1cncn9en*(atpb+9*8o')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=False, cast=bool) # Set to False for production
+DEBUG = config('DEBUG', default=True, cast=bool)  # Changed to True for debugging
 
-ALLOWED_HOSTS = ['*']
+# ALLOWED_HOSTS is configured to work with Render's deployment environment.
+ALLOWED_HOSTS = ['*']  # Temporarily allow all hosts for debugging
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
@@ -49,7 +48,7 @@ ROOT_URLCONF = 'vanita_lunch.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'OrderMaster', 'templates')],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -86,30 +85,42 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
+# Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
+    BASE_DIR / "static",
 ]
 
+# Use Whitenoise to serve static files efficiently in production
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+# Media files (user-uploaded content)
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = BASE_DIR / 'media'
 
+# Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Login URLs
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
 
+# ==================================================================
+# === THE FIX IS HERE ===
+# ==================================================================
 # CSRF Settings for production
 CSRF_TRUSTED_ORIGINS = [
     'https://*.onrender.com',
+    'https://admin-ab5o.onrender.com', # <-- THIS IS THE FIX
     'http://localhost:8000',
     'http://127.0.0.1:8000',
 ]
+
+# Set the referrer policy
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+# ==================================================================
 
 # Logging configuration for debugging
 LOGGING = {
@@ -139,5 +150,3 @@ LOGGING = {
         },
     },
 }
-
-
