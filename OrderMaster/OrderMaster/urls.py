@@ -31,7 +31,8 @@ urlpatterns = [
     path('api/pending-orders/', views.get_pending_orders, name='get_pending_orders'),
     path('analytics/', views.analytics_view, name='analytics'),
     path('analytics/', include(analytics_urlpatterns)),
-    
+    path('', views.customer_order_view, name='customer_order'),
+    path('', views.login_view, name='login'),
     path('settings/', views.settings_view, name='settings'),
     path('api/subscribe-topic/', views.subscribe_to_topic, name='subscribe_topic'),
     path('api/analytics/', views.analytics_api_view, name='analytics_api'),
@@ -47,4 +48,5 @@ urlpatterns = [
     # Customer-facing URL
     path('customer-order/', views.customer_order_view, name='customer_home'),
 ]
+
 
