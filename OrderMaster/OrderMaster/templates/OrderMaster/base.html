@@ -80,39 +80,165 @@
 
     <!-- UPDATED SCRIPT for both desktop and mobile sidebar toggle -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const appLayout = document.querySelector('.app-layout');
-            const desktopToggleBtn = document.getElementById('sidebar-toggle-btn');
-            const mobileToggleBtn = document.querySelector('.sidebar-mobile-toggle');
-            const mobileOverlay = document.querySelector('.mobile-sidebar-overlay');
-            const SIDEBAR_STATE_KEY = 'sidebarCollapsed';
+        // Fixed Mobile Sidebar Toggle Script
+// Place this in your base.html or main.js
 
-            // --- Desktop Sidebar Logic ---
-            if (localStorage.getItem(SIDEBAR_STATE_KEY) === 'true') {
-                appLayout.classList.add('sidebar-collapsed');
-            }
+document.addEventListener('DOMContentLoaded', function() {
+    const appLayout = document.querySelector('.app-layout');
+    const desktopToggleBtn = document.getElementById('sidebar-toggle-btn');
+    const mobileToggleBtn = document.querySelector('.sidebar-mobile-toggle');
+    const mobileOverlay = document.querySelector('.mobile-sidebar-overlay');
+    const body = document.body;
+    const SIDEBAR_STATE_KEY = 'sidebarCollapsed';
 
-            if (desktopToggleBtn && appLayout) {
-                desktopToggleBtn.addEventListener('click', function() {
-                    appLayout.classList.toggle('sidebar-collapsed');
-                    const isCollapsed = appLayout.classList.contains('sidebar-collapsed');
-                    localStorage.setItem(SIDEBAR_STATE_KEY, isCollapsed);
-                });
-            }
+    // Check if we're on mobile
+    function isMobile() {
+        return window.innerWidth < 992;
+    }
 
-            // --- Mobile Sidebar Logic ---
-            if (mobileToggleBtn && appLayout) {
-                mobileToggleBtn.addEventListener('click', function() {
-                    appLayout.classList.add('sidebar-visible');
-                });
-            }
+    // --- Desktop Sidebar Logic ---
+    if (!isMobile() && localStorage.getItem(SIDEBAR_STATE_KEY) === 'true') {
+        appLayout.classList.add('sidebar-collapsed');
+    }
 
-            if (mobileOverlay && appLayout) {
-                mobileOverlay.addEventListener('click', function() {
-                    appLayout.classList.remove('sidebar-visible');
-                });
+    if (desktopToggleBtn && appLayout) {
+        desktopToggleBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (!isMobile()) {
+                appLayout.classList.toggle('sidebar-collapsed');
+                const isCollapsed = appLayout.classList.contains('sidebar-collapsed');
+                localStorage.setItem(SIDEBAR_STATE_KEY, isCollapsed);
             }
         });
+    }
+
+    // --- Mobile Sidebar Logic ---
+    if (mobileToggleBtn && appLayout) {
+        mobileToggleBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (isMobile()) {
+                appLayout.classList.add('sidebar-visible');
+                body.classList.add('sidebar-open');
+            }
+        });
+    }
+
+    // Close mobile sidebar when overlay is clicked
+    if (mobileOverlay && appLayout) {
+        mobileOverlay.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            closeMobileSidebar();
+        });
+    }
+
+    // Close mobile sidebar when a navigation link is clicked
+    const sidebarLinks = document.querySelectorAll('.sidebar-nav a');
+    sidebarLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            if (isMobile()) {
+                // Small delay to allow navigation to start
+                setTimeout(closeMobileSidebar, 100);
+            }
+        });
+    });
+
+    // Function to close mobile sidebar
+    function closeMobileSidebar() {
+        if (appLayout && isMobile()) {
+            appLayout.classList.remove('sidebar-visible');
+            body.classList.remove('sidebar-open');
+        }
+    }
+
+    // Handle window resize - clean up mobile classes if resized to desktop
+    let resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            if (!isMobile()) {
+                // Clean up mobile sidebar state when switching to desktop
+                appLayout.classList.remove('sidebar-visible');
+                body.classList.remove('sidebar-open');
+            } else {
+                // Clean up desktop sidebar state when switching to mobile
+                appLayout.classList.remove('sidebar-collapsed');
+            }
+        }, 250);
+    });
+
+    // Prevent body scroll on mobile when sidebar is open
+    function preventScroll(e) {
+        if (body.classList.contains('sidebar-open')) {
+            e.preventDefault();
+        }
+    }
+
+    // Add touch event listeners for mobile
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    function handleSwipe() {
+        if (isMobile()) {
+            const swipeThreshold = 50;
+            const swipeDistance = touchEndX - touchStartX;
+            
+            // Swipe right to open sidebar (from left edge)
+            if (swipeDistance > swipeThreshold && touchStartX < 50) {
+                appLayout.classList.add('sidebar-visible');
+                body.classList.add('sidebar-open');
+            }
+            
+            // Swipe left to close sidebar
+            if (swipeDistance < -swipeThreshold && appLayout.classList.contains('sidebar-visible')) {
+                closeMobileSidebar();
+            }
+        }
+    }
+
+    document.addEventListener('touchstart', function(e) {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+
+    document.addEventListener('touchend', function(e) {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }, { passive: true });
+
+    // Add escape key listener to close sidebar
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isMobile() && appLayout.classList.contains('sidebar-visible')) {
+            closeMobileSidebar();
+        }
+    });
+
+    // Initialize proper state on load
+    if (isMobile()) {
+        appLayout.classList.remove('sidebar-collapsed');
+        appLayout.classList.remove('sidebar-visible');
+    }
+
+    console.log('Mobile sidebar initialized');
+});
+
+// Additional fix for iOS viewport height issue
+function setVHProperty() {
+    let vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+
+// Set the property on load
+setVHProperty();
+
+// Update on resize and orientation change
+window.addEventListener('resize', setVHProperty);
+window.addEventListener('orientationchange', function() {
+    setTimeout(setVHProperty, 100);
+});
     </script>
 
    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -123,3 +249,4 @@
     <script src="{% static 'js/firebase-init.js' %}"></script>
 </body>
 </html>
+
