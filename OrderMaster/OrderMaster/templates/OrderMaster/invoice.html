@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice #{{ order.order_id }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: white;
+            padding: 0;
+            margin: 0;
+        }
+        
+        /* 58mm thermal receipt styling */
+        .receipt {
+            width: 58mm;
+            max-width: 58mm;
+            margin: 0 auto;
+            padding: 2mm;
+            background: white;
+            font-size: 9pt;
+            line-height: 1.3;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .text-right {
+            text-align: right;
+        }
+        
+        .bold {
+            font-weight: bold;
+        }
+        
+        .restaurant-name {
+            font-size: 12pt;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 2px;
+        }
+        
+        .tagline {
+            font-size: 8pt;
+            text-align: center;
+            margin-bottom: 3mm;
+        }
+        
+        .divider {
+            border-top: 1px dashed #000;
+            margin: 2mm 0;
+        }
+        
+        .divider-double {
+            border-top: 2px solid #000;
+            margin: 2mm 0;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 1mm 0;
+            font-size: 8pt;
+        }
+        
+        .info-label {
+            font-weight: normal;
+        }
+        
+        .info-value {
+            font-weight: bold;
+        }
+        
+        .items-table {
+            width: 100%;
+            margin: 2mm 0;
+            font-size: 8pt;
+        }
+        
+        .item-row {
+            margin: 1.5mm 0;
+        }
+        
+        .item-name {
+            font-weight: bold;
+        }
+        
+        .item-details {
+            display: flex;
+            justify-content: space-between;
+            font-size: 8pt;
+        }
+        
+        .total-section {
+            margin-top: 2mm;
+            font-size: 9pt;
+        }
+        
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 1mm 0;
+        }
+        
+        .grand-total {
+            font-size: 11pt;
+            font-weight: bold;
+            margin-top: 2mm;
+            padding-top: 2mm;
+            border-top: 2px solid #000;
+        }
+        
+        .footer {
+            text-align: center;
+            font-size: 8pt;
+            margin-top: 3mm;
+        }
+        
+        .print-button {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #ff8100;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        
+        .print-button:hover {
+            background: #e67300;
+        }
+        
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            
+            .receipt {
+                width: 58mm;
+                margin: 0;
+                padding: 2mm;
+            }
+            
+            .no-print {
+                display: none !important;
+            }
+            
+            @page {
+                size: 58mm auto;
+                margin: 0;
+            }
+        }
+        
+        .qr-placeholder {
+            width: 30mm;
+            height: 30mm;
+            border: 1px solid #ccc;
+            margin: 2mm auto;
+            display: none; /* Hidden unless QR code is implemented */
+        }
+    </style>
+</head>
+<body>
+    <button class="print-button no-print" onclick="window.print()">🖨️ Print Receipt</button>
+    
+    <div class="receipt">
+        <!-- Header -->
+        <div class="restaurant-name">VANITA LUNCH HOME</div>
+        <div class="tagline">Authentic Home-Cooked Meals</div>
+        <div class="text-center" style="font-size: 8pt;">Tel: +91 XXXXXXXXXX</div>
+        
+        <div class="divider-double"></div>
+        
+        <!-- Invoice Info -->
+        <div class="text-center bold" style="font-size: 10pt; margin: 2mm 0;">TAX INVOICE</div>
+        
+        <div class="info-row">
+            <span class="info-label">Bill No:</span>
+            <span class="info-value">{{ order.order_id }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Date:</span>
+            <span class="info-value">{{ order.created_at|date:"d/m/Y" }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Time:</span>
+            <span class="info-value">{{ order.created_at|date:"h:i A" }}</span>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <!-- Customer Info -->
+        <div class="info-row">
+            <span class="info-label">Customer:</span>
+            <span class="info-value">{{ order.customer_name }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Mobile:</span>
+            <span class="info-value">{{ order.customer_mobile }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Payment:</span>
+            <span class="info-value">{{ order.payment_method }}</span>
+        </div>
+        
+        <div class="divider-double"></div>
+        
+        <!-- Items -->
+        <div class="items-table">
+            {% for item in order.items_list %}
+            <div class="item-row">
+                <div class="item-name">{{ item.name }}</div>
+                <div class="item-details">
+                    <span>{{ item.quantity }} x ₹{{ item.price|floatformat:2 }}</span>
+                    <span class="bold">₹{% widthratio item.price 1 item.quantity %}.00</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="divider"></div>
+        
+        <!-- Totals -->
+        <div class="total-section">
+            <div class="total-row">
+                <span>Subtotal:</span>
+                <span class="bold">₹{{ order.subtotal|floatformat:2 }}</span>
+            </div>
+            
+            {% if order.discount > 0 %}
+            <div class="total-row">
+                <span>Discount:</span>
+                <span class="bold">- ₹{{ order.discount|floatformat:2 }}</span>
+            </div>
+            {% endif %}
+            
+            <div class="divider-double"></div>
+            
+            <div class="total-row grand-total">
+                <span>TOTAL:</span>
+                <span>₹{{ order.total_price|floatformat:2 }}</span>
+            </div>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <div class="bold" style="margin-bottom: 2mm;">THANK YOU!</div>
+            <div>Visit Again</div>
+            <div style="margin-top: 2mm; font-size: 7pt;">Powered by VLH POS System</div>
+        </div>
+        
+        <div style="height: 5mm;"></div>
+    </div>
+    
+    <script>
+        // Auto print when loaded (optional - comment out if not needed)
+        // window.onload = function() {
+        //     window.print();
+        // };
+    </script>
+</body>
+</html>
+            {% if order.discount > 0 %}
+            <div class="total-row">
+                <span>Discount:</span>
+                <span>- ₹{{ order.discount|floatformat:2 }}</span>
+            </div>
+            {% endif %}
+            <div class="total-row grand-total">
+                <span>TOTAL AMOUNT:</span>
+                <span>₹{{ order.total_price|floatformat:2 }}</span>
+            </div>
+        </div>
+        
+        <div class="invoice-footer">
+            <p><strong>Thank you for your business!</strong></p>
+            <p>For any queries, please contact us.</p>
+            <p style="margin-top: 10px;">This is a computer-generated invoice and does not require a signature.</p>
+        </div>
+    </div>
+</body>
+</html>
