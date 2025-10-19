@@ -23,7 +23,9 @@ urlpatterns = [
 
     # Admin URLs
     path('', views.login_view, name='login'),
+    path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
+    path('dashboard/', views.dashboard, name='dashboard'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
     path('orders/', views.order_management_view, name='order_management'),
     path('menu/', views.menu_management_view, name='menu_management'),
@@ -32,7 +34,6 @@ urlpatterns = [
     path('analytics/', views.analytics_view, name='analytics'),
     path('analytics/', include(analytics_urlpatterns)),
     path('', views.customer_order_view, name='customer_order'),
-    path('', views.login_view, name='login'),
     path('settings/', views.settings_view, name='settings'),
     path('api/subscribe-topic/', views.subscribe_to_topic, name='subscribe_topic'),
     path('api/analytics/', views.analytics_api_view, name='analytics_api'),
@@ -47,6 +48,8 @@ urlpatterns = [
 
     # Customer-facing URL
     path('customer-order/', views.customer_order_view, name='customer_home'),
+    path('customer-order/', views.customer_home, name='customer_home'),
 ]
+
 
 
