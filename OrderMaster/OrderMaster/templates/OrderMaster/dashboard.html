@@ -1,98 +1,117 @@
 {% extends 'OrderMaster/base.html' %}
-{% load static %}
 
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-    <div class="card-title mb-4">
-        <h2>Dashboard</h2>
-        <p class="card-description">Welcome to Vanita Lunch Home Admin Portal</p>
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
     </div>
 
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        {% endfor %}
-    {% endif %}
-
-    <div class="grid grid-cols-4 mb-8">
-        <div class="card">
-            <div class="card-content">
-                <div class="stats-card">
-                    <div class="stats-card-text">
-                        <p>Total Orders</p>
-                        <p>{{ total_orders|default:0 }}</p>
-                    </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-8 w-8 text-blue-500"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect width="8" height="4" x="8" y="2" rx="1"/></svg>
-                </div>
-            </div>
-        </div>
-        <div class="card">
-            <div class="card-content">
-                <div class="stats-card">
-                    <div class="stats-card-text">
-                        <p>Preparing Orders</p>
-                        <p>{{ preparing_orders_count|default:0 }}</p>
-                    </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-8 w-8 text-yellow-500"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                </div>
-            </div>
-        </div>
-        <div class="card">
-            <div class="card-content">
-                <div class="stats-card">
-                    <div class="stats-card-text">
-                        <p>Ready Orders</p>
-                        <p>{{ ready_orders_count|default:0 }}</p>
-                    </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-8 w-8 text-green-500"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
-                </div>
-            </div>
-        </div>
-        <div class="card">
-            <div class="card-content">
-                <div class="stats-card">
-                    <div class="stats-card-text">
-                        <p>Menu Items</p>
-                        <p>{{ menu_items_count|default:0 }}</p>
-                    </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-8 w-8 text-blue-500"><path d="M4 6l16 0"/><path d="M4 12l16 0"/><path d="M4 18l16 0"/></svg>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-content">
-            <div class="card-title">
-                <h3>Recent Orders</h3>
-            </div>
-            <div class="recent-orders-list">
-                {% for order in recent_orders %}
-                <div class="order-item">
-                    <div class="order-item-details">
-                        <div class="order-number">{{ forloop.counter }}</div>
-                        <div class="order-item-text">
-                            <p>Order #{{ order.order_id }}</p>
-                            <p>{{ order.customer_name }} • ₹{{ order.total_price }}</p>
+    <!-- Stat Cards Row -->
+    <!-- UPDATED: Added responsive column classes -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Orders</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_orders }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-receipt fa-2x text-gray-300"></i>
                         </div>
                     </div>
-                    <div class="order-status" style="background-color:
-                        {% if order.order_status == 'open' %}#fef3c7; color: #92400e;
-                        {% elif order.order_status == 'ready' %}#dcfce7; color: #166534;
-                        {% else %}#e0e7ff; color: #3730a3;{% endif %}">
-                        {{ order.order_status|title }}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                     <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Preparing Orders</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ preparing_orders_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                           <i class="fas fa-utensils fa-2x text-gray-300"></i>
+                        </div>
                     </div>
                 </div>
-                {% empty %}
-                <div class="text-center py-4">
-                    <p class="text-muted">No orders yet</p>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Ready for Pickup</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ ready_orders_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                             <i class="fas fa-shopping-bag fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
                 </div>
-                {% endfor %}
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Menu Items</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ menu_items_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-book-open fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+
+    <!-- Recent Orders Section -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Recent Orders</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th class="d-none d-md-table-cell">Total</th>
+                            <th>Status</th>
+                            <th class="d-none d-sm-table-cell">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in recent_orders %}
+                        <tr>
+                            <td>#{{ order.order_id }}</td>
+                            <td>{{ order.customer_name }}</td>
+                            <td class="d-none d-md-table-cell">₹{{ order.total_price }}</td>
+                            <td><span class="badge bg-info">{{ order.order_status|title }}</span></td>
+                            <td class="d-none d-sm-table-cell">{{ order.created_at|date:"d M, Y" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">No recent orders found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
