@@ -1,72 +1,36 @@
 /* ==============================================
-  Mobile Responsive Styles for Admin Portal
+  FIXED Mobile Responsive Styles for Admin Portal
   ==============================================
 */
 
-/* Apply styles for screens smaller than 992px (tablets and phones) */
+/* Base mobile styles - Apply to all screen sizes below 992px */
 @media (max-width: 991.98px) {
-    .app-layout {
-        /* On mobile, the sidebar is hidden by default */
-        grid-template-columns: 0 1fr; 
-    }
-
-    .app-layout.sidebar-visible {
-        /* When the sidebar is toggled on, it takes up the full width */
-        grid-template-columns: 260px 1fr;
-    }
-
-    .admin-sidebar {
-        /* Position the sidebar off-screen to the left */
-        transform: translateX(-100%);
-        transition: transform 0.3s ease-in-out;
+    /* CRITICAL FIX: Hide sidebar by default on mobile */
+    .sidebar {
         position: fixed;
-        left: 0;
+        left: -260px; /* Hide off-screen to the left */
         top: 0;
-        height: 100%;
-        z-index: 1050; /* Higher than the main content */
+        height: 100vh;
+        width: 260px;
+        z-index: 1050;
+        transition: left 0.3s ease-in-out;
+        overflow-y: auto;
+        background-color: #212529;
     }
 
-    .app-layout.sidebar-visible .admin-sidebar {
-        /* Slide the sidebar into view when toggled */
-        transform: translateX(0);
-        box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    /* Show sidebar when .sidebar-visible is added to app-layout */
+    .app-layout.sidebar-visible .sidebar {
+        left: 0; /* Slide in from left */
+        box-shadow: 2px 0 15px rgba(0,0,0,0.3);
     }
-    
+
+    /* Main content takes full width on mobile */
     .main-content-wrapper {
-        padding-left: 0; /* No left padding when sidebar is hidden */
+        margin-left: 0 !important;
+        width: 100% !important;
     }
 
-    .admin-header .header-brand {
-        /* Hide the brand text by default on mobile to save space */
-        display: none;
-    }
-    
-    .header-actions {
-        width: 100%;
-        justify-content: space-between;
-    }
-
-    /* Show the hamburger toggle button only on mobile */
-    .sidebar-mobile-toggle {
-        display: block !important;
-    }
-
-    /* Hide the desktop toggle button on mobile */
-    #sidebar-toggle-btn {
-        display: none !important;
-    }
-
-    /* Make stat cards full width on mobile */
-    .dashboard-stat-card {
-        margin-bottom: 1rem;
-    }
-
-    /* Make order columns in Order Management stack vertically */
-    .order-column {
-        margin-bottom: 1.5rem;
-    }
-    
-    /* Overlay for when the mobile menu is open */
+    /* Mobile overlay */
     .mobile-sidebar-overlay {
         position: fixed;
         top: 0;
@@ -74,36 +38,295 @@
         width: 100%;
         height: 100%;
         background: rgba(0, 0, 0, 0.5);
-        z-index: 1040; /* Below the sidebar but above content */
-        display: none; /* Hidden by default */
+        z-index: 1040;
+        display: none;
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
     }
 
+    /* Show overlay when sidebar is visible */
     .app-layout.sidebar-visible .mobile-sidebar-overlay {
-        display: block; /* Show the overlay when sidebar is visible */
+        display: block;
+        opacity: 1;
+    }
+
+    /* Header adjustments for mobile */
+    .admin-header {
+        padding: 0.75rem 1rem;
+        flex-wrap: nowrap;
+    }
+
+    /* Show hamburger button on mobile */
+    .sidebar-mobile-toggle {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem;
+        background: transparent;
+        border: none;
+        color: #333;
+        cursor: pointer;
+        margin-right: 0.5rem;
+    }
+
+    .sidebar-mobile-toggle:hover {
+        background-color: #f0f0f0;
+        border-radius: 4px;
+    }
+
+    /* Hide desktop toggle button on mobile */
+    #sidebar-toggle-btn {
+        display: none !important;
+    }
+
+    /* Header brand - show on mobile but make smaller */
+    .header-brand {
+        display: flex !important;
+        align-items: center;
+        gap: 0.5rem;
+        flex-grow: 1;
+    }
+
+    .header-brand-text h1 {
+        font-size: 1rem;
+    }
+
+    .header-brand-text p {
+        font-size: 0.75rem;
+    }
+
+    .header-brand-icon {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* Header actions adjustments */
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-shrink: 0;
+    }
+
+    /* Connection status - hide text on very small screens */
+    .connection-status span {
+        display: none;
+    }
+
+    /* Main content padding adjustments */
+    .main-content {
+        padding: 1rem;
+    }
+
+    /* Dashboard stat cards - full width on mobile */
+    .grid-cols-4 {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Table responsiveness */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Order management columns - stack vertically */
+    .order-column {
+        margin-bottom: 1.5rem;
+    }
+
+    /* Card adjustments for mobile */
+    .card {
+        margin-bottom: 1rem;
+    }
+
+    .card-body {
+        padding: 1rem;
+    }
+
+    /* Menu management cards */
+    .menu-item-card {
+        margin-bottom: 1rem;
+    }
+
+    /* Modal adjustments for mobile */
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+
+    /* Form inputs - better touch targets */
+    .form-control,
+    .form-select,
+    .btn {
+        min-height: 44px; /* iOS recommended touch target size */
+    }
+
+    /* Sidebar navigation items - larger touch targets */
+    .sidebar-nav a {
+        padding: 1rem 1.25rem;
+        font-size: 0.95rem;
+    }
+
+    /* Prevent body scroll when sidebar is open */
+    body.sidebar-open {
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
     }
 }
 
-/* Specific adjustments for very small screens */
-@media (max-width: 576px) {
-    .admin-header {
-        padding: 0.75rem;
-        flex-direction: column;
-        align-items: flex-start;
+/* Extra small devices (phones in portrait, less than 576px) */
+@media (max-width: 575.98px) {
+    /* Further reduce header elements */
+    .header-brand-text p {
+        display: none; /* Hide subtitle on very small screens */
     }
 
-    .page-header {
-        flex-direction: column;
-        align-items: flex-start !important;
+    .header-brand-text h1 {
+        font-size: 0.9rem;
     }
-    .page-header .btn {
-        margin-top: 0.5rem;
+
+    /* Stack form elements vertically */
+    .row {
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .row > * {
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    /* Full width buttons on small screens */
+    .btn-group {
+        display: flex;
+        flex-direction: column;
         width: 100%;
     }
-    .date-filter-form {
-        flex-direction: column;
-    }
-    .date-filter-form .form-control, .date-filter-form .form-select, .date-filter-form .btn {
+
+    .btn-group .btn {
         width: 100%;
         margin-bottom: 0.5rem;
+    }
+
+    /* Reduce padding everywhere */
+    .container,
+    .container-fluid {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+
+    /* Page titles */
+    .h1, .h2, .h3, h1, h2, h3 {
+        font-size: 1.25rem;
+    }
+
+    /* Order cards - adjust layout */
+    .order-card {
+        padding: 0.75rem;
+    }
+
+    /* Action buttons in order cards */
+    .order-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
+    }
+
+    .order-actions .btn {
+        width: 100%;
+    }
+}
+
+/* Landscape mode on mobile devices */
+@media (max-width: 991.98px) and (orientation: landscape) {
+    /* Reduce header height in landscape */
+    .admin-header {
+        padding: 0.5rem 1rem;
+    }
+
+    /* Sidebar full height but scrollable */
+    .sidebar {
+        height: 100vh;
+        overflow-y: auto;
+    }
+
+    /* Reduce main content padding */
+    .main-content {
+        padding: 0.75rem;
+    }
+
+    /* Smaller font sizes in landscape */
+    body {
+        font-size: 0.875rem;
+    }
+}
+
+/* Fix for iOS Safari address bar */
+@supports (-webkit-touch-callout: none) {
+    .sidebar {
+        height: -webkit-fill-available;
+    }
+    
+    .mobile-sidebar-overlay {
+        height: -webkit-fill-available;
+    }
+}
+
+/* Ensure sidebar content is visible when open */
+.app-layout.sidebar-visible .sidebar {
+    display: flex !important;
+    flex-direction: column;
+}
+
+/* Fix z-index issues */
+.sidebar {
+    z-index: 1050;
+}
+
+.mobile-sidebar-overlay {
+    z-index: 1040;
+}
+
+.admin-header {
+    z-index: 1030;
+}
+
+/* Smooth transitions */
+.sidebar,
+.mobile-sidebar-overlay {
+    transition: all 0.3s ease-in-out;
+}
+
+/* Fix for cart sidebar on customer page (if applicable) */
+@media (max-width: 991.98px) {
+    .cart-sidebar {
+        position: fixed;
+        right: 0;
+        top: 0;
+        height: 100vh;
+        width: 100%;
+        max-width: 400px;
+        transform: translateX(100%);
+        transition: transform 0.3s ease-in-out;
+        z-index: 1050;
+    }
+
+    .cart-sidebar.open {
+        transform: translateX(0);
+    }
+
+    .cart-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1040;
+        display: none;
+    }
+
+    .cart-overlay.open {
+        display: block;
     }
 }
