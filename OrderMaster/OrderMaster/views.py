@@ -398,7 +398,7 @@ def api_menu_items(request):
 def api_place_order(request):
     try:
         data = json.loads(request.body)
-        required_fields = ['customer_name', 'customer_mobile', 'items', 'total_price']
+        required_fields = ['customer_name', 'customer_mobile', 'items', 'total_price'] # Changed 'total_amount' to 'total_price' based on model
         if not all(field in data and data[field] for field in required_fields):
             return JsonResponse({'error': 'Missing required fields.'}, status=400)
 
@@ -420,43 +420,52 @@ def api_place_order(request):
             calculated_subtotal += item_total
             validated_items_for_db.append({
                 'id': menu_item.id,
-                'name': menu_item.item_name,
+                'name': menu_item.item_name, # Use item_name from model
                 'price': float(menu_item.price),
                 'quantity': quantity,
             })
 
+        # Ensure total_price from request is treated as Decimal
         final_total_server = Decimal(str(data['total_price']))
-        order_id = f"VLH{timezone.now().strftime('%y%m%d%H%M')}{str(uuid.uuid4())[:4].upper()}"
+
+        # --- THIS LINE IS REMOVED ---
+        # order_id = f"VLH{timezone.now().strftime('%y%m%d%H%M')}{str(uuid.uuid4())[:4].upper()}"
+        # --- Let the model's save method handle order_id generation ---
 
         new_order = Order.objects.create(
-            order_id=order_id,             # This expects a CharField (string) - OK
-            customer_name=customer_name,   # CharField - OK
-            customer_mobile=customer_mobile, # CharField - OK
-            items=validated_items,       # JSONField - OK
-            subtotal=subtotal,             # DecimalField - OK
-            discount=Decimal('0.00'),    # DecimalField - OK
-            total_price=subtotal,          # DecimalField - OK
-            status='Confirmed',            # CharField - OK
-            payment_method=payment_method, # CharField - OK
-            payment_id=payment_method,     # <--- PROBLEM IS LIKELY HERE
-            order_status='open'            # CharField - OK
+            # order_id is NOT provided here, model will generate it
+            customer_name=data['customer_name'],
+            customer_mobile=data['customer_mobile'],
+            # Assuming address comes from customer profile or separate field if needed
+            items=validated_items_for_db,
+            subtotal=calculated_subtotal,
+            discount=Decimal('0.00'), # Default discount
+            total_price=final_total_server, # Use total from request, maybe validate against calculated?
+            status='Pending',  # Orders from API start as Pending, requiring confirmation
+            payment_method=data.get('payment_method', 'COD'), # Get payment method or default to COD
+            payment_id=data.get('payment_id', None), # Get payment ID if provided (e.g., online payment)
+            order_status='open' # Initial internal status
         )
+
+        # Retrieve the generated order_id AFTER saving
+        generated_order_id = new_order.order_id
+
         # Send Firebase Cloud Messaging notification with data payload
         try:
-            items_json = json.dumps(new_order.items)
+            items_json = json.dumps(new_order.items) # Ensure items are JSON serializable
             message = messaging.Message(
                 notification=messaging.Notification(
                     title='🔔 New Order Received!',
-                    body=f'Order #{new_order.order_id} from {new_order.customer_name} - ₹{new_order.total_price}'
+                    body=f'Order #{generated_order_id} from {new_order.customer_name} - ₹{new_order.total_price}'
                 ),
                 data={
-                    'id': str(new_order.id),
-                    'order_id': new_order.order_id,
+                    'id': str(new_order.id), # Database primary key
+                    'order_id': generated_order_id, # The generated 8-digit ID
                     'customer_name': new_order.customer_name,
                     'total_price': str(new_order.total_price),
-                    'items': items_json,
+                    'items': items_json, # Send items as a JSON string
                 },
-                topic='new_orders'
+                topic='new_orders' # Make sure this topic is correct
             )
             response = messaging.send(message)
             logger.info(f'Successfully sent FCM message: {response}')
@@ -465,7 +474,7 @@ def api_place_order(request):
 
         return JsonResponse({
             'success': True,
-            'order_id': order_id,
+            'order_id': generated_order_id, # Return the generated ID
             'message': 'Order placed successfully!'
         })
 
@@ -476,8 +485,10 @@ def api_place_order(request):
         return JsonResponse({'error': 'Invalid menu item in the order.'}, status=400)
     except Exception as e:
         logger.error(f"Place order error: {e}")
+        # Add traceback for detailed debugging
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'error': 'An unexpected server error occurred.'}, status=500)
-
 @admin_required
 def analytics_view(request):
     """Renders the analytics page."""
@@ -687,5 +698,6 @@ def generate_invoice_view(request, order_id):
     }
     
     return render(request, 'OrderMaster/invoice.html', context)
+
 
 
