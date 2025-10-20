@@ -186,12 +186,12 @@ def analytics_api_view(request):
     # Base query for all completed orders in the date range
     base_completed_orders = Order.objects.filter(order_status='pickedup', created_at__range=(start_date, end_date))
 
-    # Apply payment filter to the base query for most calculations
+    # Apply payment filter for KPIs and certain charts
     filtered_orders = base_completed_orders
     if payment_filter != 'Total':
         filtered_orders = base_completed_orders.filter(payment_method=payment_filter)
 
-    # --- Calculations for KPIs and Most Ordered Items (uses filtered data) ---
+    # --- Calculations for KPIs, Most Ordered, etc. (uses filtered data) ---
     total_revenue = filtered_orders.aggregate(total=Sum('total_price'))['total'] or 0
     total_orders_count = filtered_orders.count()
     average_order_value = total_revenue / total_orders_count if total_orders_count > 0 else 0
@@ -203,21 +203,67 @@ def analytics_api_view(request):
             for item in items_list:
                 item_counter[item.get('name', 'Unknown')] += item.get('quantity', 0)
     most_common_items = item_counter.most_common(5)
+    top_5_names = [item[0] for item in most_common_items]
 
-    # --- Calculations for Charts (some use filtered, some use base) ---
+    # --- Calculations for Charts ---
 
-    # Donut Chart: Always show total distribution for the selected date range
+    # Donut Chart: Payment Method (uses base data for context)
     payment_distribution = base_completed_orders.values('payment_method').annotate(total=Sum('total_price')).order_by('-total')
 
-    # Orders by Hour Chart: Uses filtered data
+    # Donut Chart: Order Status (uses base data for context)
+    order_status_distribution = base_completed_orders.values('status').annotate(count=Count('id')).order_by('-count')
+
+    # Line Chart: Orders by Hour (uses filtered data)
     orders_by_hour = filtered_orders.annotate(hour=TruncHour('created_at')).values('hour').annotate(count=Count('id')).order_by('hour')
     
-    # Day-wise Revenue Chart: Uses filtered data
+    # Combined Bar Chart: Day-wise Revenue & Orders (uses filtered data)
     day_wise_revenue = filtered_orders.annotate(day=TruncDay('created_at')).values('day').annotate(
         revenue=Sum('total_price'),
         orders=Count('id')
     ).order_by('day')
 
+    # Stacked Bar Chart: Day-wise Top 5 Items (uses filtered data)
+    day_wise_menu_query = filtered_orders.annotate(day=TruncDay('created_at')).values('day').order_by('day').distinct()
+    day_labels = [d['day'].strftime('%d %b') for d in day_wise_menu_query]
+    
+    datasets = {name: [0] * len(day_labels) for name in top_5_names}
+    for i, day_label in enumerate(day_labels):
+        day_date = datetime.strptime(day_label + f' {start_date.year}', '%d %b %Y').date()
+        orders_on_day = filtered_orders.filter(created_at__date=day_date)
+        daily_item_counter = Counter()
+        for order in orders_on_day:
+            items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
+            if isinstance(items_list, list):
+                for item in items_list:
+                    if item.get('name') in top_5_names:
+                        daily_item_counter[item.get('name')] += item.get('quantity', 0)
+        for name in top_5_names:
+            datasets[name][i] = daily_item_counter[name]
+
+    day_wise_menu_datasets = []
+    colors = ['#1e40af', '#059669', '#d97706', '#9333ea', '#64748b']
+    for i, name in enumerate(top_5_names):
+        day_wise_menu_datasets.append({
+            'label': name,
+            'data': datasets[name],
+            'backgroundColor': colors[i % len(colors)]
+        })
+
+    # --- Recent Orders Table ---
+    table_orders = filtered_orders.order_by('-created_at')[:100]
+    table_data = []
+    for order in table_orders:
+        items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
+        items_text = ", ".join([f"{item['quantity']}x {item['name']}" for item in items_list]) if isinstance(items_list, list) else ""
+        table_data.append({
+            'created_at': order.created_at.isoformat(),
+            'order_id': order.order_id,
+            'items_text': items_text,
+            'total_price': float(order.total_price),
+            'payment_method': order.payment_method,
+            'order_status': order.status,
+        })
+        
     # --- Prepare data for JSON response ---
     data = {
         'key_metrics': {
@@ -233,6 +279,10 @@ def analytics_api_view(request):
             'labels': [item['payment_method'] for item in payment_distribution],
             'data': [float(item['total']) for item in payment_distribution],
         },
+        'order_status_distribution': {
+            'labels': [item['status'] for item in order_status_distribution],
+            'data': [item['count'] for item in order_status_distribution],
+        },
         'orders_by_hour': {
             'labels': [h['hour'].strftime('%I %p').lstrip('0') for h in orders_by_hour],
             'data': [h['count'] for h in orders_by_hour],
@@ -241,7 +291,12 @@ def analytics_api_view(request):
             'labels': [d['day'].strftime('%d %b') for d in day_wise_revenue],
             'revenue_data': [float(d['revenue']) for d in day_wise_revenue],
             'orders_data': [d['orders'] for d in day_wise_revenue],
-        }
+        },
+        'day_wise_menu': {
+            'labels': day_labels,
+            'datasets': day_wise_menu_datasets,
+        },
+        'table_data': table_data,
     }
     return JsonResponse(data)
     
@@ -703,6 +758,7 @@ def generate_invoice_view(request, order_id):
     }
     
     return render(request, 'OrderMaster/invoice.html', context)
+
 
 
 
