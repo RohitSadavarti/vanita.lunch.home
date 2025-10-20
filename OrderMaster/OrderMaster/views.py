@@ -170,7 +170,7 @@ def analytics_api_view(request):
         end_date = now
     elif date_filter == 'this_month':
         start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        end_date = now' 
+        end_date = now
     elif date_filter == 'custom' and start_date_str and end_date_str:
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
@@ -715,6 +715,7 @@ def generate_invoice_view(request, order_id):
     }
     
     return render(request, 'OrderMaster/invoice.html', context)
+
 
 
 
