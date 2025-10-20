@@ -207,8 +207,8 @@ def analytics_api_view(request):
 
     # --- Calculations for Charts ---
 
-    # Donut Chart: Payment Method (uses base data for context)
-    payment_distribution = base_completed_orders.values('payment_method').annotate(total=Sum('total_price')).order_by('-total')
+    # *** FIX IS HERE: Donut Chart now uses the 'filtered_orders' queryset ***
+    payment_distribution = filtered_orders.values('payment_method').annotate(total=Sum('total_price')).order_by('-total')
 
     # Donut Chart: Order Status (uses base data for context)
     order_status_distribution = base_completed_orders.values('status').annotate(count=Count('id')).order_by('-count')
@@ -758,6 +758,7 @@ def generate_invoice_view(request, order_id):
     }
     
     return render(request, 'OrderMaster/invoice.html', context)
+
 
 
 
