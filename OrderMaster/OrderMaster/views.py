@@ -154,6 +154,8 @@ def dashboard_view(request):
     }
     return render(request, 'OrderMaster/dashboard.html', context)
 
+# ... other code in views.py ...
+
 def analytics_api_view(request):
     date_filter = request.GET.get('date_filter', 'this_month')
     start_date_str = request.GET.get('start_date')
@@ -168,7 +170,7 @@ def analytics_api_view(request):
         end_date = now
     elif date_filter == 'this_month':
         start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        end_date = now
+        end_date = now' 
     elif date_filter == 'custom' and start_date_str and end_date_str:
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
@@ -184,45 +186,56 @@ def analytics_api_view(request):
 
     item_counter = Counter()
     for order in completed_orders:
+        # Check if items is a string and load, otherwise assume it's a list/dict
         items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
-        for item in items_list:
-            item_counter[item['name']] += item['quantity']
+        if isinstance(items_list, list):
+             for item in items_list:
+                item_counter[item.get('name', 'Unknown')] += item.get('quantity', 0)
 
     most_common_items = item_counter.most_common(5)
-    item_labels = [item[0] for item in most_common_items]
-    item_quantities = [item[1] for item in most_common_items]
-
     top_5_names = [item[0] for item in most_common_items]
-    order_types = ['Dine In', 'Take Away', 'Delivery']
 
-    stacked_bar_raw_data = {ot: {name: 0 for name in top_5_names} for ot in order_types}
+    # *** FIX STARTS HERE ***
+
+    # 1. Dynamically find all unique payment methods from the completed orders
+    payment_methods = list(completed_orders.values_list('payment_method', flat=True).distinct())
+
+    # Initialize the data structure with the dynamic payment methods
+    stacked_bar_raw_data = {pm: {name: 0 for name in top_5_names} for pm in payment_methods}
 
     for order in completed_orders:
         items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
-        order_type = getattr(order, 'order_type', 'Take Away')
-        if order_type in order_types:
+        
+        # 2. Use the correct field: 'order.payment_method'
+        payment_method = order.payment_method 
+
+        if payment_method in payment_methods and isinstance(items_list, list):
             for item in items_list:
-                if item['name'] in top_5_names:
-                    stacked_bar_raw_data[order_type][item['name']] += item['quantity']
+                if item.get('name') in top_5_names:
+                    stacked_bar_raw_data[payment_method][item.get('name')] += item.get('quantity', 0)
 
     stacked_bar_datasets = []
-    colors = {'Dine In': '#ff8100', 'Take Away': '#ffbd6e', 'Delivery': '#ffda9a'}
+    # Define a broader range of colors for dynamic methods
+    colors = ['#ff8100', '#0d6efd', '#ffc107', '#6c757d', '#198754'] 
 
-    for order_type in order_types:
+    for i, payment_method in enumerate(payment_methods):
         percentages = []
         for name in top_5_names:
-            total_for_product = sum(stacked_bar_raw_data[ot][name] for ot in order_types)
+            total_for_product = sum(stacked_bar_raw_data[pm].get(name, 0) for pm in payment_methods)
             if total_for_product > 0:
-                percentage = (stacked_bar_raw_data[order_type][name] / total_for_product) * 100
+                percentage = (stacked_bar_raw_data[payment_method].get(name, 0) / total_for_product) * 100
                 percentages.append(round(percentage, 2))
             else:
                 percentages.append(0)
 
         stacked_bar_datasets.append({
-            'label': order_type,
+            'label': payment_method,
             'data': percentages,
-            'backgroundColor': colors.get(order_type, '#cccccc')
+            # Use modulo to loop through colors if there are more methods than colors
+            'backgroundColor': colors[i % len(colors)] 
         })
+    
+    # *** FIX ENDS HERE ***
 
     data = {
         'key_metrics': {
@@ -231,8 +244,8 @@ def analytics_api_view(request):
             'average_order_value': f'{average_order_value:,.2f}',
         },
         'most_ordered_items': {
-            'labels': item_labels,
-            'data': item_quantities,
+            'labels': [item[0] for item in most_common_items],
+            'data': [item[1] for item in most_common_items],
         },
         'top_products_by_type': {
             'labels': top_5_names,
@@ -240,6 +253,9 @@ def analytics_api_view(request):
         }
     }
     return JsonResponse(data)
+
+# ... other code in views.py ...
+
 
 @admin_required
 def order_management_view(request):
@@ -699,6 +715,7 @@ def generate_invoice_view(request, order_id):
     }
     
     return render(request, 'OrderMaster/invoice.html', context)
+
 
 
 
