@@ -1,289 +1,279 @@
 {% extends 'OrderMaster/base.html' %}
 {% load static %}
 
+{% block title %}Analytics{% endblock %}
+
 {% block content %}
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>Hotel Analytics</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    /* Color palette (max 5):
-       Primary: Blue #1e40af
-       Neutrals: White #ffffff, Gray-100 #f3f4f6, Gray-700 #374151, Black #0b0f19
-       Accent: Green #059669
-    */
-    :root{
-      --primary:#1e40af;
-      --bg:#ffffff;
-      --muted:#f3f4f6;
-      --text:#0b0f19;
-      --text-muted:#374151;
-      --accent:#059669;
-      --card-bg:#ffffff;
-      --border:#e5e7eb;
+<style>
+    /* Your new preferred styles are used here */
+    :root {
+        --primary: #1e40af;
+        --bg: #ffffff;
+        --muted: #f3f4f6;
+        --text: #0b0f19;
+        --text-muted: #374151;
+        --accent: #059669;
+        --card-bg: #ffffff;
+        --border: #e5e7eb;
     }
-    *{box-sizing:border-box}
-    body{
-      margin:0; font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-      color:var(--text); background:var(--muted);
-      line-height:1.55;
-    }
-    .container{max-width:1200px;margin:0 auto;padding:16px}
-    header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
-    h1{font-size:20px;margin:0}
-    .filters{
-      display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--card-bg);
-      border:1px solid var(--border); padding:12px;border-radius:8px;
-    }
-    .filters .group{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .filters label{font-size:14px;color:var(--text-muted)}
-    .filters input[type="date"]{padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:#fff}
-    .btn{
-      background:var(--primary); color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer;
-      font-weight:600;
-    }
-    .btn:disabled{opacity:.6;cursor:not-allowed}
-    .grid-2{
-      display:grid; grid-template-columns:1fr; gap:16px;
-    }
-    @media(min-width:900px){ .grid-2{ grid-template-columns:1fr 1fr; } }
+    .main-content { background: var(--muted); }
+    .container-fluid { max-width:1280px; }
 
-    .left-col, .right-col{display:flex;flex-direction:column;gap:16px}
-    .card{
-      background:var(--card-bg); border:1px solid var(--border); border-radius:10px; padding:12px;
-    }
-    .kpis{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    @media(min-width:640px){ .kpis{grid-template-columns:repeat(4,1fr);} }
-    .kpi{
-      background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;
-    }
-    .kpi h3{margin:0 0 6px 0;font-size:13px;color:var(--text-muted)}
-    .kpi .val{font-size:22px;font-weight:700}
-    .kpi .sub{font-size:12px;color:var(--text-muted)}
+    /* Layout & Cards */
+    .grid-layout { display:grid; grid-template-columns:1fr; gap:16px; }
+    @media(min-width:992px){ .grid-layout { grid-template-columns: 2fr 1fr; } }
+    .left-col, .right-col { display:flex; flex-direction:column; gap:16px; }
+    .card { background:var(--card-bg); border:1px solid var(--border); border-radius:10px; padding:16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .card-header { padding: 0 0 12px 0; margin-bottom: 12px; border-bottom: 1px solid var(--border); }
+    .card-title { font-size: 16px; font-weight: 600; margin:0; }
+    .card-body { padding: 0; }
+    
+    /* Filters */
+    .filters { display:flex; flex-wrap:wrap; gap:12px; align-items:center; background:var(--card-bg); border:1px solid var(--border); padding:12px; border-radius:8px; margin-bottom: 16px; }
+    .filters .group { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .filters label { font-size:14px; color:var(--text-muted); }
+    .filters input[type="date"] { padding:6px 8px; border:1px solid var(--border); border-radius:6px; background:#fff; }
+    .btn-sm { background:var(--primary); color:#fff; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-weight:600; }
 
-    .section-title{font-size:16px;margin:0 0 8px 0}
-    .iframe-wrap{
-      background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;
-      height: 450px;
-    }
-    .iframe-wrap header{
-      padding:8px 10px;border-bottom:1px solid var(--border);background:var(--muted)
-    }
-    .iframe-wrap h4{margin:0;font-size:14px}
-    iframe{display:block;width:100%;height:100%;border:0;background:#fff}
+    /* KPIs */
+    .kpis { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .kpi { background:#fff; border:1px solid var(--border); border-radius:10px; padding:12px; }
+    .kpi h3 { margin:0 0 6px 0; font-size:13px; color:var(--text-muted); font-weight: 500; }
+    .kpi .val { font-size:22px; font-weight:700; }
 
-    table{width:100%;border-collapse:collapse}
-    thead th{
-      text-align:left;font-size:12px;color:var(--text-muted);background:var(--muted);
-      border-bottom:1px solid var(--border); padding:8px;
-    }
-    tbody td{
-      padding:10px 8px;border-bottom:1px solid var(--border);vertical-align:top;font-size:14px;
-    }
-    .pill{
-      display:inline-block;padding:2px 8px;border:1px solid var(--border);border-radius:999px;font-size:12px;background:#fff;color:var(--text-muted)
-    }
-    .notice{font-size:12px;color:var(--text-muted)}
-    .table-wrap{
-        height: 400px;
-        overflow-y: auto;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <header>
-      <h1 class="text-balance">Hotel Analytics</h1>
-      <span class="notice">Interactive filters with Python-powered charts</span>
+    /* Chart Containers */
+    .chart-container { position: relative; height: 350px; }
+</style>
+
+<div class="container-fluid">
+    <header class="d-sm-flex align-items-center justify-content-between my-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">Analytics Dashboard</h1>
+            <p class="text-muted mb-0">An overview of your restaurant's performance</p>
+        </div>
     </header>
 
+    <!-- Filters Section -->
     <section class="filters" aria-label="Filters">
-      <div class="group" role="radiogroup" aria-label="Quick ranges">
-        <label><input type="radio" name="range" value="today" checked /> Today</label>
-        <label><input type="radio" name="range" value="yesterday" /> Yesterday</label>
-        <label><input type="radio" name="range" value="week" /> This week</label>
-        <label><input type="radio" name="range" value="month" /> This month</label>
-        <label class="pill"><input type="radio" name="range" value="custom" /> Custom</label>
-      </div>
-      <div class="group" aria-label="Custom date range">
-        <label for="start">Start</label>
-        <input type="date" id="start" />
-        <label for="end">End</label>
-        <input type="date" id="end" />
-      </div>
-      <div class="group">
-        <button id="apply" class="btn">Apply</button>
-      </div>
+        <div class="group" role="group">
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="dateFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    Select Date Range
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="dateFilterDropdown">
+                    <li><a class="dropdown-item date-filter" href="#" data-filter="today">Today</a></li>
+                    <li><a class="dropdown-item date-filter" href="#" data-filter="this_week">This Week</a></li>
+                    <li><a class="dropdown-item date-filter" href="#" data-filter="this_month">This Month</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" id="customDateBtn">Custom Range</a></li>
+                </ul>
+            </div>
+            <div id="customDateRange" class="group d-none">
+                <form id="customDateForm" class="d-flex align-items-center">
+                    <input type="date" class="form-control form-control-sm" name="start_date">
+                    <input type="date" class="form-control form-control-sm ms-2" name="end_date">
+                    <button type="submit" class="btn btn-sm btn-primary ms-2">Apply</button>
+                </form>
+            </div>
+        </div>
+        <div class="group" role="group" id="paymentFilter">
+            <input type="radio" class="btn-check" name="payment-filter" id="total" value="Total" autocomplete="off" checked>
+            <label class="btn btn-outline-primary" for="total">Total</label>
+            
+            <input type="radio" class="btn-check" name="payment-filter" id="cash" value="Cash" autocomplete="off">
+            <label class="btn btn-outline-primary" for="cash">Cash</label>
+            
+            <input type="radio" class="btn-check" name="payment-filter" id="online" value="Online" autocomplete="off">
+            <label class="btn btn-outline-primary" for="online">Online</label>
+        </div>
     </section>
+    
+    <!-- Main Grid Layout -->
+    <div class="grid-layout">
+        <!-- Left Column -->
+        <section class="left-col">
+            <!-- KPIs -->
+            <div class="kpis">
+                <div class="kpi">
+                    <h3>Total Revenue</h3>
+                    <div class="val" id="totalRevenue">₹0.00</div>
+                </div>
+                <div class="kpi">
+                    <h3>Total Orders</h3>
+                    <div class="val" id="totalOrders">0</div>
+                </div>
+                <div class="kpi">
+                    <h3>Avg. Order Value</h3>
+                    <div class="val" id="avgOrderValue">₹0.00</div>
+                </div>
+            </div>
+            <!-- Most Ordered Items Chart -->
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title">Most Ordered Items</h4>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="mostOrderedItemsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-    <div class="grid-2" style="margin-top:12px">
-      <section class="left-col" aria-live="polite">
-        <div class="iframe-wrap">
-          <header><h4>Orders by Hour</h4></header>
-          <iframe id="chart-hour" title="Menu-wise Time Chart"></iframe>
-        </div>
-        <div class="iframe-wrap">
-          <header><h4>Day-wise Orders & Revenue</h4></header>
-          <iframe id="chart-day-or" title="Day-wise Orders & Revenue Chart"></iframe>
-        </div>
-        <div class="card">
-          <h2 class="section-title">Date-wise Orders</h2>
-          <div class="notice" id="table-hint">Most recent 1000 orders in range</div>
-          <div class="table-wrap">
-            <table aria-describedby="table-hint">
-              <thead>
-                <tr>
-                  <th style="min-width:120px">Time</th>
-                  <th style="min-width:110px">Order ID</th>
-                  <th>Items</th>
-                  <th style="min-width:100px">Price</th>
-                  <th style="min-width:120px">Payment</th>
-                  <th style="min-width:110px">Status</th>
-                </tr>
-              </thead>
-              <tbody id="orders-body">
-                <tr><td colspan="6" class="notice">Loading…</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <section class="right-col">
-        <div class="kpis" aria-live="polite">
-          <div class="kpi">
-            <h3>Total Revenue</h3>
-            <div class="val" id="kpi-revenue">—</div>
-            <div class="sub">Selected range</div>
-          </div>
-          <div class="kpi">
-            <h3>Total Orders</h3>
-            <div class="val" id="kpi-orders">—</div>
-            <div class="sub">Selected range</div>
-          </div>
-          <div class="kpi">
-            <h3>Avg Order Value</h3>
-            <div class="val" id="kpi-aov">—</div>
-            <div class="sub">Revenue / Orders</div>
-          </div>
-          <div class="kpi">
-            <h3>Payment</h3>
-            <div class="val" id="kpi-payments">—</div>
-            <div class="sub"><span class="pill" id="cash-pill">Cash: —</span> <span class="pill" id="online-pill">Online: —</span></div>
-          </div>
-        </div>
-        
-        <div class="iframe-wrap">
-          <header><h4>Order Status</h4></header>
-          <iframe id="chart-status" title="Order Status Chart"></iframe>
-        </div>
-        <div class="iframe-wrap">
-          <header><h4>Top Menu Items</h4></header>
-          <iframe id="chart-top" title="Top Menu Items Chart"></iframe>
-        </div>
-        <div class="iframe-wrap">
-          <header><h4>Day-wise Menu (Top 5)</h4></header>
-          <iframe id="chart-day-menu" title="Day-wise Menu Chart"></iframe>
-        </div>
-      </section>
+        <!-- Right Column -->
+        <section class="right-col">
+             <!-- Payment Method Donut Chart -->
+             <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title">Revenue by Payment Method</h4>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="paymentMethodChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
-  </div>
+</div>
 
-  <script>
-    // Utilities
-    function qsa(sel){ return Array.from(document.querySelectorAll(sel)); }
-    function fmtMoney(n){ if(n==null) return "—"; return "₹ " + Number(n).toLocaleString(undefined,{maximumFractionDigits:2}); }
-    function fmtInt(n){ if(n==null) return "—"; return Number(n).toLocaleString(); }
-    function currentParams(){
-      const range = (document.querySelector('input[name="range"]:checked')||{}).value || "today";
-      const params = new URLSearchParams({range});
-      if(range === "custom"){
-        const s = document.getElementById("start").value;
-        const e = document.getElementById("end").value;
-        if(s) params.set("start", s);
-        if(e) params.set("end", e);
-      }
-      return params;
-    }
-    function setLoading(yes){
-      document.getElementById("apply").disabled = !!yes;
-      document.getElementById("apply").textContent = yes ? "Loading…" : "Apply";
-    }
-    async function loadData(){
-      try{
-        setLoading(true);
-        const params = currentParams();
-        const res = await fetch(`/analytics/data?${params.toString()}`, {headers:{'Accept':'application/json'}});
-        if(!res.ok) throw new Error("Failed to fetch data");
-        const data = await res.json();
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let mostOrderedItemsChart = null;
+    let paymentMethodChart = null; // Donut chart instance
 
-        // KPIs
-        document.getElementById("kpi-revenue").textContent = fmtMoney(data.metrics.totalRevenue);
-        document.getElementById("kpi-orders").textContent = fmtInt(data.metrics.totalOrders);
-        document.getElementById("kpi-aov").textContent = fmtMoney(data.metrics.avgOrderValue);
-        document.getElementById("cash-pill").textContent = `Cash: ${fmtMoney(data.metrics.cashAmount)}`;
-        document.getElementById("online-pill").textContent = `Online: ${fmtMoney(data.metrics.onlineAmount)}`;
-
-        // Table
-        const tb = document.getElementById("orders-body");
-        tb.innerHTML = "";
-        if(!data.table || data.table.length === 0){
-          tb.innerHTML = `<tr><td class="notice" colspan="6">No orders in selected range.</td></tr>`;
-        }else{
-          for(const row of data.table){
-            const tr = document.createElement("tr");
-            const tds = [
-              new Date(row.created_at).toLocaleString(),
-              row.order_id || row.id || "—",
-              row.items_text || "—",
-              fmtMoney(row.total_price),
-              row.payment_method || "—",
-              row.order_status || row.status || "—",
-            ];
-            for(const val of tds){
-              const td = document.createElement("td");
-              td.textContent = val;
-              tr.appendChild(td);
-            }
-            tb.appendChild(tr);
-          }
+    // Function to fetch and update all analytics data
+    async function fetchAnalyticsData() {
+        const dateFilterElement = document.querySelector('.date-filter.active');
+        let dateFilter = 'this_month';
+        if (dateFilterElement) {
+            dateFilter = dateFilterElement.dataset.filter;
+        } else if (document.getElementById('dateFilterDropdown').textContent === 'Custom') {
+            dateFilter = 'custom';
         }
+        
+        const paymentFilter = document.querySelector('#paymentFilter input:checked').value;
+        
+        let url = `/api/analytics/?date_filter=${dateFilter}&payment_filter=${paymentFilter}`;
 
-        // Charts (iframes) – pass same params
-        const qs = params.toString();
-        document.getElementById("chart-status").src = `/analytics/chart/order-status?${qs}`;
-        document.getElementById("chart-top").src = `/analytics/chart/top-menu?${qs}`;
-        document.getElementById("chart-hour").src = `/analytics/chart/menu-by-hour?${qs}`;
-        document.getElementById("chart-day-menu").src = `/analytics/chart/day-wise-menu?${qs}`;
-        document.getElementById("chart-day-or").src = `/analytics/chart/day-wise-orders-revenue?${qs}`;
-      }catch(err){
-        console.error("[v0] loadData error:", err);
-        alert("Failed to load analytics. Please check server logs.");
-      }finally{
-        setLoading(false);
-      }
+        if (dateFilter === 'custom') {
+            const startDate = document.querySelector('input[name="start_date"]').value;
+            const endDate = document.querySelector('input[name="end_date"]').value;
+            if (startDate && endDate) {
+                url += `&start_date=${startDate}&end_date=${endDate}`;
+            }
+        }
+        
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Network response was not ok');
+            const data = await response.json();
+            
+            // Update UI elements
+            document.getElementById('totalRevenue').textContent = '₹' + data.key_metrics.total_revenue;
+            document.getElementById('totalOrders').textContent = data.key_metrics.total_orders;
+            document.getElementById('avgOrderValue').textContent = '₹' + data.key_metrics.average_order_value;
+            
+            updateMostOrderedChart(data.most_ordered_items);
+            updatePaymentMethodChart(data.payment_method_distribution);
+
+        } catch (error) {
+            console.error('Failed to fetch analytics data:', error);
+        }
     }
 
-    // Events
-    qsa('input[name="range"]').forEach(r => {
-      r.addEventListener('change', () => {
-        const custom = r.value === 'custom';
-        document.getElementById('start').disabled = !custom;
-        document.getElementById('end').disabled = !custom;
-      });
-    });
-    document.getElementById("apply").addEventListener("click", loadData);
+    // Function to update the bar chart
+    function updateMostOrderedChart({ labels, data }) {
+        const ctx = document.getElementById('mostOrderedItemsChart').getContext('2d');
+        if (mostOrderedItemsChart) mostOrderedItemsChart.destroy();
+        mostOrderedItemsChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Quantity Sold',
+                    data: data,
+                    backgroundColor: 'rgba(30, 64, 175, 0.8)',
+                    borderColor: 'rgba(30, 64, 175, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true } },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
 
-    // Init
-    (function init(){
-      // disable custom by default
-      document.getElementById('start').disabled = true;
-      document.getElementById('end').disabled = true;
-      loadData();
-    })();
-  </script>
-</body>
-</html>
+    // Function to update the donut chart
+    function updatePaymentMethodChart({ labels, data }) {
+        const ctx = document.getElementById('paymentMethodChart').getContext('2d');
+        if (paymentMethodChart) paymentMethodChart.destroy();
+        paymentMethodChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Revenue',
+                    data: data,
+                    backgroundColor: ['#1e40af', '#059669', '#f3f4f6'],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => ` ${context.label}: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(context.parsed)}`
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // --- Event Listeners ---
+    
+    document.querySelectorAll('.date-filter').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.querySelectorAll('.date-filter').forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById('dateFilterDropdown').textContent = this.textContent;
+            document.getElementById('customDateRange').classList.add('d-none');
+            fetchAnalyticsData();
+        });
+    });
+
+    document.getElementById('customDateBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        document.getElementById('customDateRange').classList.remove('d-none');
+    });
+
+    document.getElementById('customDateForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        document.querySelectorAll('.date-filter').forEach(l => l.classList.remove('active'));
+        document.getElementById('dateFilterDropdown').textContent = 'Custom';
+        fetchAnalyticsData();
+    });
+
+    document.querySelectorAll('#paymentFilter input').forEach(radio => {
+        radio.addEventListener('change', fetchAnalyticsData);
+    });
+
+    // --- Initial Load ---
+    const defaultDateFilter = document.querySelector('.date-filter[data-filter="this_month"]');
+    if (defaultDateFilter) {
+        defaultDateFilter.classList.add('active');
+        document.getElementById('dateFilterDropdown').textContent = 'This Month';
+    }
+    fetchAnalyticsData();
+});
+</script>
 {% endblock %}
+
