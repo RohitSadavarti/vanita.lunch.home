@@ -665,7 +665,7 @@ def take_order_view(request):
 
 
 @csrf_exempt
-@admin_required
+# @admin_required #
 @require_POST
 def create_manual_order(request):
     """API endpoint to create a manual order from staff interface"""
@@ -758,6 +758,7 @@ def generate_invoice_view(request, order_id):
     }
     
     return render(request, 'OrderMaster/invoice.html', context)
+
 
 
 
