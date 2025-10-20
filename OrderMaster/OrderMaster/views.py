@@ -156,8 +156,12 @@ def dashboard_view(request):
 
 # ... other code in views.py ...
 
+# ... other code in views.py ...
+
 def analytics_api_view(request):
+    # Get filters from the request
     date_filter = request.GET.get('date_filter', 'this_month')
+    payment_filter = request.GET.get('payment_filter', 'Total') # New filter
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
 
@@ -178,50 +182,56 @@ def analytics_api_view(request):
         start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         end_date = now
 
-    completed_orders = Order.objects.filter(order_status='pickedup', created_at__range=(start_date, end_date))
+    # Base query for all completed orders in the date range
+    base_completed_orders = Order.objects.filter(order_status='pickedup', created_at__range=(start_date, end_date))
 
-    total_revenue = completed_orders.aggregate(total=Sum('total_price'))['total'] or 0
-    total_orders_count = completed_orders.count()
+    # Apply payment filter to the base query for most calculations
+    filtered_orders = base_completed_orders
+    if payment_filter != 'Total':
+        filtered_orders = base_completed_orders.filter(payment_method=payment_filter)
+
+    # --- Calculations based on filtered data ---
+    total_revenue = filtered_orders.aggregate(total=Sum('total_price'))['total'] or 0
+    total_orders_count = filtered_orders.count()
     average_order_value = total_revenue / total_orders_count if total_orders_count > 0 else 0
 
     item_counter = Counter()
-    for order in completed_orders:
-        # Check if items is a string and load, otherwise assume it's a list/dict
+    for order in filtered_orders:
         items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
         if isinstance(items_list, list):
-             for item in items_list:
+            for item in items_list:
                 item_counter[item.get('name', 'Unknown')] += item.get('quantity', 0)
 
     most_common_items = item_counter.most_common(5)
     top_5_names = [item[0] for item in most_common_items]
 
-    # *** FIX STARTS HERE ***
+    # --- Donut Chart Calculation (always uses the unfiltered base query) ---
+    payment_distribution = base_completed_orders.values('payment_method').annotate(
+        total=Sum('total_price')
+    ).order_by('-total')
 
-    # 1. Dynamically find all unique payment methods from the completed orders
-    payment_methods = list(completed_orders.values_list('payment_method', flat=True).distinct())
+    payment_labels = [item['payment_method'] for item in payment_distribution]
+    payment_data = [float(item['total']) for item in payment_distribution]
 
-    # Initialize the data structure with the dynamic payment methods
-    stacked_bar_raw_data = {pm: {name: 0 for name in top_5_names} for pm in payment_methods}
+    # --- Bar Chart Calculation (uses filtered data) ---
+    payment_methods_in_filter = list(filtered_orders.values_list('payment_method', flat=True).distinct())
+    stacked_bar_raw_data = {pm: {name: 0 for name in top_5_names} for pm in payment_methods_in_filter}
 
-    for order in completed_orders:
+    for order in filtered_orders:
         items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
-        
-        # 2. Use the correct field: 'order.payment_method'
-        payment_method = order.payment_method 
-
-        if payment_method in payment_methods and isinstance(items_list, list):
+        payment_method = order.payment_method
+        if payment_method in payment_methods_in_filter and isinstance(items_list, list):
             for item in items_list:
                 if item.get('name') in top_5_names:
                     stacked_bar_raw_data[payment_method][item.get('name')] += item.get('quantity', 0)
 
     stacked_bar_datasets = []
-    # Define a broader range of colors for dynamic methods
-    colors = ['#ff8100', '#0d6efd', '#ffc107', '#6c757d', '#198754'] 
+    colors = ['#ff8100', '#0d6efd', '#ffc107', '#6c757d', '#198754']
 
-    for i, payment_method in enumerate(payment_methods):
+    for i, payment_method in enumerate(payment_methods_in_filter):
         percentages = []
         for name in top_5_names:
-            total_for_product = sum(stacked_bar_raw_data[pm].get(name, 0) for pm in payment_methods)
+            total_for_product = sum(stacked_bar_raw_data[pm].get(name, 0) for pm in payment_methods_in_filter)
             if total_for_product > 0:
                 percentage = (stacked_bar_raw_data[payment_method].get(name, 0) / total_for_product) * 100
                 percentages.append(round(percentage, 2))
@@ -231,12 +241,10 @@ def analytics_api_view(request):
         stacked_bar_datasets.append({
             'label': payment_method,
             'data': percentages,
-            # Use modulo to loop through colors if there are more methods than colors
-            'backgroundColor': colors[i % len(colors)] 
+            'backgroundColor': colors[i % len(colors)]
         })
-    
-    # *** FIX ENDS HERE ***
 
+    # --- Final JSON Response ---
     data = {
         'key_metrics': {
             'total_revenue': f'{total_revenue:,.2f}',
@@ -249,13 +257,15 @@ def analytics_api_view(request):
         },
         'top_products_by_type': {
             'labels': top_5_names,
-            'datasets': stacked_bar_datasets
+            'datasets': stacked_bar_datasets,
+        },
+        # New data for the donut chart
+        'payment_method_distribution': {
+            'labels': payment_labels,
+            'data': payment_data,
         }
     }
     return JsonResponse(data)
-
-# ... other code in views.py ...
-
 
 @admin_required
 def order_management_view(request):
@@ -715,6 +725,7 @@ def generate_invoice_view(request, order_id):
     }
     
     return render(request, 'OrderMaster/invoice.html', context)
+
 
 
 
