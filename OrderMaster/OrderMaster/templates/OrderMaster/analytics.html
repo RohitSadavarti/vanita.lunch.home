@@ -4,15 +4,17 @@
 {% block title %}Analytics{% endblock %}
 
 {% block content %}
+<!-- This script for datalabels is added here to avoid editing base.html -->
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+
 <style>
-    /* Your new preferred styles are used here */
+    /* Your preferred new styles are used here */
     :root {
         --primary: #1e40af;
-        --bg: #ffffff;
+        --secondary: #059669;
         --muted: #f3f4f6;
         --text: #0b0f19;
         --text-muted: #374151;
-        --accent: #059669;
         --card-bg: #ffffff;
         --border: #e5e7eb;
     }
@@ -22,6 +24,7 @@
     /* Layout & Cards */
     .grid-layout { display:grid; grid-template-columns:1fr; gap:16px; }
     @media(min-width:992px){ .grid-layout { grid-template-columns: 2fr 1fr; } }
+    
     .left-col, .right-col { display:flex; flex-direction:column; gap:16px; }
     .card { background:var(--card-bg); border:1px solid var(--border); border-radius:10px; padding:16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .card-header { padding: 0 0 12px 0; margin-bottom: 12px; border-bottom: 1px solid var(--border); }
@@ -42,7 +45,7 @@
     .kpi .val { font-size:22px; font-weight:700; }
 
     /* Chart Containers */
-    .chart-container { position: relative; height: 350px; }
+    .chart-container { position: relative; height: 280px; }
 </style>
 
 <div class="container-fluid">
@@ -109,14 +112,13 @@
             </div>
             <!-- Most Ordered Items Chart -->
             <div class="card">
-                <div class="card-header">
-                    <h4 class="card-title">Most Ordered Items</h4>
-                </div>
-                <div class="card-body">
-                    <div class="chart-container">
-                        <canvas id="mostOrderedItemsChart"></canvas>
-                    </div>
-                </div>
+                <div class="card-header"><h4 class="card-title">Most Ordered Items</h4></div>
+                <div class="card-body"><div class="chart-container"><canvas id="mostOrderedItemsChart"></canvas></div></div>
+            </div>
+             <!-- Day-wise Revenue Chart -->
+            <div class="card">
+                <div class="card-header"><h4 class="card-title">Day-wise Revenue & Orders</h4></div>
+                <div class="card-body"><div class="chart-container"><canvas id="dayWiseRevenueChart"></canvas></div></div>
             </div>
         </section>
 
@@ -124,14 +126,13 @@
         <section class="right-col">
              <!-- Payment Method Donut Chart -->
              <div class="card">
-                <div class="card-header">
-                    <h4 class="card-title">Revenue by Payment Method</h4>
-                </div>
-                <div class="card-body">
-                    <div class="chart-container">
-                        <canvas id="paymentMethodChart"></canvas>
-                    </div>
-                </div>
+                <div class="card-header"><h4 class="card-title">Revenue by Payment Method</h4></div>
+                <div class="card-body"><div class="chart-container"><canvas id="paymentMethodChart"></canvas></div></div>
+            </div>
+             <!-- Orders by Hour Chart -->
+             <div class="card">
+                <div class="card-header"><h4 class="card-title">Orders by Hour</h4></div>
+                <div class="card-body"><div class="chart-container"><canvas id="ordersByHourChart"></canvas></div></div>
             </div>
         </section>
     </div>
@@ -139,10 +140,22 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    let mostOrderedItemsChart = null;
-    let paymentMethodChart = null; // Donut chart instance
+    // Register the datalabels plugin globally
+    Chart.register(ChartDataLabels);
+    Chart.defaults.set('plugins.datalabels', {
+        color: '#fff',
+        font: { weight: 'bold' },
+        formatter: (value) => {
+            if (value === 0) return '';
+            // For numbers > 1000, show as '1.2k' etc.
+            if (value > 1000) return (value/1000).toFixed(1) + 'k';
+            return value;
+        }
+    });
 
-    // Function to fetch and update all analytics data
+    let mostOrderedItemsChart, paymentMethodChart, ordersByHourChart, dayWiseRevenueChart;
+
+    // Main function to fetch and render all data
     async function fetchAnalyticsData() {
         const dateFilterElement = document.querySelector('.date-filter.active');
         let dateFilter = 'this_month';
@@ -153,7 +166,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         const paymentFilter = document.querySelector('#paymentFilter input:checked').value;
-        
         let url = `/api/analytics/?date_filter=${dateFilter}&payment_filter=${paymentFilter}`;
 
         if (dateFilter === 'custom') {
@@ -174,15 +186,19 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('totalOrders').textContent = data.key_metrics.total_orders;
             document.getElementById('avgOrderValue').textContent = '₹' + data.key_metrics.average_order_value;
             
+            // Update all charts
             updateMostOrderedChart(data.most_ordered_items);
             updatePaymentMethodChart(data.payment_method_distribution);
+            updateOrdersByHourChart(data.orders_by_hour);
+            updateDayWiseRevenueChart(data.day_wise_revenue);
 
         } catch (error) {
             console.error('Failed to fetch analytics data:', error);
         }
     }
 
-    // Function to update the bar chart
+    // --- Chart Update Functions ---
+
     function updateMostOrderedChart({ labels, data }) {
         const ctx = document.getElementById('mostOrderedItemsChart').getContext('2d');
         if (mostOrderedItemsChart) mostOrderedItemsChart.destroy();
@@ -194,20 +210,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     label: 'Quantity Sold',
                     data: data,
                     backgroundColor: 'rgba(30, 64, 175, 0.8)',
-                    borderColor: 'rgba(30, 64, 175, 1)',
-                    borderWidth: 1
                 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 scales: { y: { beginAtZero: true } },
-                plugins: { legend: { display: false } }
+                plugins: { 
+                    legend: { display: false },
+                    datalabels: {
+                        color: '#fff'
+                    }
+                }
             }
         });
     }
 
-    // Function to update the donut chart
     function updatePaymentMethodChart({ labels, data }) {
         const ctx = document.getElementById('paymentMethodChart').getContext('2d');
         if (paymentMethodChart) paymentMethodChart.destroy();
@@ -218,15 +235,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 datasets: [{
                     label: 'Revenue',
                     data: data,
-                    backgroundColor: ['#1e40af', '#059669', '#f3f4f6'],
-                    hoverOffset: 4
+                    backgroundColor: ['#1e40af', '#059669', '#374151', '#f3f4f6'],
                 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 plugins: {
                     legend: { position: 'top' },
+                    datalabels: {
+                        formatter: (value, ctx) => {
+                            let sum = 0;
+                            let dataArr = ctx.chart.data.datasets[0].data;
+                            dataArr.map(data => { sum += data; });
+                            let percentage = (value*100 / sum).toFixed(1) + "%";
+                            if (sum === 0 || value === 0) return '';
+                            return percentage;
+                        },
+                         color: '#fff',
+                    },
                     tooltip: {
                         callbacks: {
                             label: (context) => ` ${context.label}: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(context.parsed)}`
@@ -237,8 +263,83 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function updateOrdersByHourChart({ labels, data }) {
+        const ctx = document.getElementById('ordersByHourChart').getContext('2d');
+        if (ordersByHourChart) ordersByHourChart.destroy();
+        ordersByHourChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Number of Orders',
+                    data: data,
+                    borderColor: '#059669',
+                    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, suggestedMax: Math.max(...data) + 2 } },
+                plugins: { 
+                    legend: { display: false },
+                    datalabels: {
+                        align: 'top',
+                        color: '#374151'
+                    }
+                }
+            }
+        });
+    }
+
+    function updateDayWiseRevenueChart({ labels, revenue_data, orders_data }) {
+        const ctx = document.getElementById('dayWiseRevenueChart').getContext('2d');
+        if (dayWiseRevenueChart) dayWiseRevenueChart.destroy();
+        dayWiseRevenueChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Revenue (₹)',
+                        data: revenue_data,
+                        backgroundColor: 'rgba(30, 64, 175, 0.8)',
+                        yAxisID: 'yRevenue',
+                    },
+                    {
+                        label: 'Orders',
+                        data: orders_data,
+                        backgroundColor: 'rgba(5, 150, 105, 0.6)',
+                        yAxisID: 'yOrders',
+                    }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: {
+                    yRevenue: {
+                        type: 'linear', display: true, position: 'left',
+                        beginAtZero: true, title: { display: true, text: 'Revenue (₹)' }
+                    },
+                    yOrders: {
+                        type: 'linear', display: true, position: 'right',
+                        beginAtZero: true, title: { display: true, text: 'Number of Orders' },
+                        grid: { drawOnChartArea: false }
+                    }
+                },
+                plugins: {
+                    datalabels: {
+                         color: 'white',
+                         font: { size: 10 }
+                    },
+                    legend: { position: 'top' }
+                }
+            }
+        });
+    }
+
     // --- Event Listeners ---
-    
     document.querySelectorAll('.date-filter').forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
