@@ -154,14 +154,15 @@ def dashboard_view(request):
     }
     return render(request, 'OrderMaster/dashboard.html', context)
 
-# ... other code in views.py ...
+from django.db.models.functions import TruncHour, TruncDay
+from django.db.models import Count
 
-# ... other code in views.py ...
+# ... other imports at the top of the file ...
 
 def analytics_api_view(request):
     # Get filters from the request
     date_filter = request.GET.get('date_filter', 'this_month')
-    payment_filter = request.GET.get('payment_filter', 'Total') # New filter
+    payment_filter = request.GET.get('payment_filter', 'Total')
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
 
@@ -178,7 +179,7 @@ def analytics_api_view(request):
     elif date_filter == 'custom' and start_date_str and end_date_str:
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
-    else:
+    else: # Default to this_month
         start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         end_date = now
 
@@ -190,7 +191,7 @@ def analytics_api_view(request):
     if payment_filter != 'Total':
         filtered_orders = base_completed_orders.filter(payment_method=payment_filter)
 
-    # --- Calculations based on filtered data ---
+    # --- Calculations for KPIs and Most Ordered Items (uses filtered data) ---
     total_revenue = filtered_orders.aggregate(total=Sum('total_price'))['total'] or 0
     total_orders_count = filtered_orders.count()
     average_order_value = total_revenue / total_orders_count if total_orders_count > 0 else 0
@@ -201,50 +202,23 @@ def analytics_api_view(request):
         if isinstance(items_list, list):
             for item in items_list:
                 item_counter[item.get('name', 'Unknown')] += item.get('quantity', 0)
-
     most_common_items = item_counter.most_common(5)
-    top_5_names = [item[0] for item in most_common_items]
 
-    # --- Donut Chart Calculation (always uses the unfiltered base query) ---
-    payment_distribution = base_completed_orders.values('payment_method').annotate(
-        total=Sum('total_price')
-    ).order_by('-total')
+    # --- Calculations for Charts (some use filtered, some use base) ---
 
-    payment_labels = [item['payment_method'] for item in payment_distribution]
-    payment_data = [float(item['total']) for item in payment_distribution]
+    # Donut Chart: Always show total distribution for the selected date range
+    payment_distribution = base_completed_orders.values('payment_method').annotate(total=Sum('total_price')).order_by('-total')
 
-    # --- Bar Chart Calculation (uses filtered data) ---
-    payment_methods_in_filter = list(filtered_orders.values_list('payment_method', flat=True).distinct())
-    stacked_bar_raw_data = {pm: {name: 0 for name in top_5_names} for pm in payment_methods_in_filter}
+    # Orders by Hour Chart: Uses filtered data
+    orders_by_hour = filtered_orders.annotate(hour=TruncHour('created_at')).values('hour').annotate(count=Count('id')).order_by('hour')
+    
+    # Day-wise Revenue Chart: Uses filtered data
+    day_wise_revenue = filtered_orders.annotate(day=TruncDay('created_at')).values('day').annotate(
+        revenue=Sum('total_price'),
+        orders=Count('id')
+    ).order_by('day')
 
-    for order in filtered_orders:
-        items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
-        payment_method = order.payment_method
-        if payment_method in payment_methods_in_filter and isinstance(items_list, list):
-            for item in items_list:
-                if item.get('name') in top_5_names:
-                    stacked_bar_raw_data[payment_method][item.get('name')] += item.get('quantity', 0)
-
-    stacked_bar_datasets = []
-    colors = ['#ff8100', '#0d6efd', '#ffc107', '#6c757d', '#198754']
-
-    for i, payment_method in enumerate(payment_methods_in_filter):
-        percentages = []
-        for name in top_5_names:
-            total_for_product = sum(stacked_bar_raw_data[pm].get(name, 0) for pm in payment_methods_in_filter)
-            if total_for_product > 0:
-                percentage = (stacked_bar_raw_data[payment_method].get(name, 0) / total_for_product) * 100
-                percentages.append(round(percentage, 2))
-            else:
-                percentages.append(0)
-
-        stacked_bar_datasets.append({
-            'label': payment_method,
-            'data': percentages,
-            'backgroundColor': colors[i % len(colors)]
-        })
-
-    # --- Final JSON Response ---
+    # --- Prepare data for JSON response ---
     data = {
         'key_metrics': {
             'total_revenue': f'{total_revenue:,.2f}',
@@ -255,18 +229,22 @@ def analytics_api_view(request):
             'labels': [item[0] for item in most_common_items],
             'data': [item[1] for item in most_common_items],
         },
-        'top_products_by_type': {
-            'labels': top_5_names,
-            'datasets': stacked_bar_datasets,
-        },
-        # New data for the donut chart
         'payment_method_distribution': {
-            'labels': payment_labels,
-            'data': payment_data,
+            'labels': [item['payment_method'] for item in payment_distribution],
+            'data': [float(item['total']) for item in payment_distribution],
+        },
+        'orders_by_hour': {
+            'labels': [h['hour'].strftime('%I %p').lstrip('0') for h in orders_by_hour],
+            'data': [h['count'] for h in orders_by_hour],
+        },
+        'day_wise_revenue': {
+            'labels': [d['day'].strftime('%d %b') for d in day_wise_revenue],
+            'revenue_data': [float(d['revenue']) for d in day_wise_revenue],
+            'orders_data': [d['orders'] for d in day_wise_revenue],
         }
     }
     return JsonResponse(data)
-
+    
 @admin_required
 def order_management_view(request):
     date_filter = request.GET.get('date_filter', 'today')
@@ -725,6 +703,7 @@ def generate_invoice_view(request, order_id):
     }
     
     return render(request, 'OrderMaster/invoice.html', context)
+
 
 
 
