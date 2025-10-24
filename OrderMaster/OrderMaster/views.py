@@ -303,6 +303,7 @@ def analytics_api_view(request):
 @admin_required
 def order_management_view(request):
     date_filter = request.GET.get('date_filter', 'today')
+    source_filter = request.GET.get('source_filter', 'all')  # NEW: source filter
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
 
@@ -322,14 +323,24 @@ def order_management_view(request):
     elif date_filter == 'custom' and start_date_str and end_date_str:
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
-    else: # Default to today
+    else:
         start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
         date_filter = 'today'
 
-    preparing_orders = Order.objects.filter(order_status='open', created_at__range=(start_date, end_date))
-    ready_orders = Order.objects.filter(order_status='ready', created_at__range=(start_date, end_date))
-    pickedup_orders = Order.objects.filter(order_status='pickedup', created_at__range=(start_date, end_date))
+    # Base queryset with date filter
+    base_orders = Order.objects.filter(created_at__range=(start_date, end_date))
+    
+    # NEW: Apply source filter
+    if source_filter == 'customer':
+        base_orders = base_orders.filter(order_placed_by='customer')
+    elif source_filter == 'counter':
+        base_orders = base_orders.filter(order_placed_by='counter')
+    # else 'all' - no additional filtering
+
+    preparing_orders = base_orders.filter(order_status='open')
+    ready_orders = base_orders.filter(order_status='ready')
+    pickedup_orders = base_orders.filter(order_status='pickedup')
 
     for order in preparing_orders:
         order.items_list = order.items if isinstance(order.items, list) else json.loads(order.items)
@@ -344,6 +355,7 @@ def order_management_view(request):
         'pickedup_orders': pickedup_orders,
         'date_display_str': date_filter.replace('_', ' ').title(),
         'selected_filter': date_filter,
+        'source_filter': source_filter,  # NEW: pass to template
         'start_date_val': start_date_str if date_filter == 'custom' else '',
         'end_date_val': end_date_str if date_filter == 'custom' else '',
         'active_page': 'order_management',
@@ -773,6 +785,7 @@ def generate_invoice_view(request, order_id):
     }
     
     return render(request, 'OrderMaster/invoice.html', context)
+
 
 
 
