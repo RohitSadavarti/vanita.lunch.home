@@ -204,7 +204,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .then(response => response.json())
-        .then(data => {
+        .then(data => { // This is the start of the second .then()
             if (data.success) {
                 editModal.hide();
                 
@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.location.reload();
                 }, 500);
             } else {
-                // *** START OF REVISED CHANGES ***
+                // *** START OF REVISED ERROR HANDLING ***
                 let errorMsg = 'Error updating item. Please fix the following issues:\n\n';
                 if (data.errors && typeof data.errors === 'object') {
                     // Loop through the errors object
@@ -235,15 +235,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 alert(errorMsg); // Show the detailed error
                 console.error('Validation Errors:', data.errors);
-                // *** END OF REVISED CHANGES ***
+                // *** END OF REVISED ERROR HANDLING ***
             }
-        .catch(error => {
+        }) // *** MOVED THE CLOSING PARENTHESIS HERE ***
+        .catch(error => { // *** .catch IS NOW CORRECTLY PLACED ***
             console.error('Error submitting form:', error);
             alert('An unexpected error occurred. Please try again.');
         });
-    });
-});
+    }); // This closes the submit event listener
+}); // This closes DOMContentLoaded
 </script>
 {% endblock %}
-
-
