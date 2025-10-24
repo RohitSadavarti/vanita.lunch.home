@@ -30,7 +30,6 @@ def analytics_api_view(request):
         return JsonResponse({'error': 'Failed to fetch analytics data'}, status=500)
 
 
-@admin_required
 def order_management_view(request):
     # ... (keep existing filtering logic) ...
     date_filter = request.GET.get('date_filter', 'today')
@@ -375,4 +374,5 @@ def generate_invoice_view(request, order_id):
         'print_date': timezone.now(),
      }
      return render(request, 'OrderMaster/invoice.html', context)
+
 
