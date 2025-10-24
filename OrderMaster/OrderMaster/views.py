@@ -8,7 +8,8 @@ from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_POST, require_http_methods
 from django.utils import timezone
 # Import models from .models
-from .models import MenuItem, Order, VlhAdmin, Customer, models
+# --- FIX: Removed 'Customer' which does not exist in models.py ---
+from .models import MenuItem, Order, VlhAdmin, models
 from .forms import MenuItemForm
 from .decorators import admin_required
 from datetime import datetime, timedelta
@@ -914,4 +915,5 @@ def generate_invoice_view(request, order_id):
     }
     
     return render(request, 'OrderMaster/invoice.html', context)
+
 
