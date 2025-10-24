@@ -468,94 +468,149 @@ def api_menu_items(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_place_order(request):
+    """
+    Handles POST requests to place a new order from the customer app/web.
+    Validates input, creates an Order record, and sends an FCM notification.
+    """
     try:
+        # 1. Parse and Validate Input Data
         data = json.loads(request.body)
         required_fields = ['customer_name', 'customer_mobile', 'items', 'total_price']
         if not all(field in data and data[field] for field in required_fields):
+            logger.warning("Place order attempt failed: Missing required fields.")
             return JsonResponse({'error': 'Missing required fields.'}, status=400)
 
         mobile = data['customer_mobile']
         if not (mobile.isdigit() and len(mobile) == 10):
+            logger.warning(f"Place order attempt failed: Invalid mobile format '{mobile}'.")
             return JsonResponse({'error': 'Invalid 10-digit mobile number format.'}, status=400)
 
         items = data['items']
         if not isinstance(items, list) or not items:
+            logger.warning("Place order attempt failed: Cart items missing or invalid.")
             return JsonResponse({'error': 'Cart items are missing or invalid.'}, status=400)
 
+        # 2. Validate Items and Calculate Subtotal Server-Side
         calculated_subtotal = Decimal('0.00')
         validated_items_for_db = []
-        for item in items:
-            menu_item = MenuItem.objects.get(id=item['id'])
-            quantity = int(item['quantity'])
-            if quantity <= 0: continue
-            item_total = menu_item.price * quantity
-            calculated_subtotal += item_total
-            validated_items_for_db.append({
-                'id': menu_item.id,
-                'name': menu_item.item_name,
-                'price': float(menu_item.price),
-                'quantity': quantity,
-            })
+        for item_data in items:
+            # Ensure required item keys exist
+            if not all(k in item_data for k in ['id', 'quantity']):
+                logger.warning(f"Place order attempt failed: Invalid item data {item_data}.")
+                return JsonResponse({'error': f'Invalid item data format for item ID {item_data.get("id", "unknown")}.'}, status=400)
 
-        final_total_server = Decimal(str(data['total_price']))
+            try:
+                menu_item = MenuItem.objects.get(id=int(item_data['id']))
+                quantity = int(item_data['quantity'])
+                if quantity <= 0:
+                    logger.warning(f"Skipping item ID {menu_item.id} with zero/negative quantity.")
+                    continue # Skip items with zero or negative quantity
 
-        # UPDATED: Create order with order_placed_by = 'customer'
+                item_total = menu_item.price * quantity
+                calculated_subtotal += item_total
+                validated_items_for_db.append({
+                    'id': menu_item.id,
+                    'name': menu_item.item_name,
+                    'price': float(menu_item.price), # Store price used for consistency
+                    'quantity': quantity,
+                })
+            except MenuItem.DoesNotExist:
+                logger.warning(f"Place order attempt failed: Menu item ID {item_data['id']} not found.")
+                return JsonResponse({'error': f'Menu item with ID {item_data["id"]} not found.'}, status=400)
+            except (ValueError, TypeError):
+                 logger.warning(f"Place order attempt failed: Invalid quantity for item ID {item_data.get('id', 'unknown')}.")
+                 return JsonResponse({'error': f'Invalid quantity for item ID {item_data.get("id", "unknown")}.'}, status=400)
+
+        if not validated_items_for_db:
+            logger.warning("Place order attempt failed: No valid items found after validation.")
+            return JsonResponse({'error': 'No valid items found in the order.'}, status=400)
+
+        # Use the total price sent from the client, but consider logging if it differs significantly from server calculation
+        final_total_client = Decimal(str(data['total_price']))
+        # Optional: Add a check if totals differ significantly
+        # if abs(final_total_client - calculated_subtotal) > Decimal('0.01'):
+        #    logger.warning(f"Client total {final_total_client} differs from server calculated subtotal {calculated_subtotal} for order by {data['customer_name']}")
+            # Decide whether to reject or proceed using server total
+
+        # 3. Create the Order in the Database
         new_order = Order.objects.create(
             customer_name=data['customer_name'],
             customer_mobile=data['customer_mobile'],
-            items=validated_items_for_db,
+            items=validated_items_for_db, # Store the validated list
             subtotal=calculated_subtotal,
-            discount=Decimal('0.00'),
-            total_price=final_total_server,
-            status='Pending',
-            payment_method=data.get('payment_method', 'COD'),
+            discount=Decimal('0.00'), # Assuming no discount for now
+            total_price=final_total_client, # Use the total provided by the client
+            status='Pending', # Customer orders start as Pending (awaiting confirmation)
+            payment_method=data.get('payment_method', 'COD'), # Default to COD if not provided
             payment_id=data.get('payment_id', None),
-            order_status='open',
-            order_placed_by='customer'  # <-- ADDED THIS LINE
+            order_status='open', # Internal status for kitchen view
+            order_placed_by='customer' # Set source correctly
         )
 
-        generated_order_id = new_order.order_id
+        generated_order_id = new_order.order_id # Use the auto-generated VLH-... ID
 
-        # Send Firebase notification
+        logger.info(f"Order {generated_order_id} (PK: {new_order.pk}) created successfully for {new_order.customer_name}.")
+
+        # 4. Send Firebase Notification (Corrected Section)
         try:
-            items_json = json.dumps(new_order.items)
-            message = messaging.Message(
-                notification=messaging.Notification(
-                    title='🔔 New Customer Order!',  # Updated notification
-                    body=f'Order #{generated_order_id} from {new_order.customer_name} - ₹{new_order.total_price}'
-                ),
-                data={
-                    'id': str(new_order.id),
-                    'order_id': generated_order_id,
-                    'customer_name': new_order.customer_name,
-                    'total_price': str(new_order.total_price),
-                    'items': items_json,
-                    'order_source': 'customer'  # Added for notification differentiation
-                },
-                topic='new_orders'
-            )
-            response = messaging.send(message)
-            logger.info(f'Successfully sent FCM message: {response}')
-        except Exception as e:
-            logger.error(f"Error sending FCM message: {e}")
+            items_json = json.dumps(new_order.items) # Ensure items list is JSON serialized
 
+            # **FIX:** Get the database primary key (integer ID) and convert to string
+            order_db_id = str(new_order.pk)
+
+            logger.info(f"Preparing FCM message for Order PK: {order_db_id}, Type: {type(new_order.pk)}") # Log type
+
+            # Construct the data payload
+            message_data = {
+                 'id': order_db_id, # Use the string representation of the integer PK
+                 'order_id': generated_order_id, # The VLH-... string ID
+                 'customer_name': new_order.customer_name,
+                 'total_price': str(new_order.total_price),
+                 'items': items_json,
+                 'order_source': 'customer'
+             }
+            logger.info(f"Constructed FCM Data Payload: {message_data}") # Log the exact payload
+
+            # Create the FCM message
+            message = messaging.Message(
+                 notification=messaging.Notification(
+                     title='🔔 New Customer Order!',
+                     body=f'Order #{generated_order_id} from {new_order.customer_name} - ₹{new_order.total_price}'
+                 ),
+                 data=message_data,
+                 topic='new_orders' # Send to the 'new_orders' topic
+             )
+
+            # Send the message
+            response = messaging.send(message)
+            logger.info(f'Successfully sent FCM message for customer order {generated_order_id}: {response}')
+        except Exception as e:
+            # Log the specific FCM error, but don't fail the whole order placement
+            logger.error(f"Error sending FCM message for customer order ID {generated_order_id} (PK: {new_order.pk}): {e}", exc_info=True)
+            # Decide if you want to alert the user or just log it.
+            # Here, we'll just log it and proceed.
+
+        # 5. Return Success Response
         return JsonResponse({
             'success': True,
             'order_id': generated_order_id,
             'message': 'Order placed successfully!'
         })
 
+    # --- Exception Handling ---
     except (json.JSONDecodeError, KeyError, ValueError, TypeError) as e:
-        logger.warning(f"Invalid order request: {e}")
-        return JsonResponse({'error': 'Invalid data format.'}, status=400)
-    except MenuItem.DoesNotExist:
-        return JsonResponse({'error': 'Invalid menu item in the order.'}, status=400)
+        logger.warning(f"Invalid order request data format: {e}")
+        return JsonResponse({'error': f'Invalid data format: {e}'}, status=400)
+    except MenuItem.DoesNotExist as e:
+        # This might be caught earlier, but good to have as a fallback
+        logger.warning(f"Invalid menu item specified in order: {e}")
+        return JsonResponse({'error': 'An invalid menu item was included in the order.'}, status=400)
     except Exception as e:
-        logger.error(f"Place order error: {e}")
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({'error': 'An unexpected server error occurred.'}, status=500)
-
+        # Catch any other unexpected errors during order creation or validation
+        logger.error(f"Unexpected error during place customer order: {e}", exc_info=True) # Log full traceback
+        # traceback.print_exc() # Alternatively print to console
+        return JsonResponse({'error': 'An unexpected server error occurred while placing the order.'}, status=500)
+        
 @admin_required
 def analytics_view(request):
     """Renders the analytics page."""
@@ -785,6 +840,7 @@ def generate_invoice_view(request, order_id):
     }
     
     return render(request, 'OrderMaster/invoice.html', context)
+
 
 
 
