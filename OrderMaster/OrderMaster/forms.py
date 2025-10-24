@@ -1,3 +1,4 @@
+# THIS IS THE CORRECT CODE
 # OrderMaster/forms.py
 
 from django import forms
@@ -13,7 +14,7 @@ class MenuItemForm(forms.ModelForm):
         widget=forms.NumberInput(attrs={
             'class': 'form-control', 
             'placeholder': 'e.g., 250.00',
-            'step': '0.01'  # Match the HTML step attribute
+            'step': '0.01'
         })
     )
 
