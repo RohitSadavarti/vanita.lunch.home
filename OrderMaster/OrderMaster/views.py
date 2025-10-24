@@ -458,7 +458,7 @@ def api_menu_items(request):
 def api_place_order(request):
     try:
         data = json.loads(request.body)
-        required_fields = ['customer_name', 'customer_mobile', 'items', 'total_price'] # Changed 'total_amount' to 'total_price' based on model
+        required_fields = ['customer_name', 'customer_mobile', 'items', 'total_price']
         if not all(field in data and data[field] for field in required_fields):
             return JsonResponse({'error': 'Missing required fields.'}, status=400)
 
@@ -480,52 +480,47 @@ def api_place_order(request):
             calculated_subtotal += item_total
             validated_items_for_db.append({
                 'id': menu_item.id,
-                'name': menu_item.item_name, # Use item_name from model
+                'name': menu_item.item_name,
                 'price': float(menu_item.price),
                 'quantity': quantity,
             })
 
-        # Ensure total_price from request is treated as Decimal
         final_total_server = Decimal(str(data['total_price']))
 
-        # --- THIS LINE IS REMOVED ---
-        # order_id = f"VLH{timezone.now().strftime('%y%m%d%H%M')}{str(uuid.uuid4())[:4].upper()}"
-        # --- Let the model's save method handle order_id generation ---
-
+        # UPDATED: Create order with order_placed_by = 'customer'
         new_order = Order.objects.create(
-            # order_id is NOT provided here, model will generate it
             customer_name=data['customer_name'],
             customer_mobile=data['customer_mobile'],
-            # Assuming address comes from customer profile or separate field if needed
             items=validated_items_for_db,
             subtotal=calculated_subtotal,
-            discount=Decimal('0.00'), # Default discount
-            total_price=final_total_server, # Use total from request, maybe validate against calculated?
-            status='Pending',  # Orders from API start as Pending, requiring confirmation
-            payment_method=data.get('payment_method', 'COD'), # Get payment method or default to COD
-            payment_id=data.get('payment_id', None), # Get payment ID if provided (e.g., online payment)
-            order_status='open' # Initial internal status
+            discount=Decimal('0.00'),
+            total_price=final_total_server,
+            status='Pending',
+            payment_method=data.get('payment_method', 'COD'),
+            payment_id=data.get('payment_id', None),
+            order_status='open',
+            order_placed_by='customer'  # <-- ADDED THIS LINE
         )
 
-        # Retrieve the generated order_id AFTER saving
         generated_order_id = new_order.order_id
 
-        # Send Firebase Cloud Messaging notification with data payload
+        # Send Firebase notification
         try:
-            items_json = json.dumps(new_order.items) # Ensure items are JSON serializable
+            items_json = json.dumps(new_order.items)
             message = messaging.Message(
                 notification=messaging.Notification(
-                    title='🔔 New Order Received!',
+                    title='🔔 New Customer Order!',  # Updated notification
                     body=f'Order #{generated_order_id} from {new_order.customer_name} - ₹{new_order.total_price}'
                 ),
                 data={
-                    'id': str(new_order.id), # Database primary key
-                    'order_id': generated_order_id, # The generated 8-digit ID
+                    'id': str(new_order.id),
+                    'order_id': generated_order_id,
                     'customer_name': new_order.customer_name,
                     'total_price': str(new_order.total_price),
-                    'items': items_json, # Send items as a JSON string
+                    'items': items_json,
+                    'order_source': 'customer'  # Added for notification differentiation
                 },
-                topic='new_orders' # Make sure this topic is correct
+                topic='new_orders'
             )
             response = messaging.send(message)
             logger.info(f'Successfully sent FCM message: {response}')
@@ -534,7 +529,7 @@ def api_place_order(request):
 
         return JsonResponse({
             'success': True,
-            'order_id': generated_order_id, # Return the generated ID
+            'order_id': generated_order_id,
             'message': 'Order placed successfully!'
         })
 
@@ -545,10 +540,10 @@ def api_place_order(request):
         return JsonResponse({'error': 'Invalid menu item in the order.'}, status=400)
     except Exception as e:
         logger.error(f"Place order error: {e}")
-        # Add traceback for detailed debugging
         import traceback
         traceback.print_exc()
         return JsonResponse({'error': 'An unexpected server error occurred.'}, status=500)
+
 @admin_required
 def analytics_view(request):
     """Renders the analytics page."""
@@ -665,7 +660,6 @@ def take_order_view(request):
 
 
 @csrf_exempt
-# @admin_required #
 @require_POST
 def create_manual_order(request):
     """API endpoint to create a manual order from staff interface"""
@@ -709,10 +703,9 @@ def create_manual_order(request):
         if not validated_items:
             return JsonResponse({'error': 'No valid items in order'}, status=400)
 
-        # --- THIS LINE IS CHANGED ---
         order_id = str(random.randint(10000000, 99999999))
-        # --- END OF CHANGE ---
 
+        # UPDATED: Create order with order_placed_by = 'counter'
         new_order = Order.objects.create(
             order_id=order_id,
             customer_name=customer_name,
@@ -721,27 +714,49 @@ def create_manual_order(request):
             subtotal=subtotal,
             discount=Decimal('0.00'),
             total_price=subtotal,
-            status='Confirmed',
+            status='Confirmed',  # Counter orders are auto-confirmed
             payment_method=payment_method,
-            payment_id=payment_method, # Assuming payment_id should just be the method for manual orders
-            order_status='open'
+            payment_id=payment_method,
+            order_status='open',
+            order_placed_by='counter'  # <-- ADDED THIS LINE
         )
+
+        # Optional: Send notification for counter orders too
+        try:
+            items_json = json.dumps(new_order.items)
+            message = messaging.Message(
+                notification=messaging.Notification(
+                    title='✅ Counter Order Created',
+                    body=f'Order #{order_id} - {customer_name} - ₹{subtotal}'
+                ),
+                data={
+                    'id': str(new_order.id),
+                    'order_id': order_id,
+                    'customer_name': customer_name,
+                    'total_price': str(subtotal),
+                    'items': items_json,
+                    'order_source': 'counter'  # For differentiation
+                },
+                topic='new_orders'
+            )
+            messaging.send(message)
+        except Exception as e:
+            logger.error(f"Error sending counter order notification: {e}")
 
         return JsonResponse({
             'success': True,
             'order_id': order_id,
-            'order_pk': new_order.id, # Send the database primary key for the invoice URL
+            'order_pk': new_order.id,
             'total': float(subtotal),
             'message': 'Order created successfully!'
         })
 
     except Exception as e:
         logger.error(f"Error creating manual order: {e}")
-        # Add more specific error logging if needed
         import traceback
         traceback.print_exc()
         return JsonResponse({'error': 'An internal server error occurred.'}, status=500)
-
+        
 @admin_required
 def generate_invoice_view(request, order_id):
     """Generate printable invoice for an order"""
@@ -758,6 +773,7 @@ def generate_invoice_view(request, order_id):
     }
     
     return render(request, 'OrderMaster/invoice.html', context)
+
 
 
 
