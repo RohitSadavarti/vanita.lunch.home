@@ -41,14 +41,6 @@
         }
     }
 
-    /* Action buttons container */
-    .order-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        align-items: stretch;
-    }
-
     /* Invoice button styling */
     .invoice-btn {
         display: inline-flex;
@@ -62,8 +54,8 @@
     /* --- NEW BADGE STYLES --- */
     .order-source-badge {
         position: absolute;
-        top: 10px;
-        right: 10px;
+        top: 8px; /* Adjusted position */
+        right: 8px; /* Adjusted position */
         font-size: 0.75rem;
         padding: 0.25rem 0.5rem;
         border-radius: 12px;
@@ -76,6 +68,22 @@
         background-color: #10b981;
         color: white;
     }
+
+    /* --- REMOVED OLD .order-actions STYLE --- */
+    /*
+    .order-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: stretch;
+    }
+    */
+
+    /* NEW: Ensure buttons inside the new d-flex container behave */
+    .card-body .d-flex .btn {
+        /* Optional: Add styles if needed, e.g., min-width */
+    }
+
 </style>
 
 <div class="container-fluid">
@@ -84,7 +92,7 @@
             <h1 class="h3 mb-0 text-gray-800">Order Management</h1>
             <p class="text-muted mb-0">Live view of kitchen and pickup status for: <strong>{{ date_display_str }}</strong></p>
         </div>
-        
+
         <div class="d-flex flex-column flex-md-row gap-2 mt-3 mt-md-0">
             <div class="dropdown">
                 <button class="btn btn-secondary dropdown-toggle btn-sm" type="button" id="dateFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
@@ -99,10 +107,10 @@
                     <li><a class="dropdown-item" href="#" id="customDateBtn">Custom Range</a></li>
                 </ul>
             </div>
-            
+
             <div class="dropdown">
                 <button class="btn btn-outline-primary dropdown-toggle btn-sm" type="button" id="sourceFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-filter me-1"></i> 
+                    <i class="fas fa-filter me-1"></i>
                     {% if source_filter == 'customer' %}
                         Customer Orders
                     {% elif source_filter == 'counter' %}
@@ -113,19 +121,19 @@
                 </button>
                 <ul class="dropdown-menu" aria-labelledby="sourceFilterDropdown">
                     <li>
-                        <a class="dropdown-item {% if source_filter == 'all' %}active{% endif %}" 
+                        <a class="dropdown-item {% if source_filter == 'all' or not source_filter %}active{% endif %}"
                            href="?date_filter={{ selected_filter }}&source_filter=all{% if selected_filter == 'custom' %}&start_date={{ start_date_val }}&end_date={{ end_date_val }}{% endif %}">
                             <i class="fas fa-list me-2"></i> All Orders
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item {% if source_filter == 'customer' %}active{% endif %}" 
+                        <a class="dropdown-item {% if source_filter == 'customer' %}active{% endif %}"
                            href="?date_filter={{ selected_filter }}&source_filter=customer{% if selected_filter == 'custom' %}&start_date={{ start_date_val }}&end_date={{ end_date_val }}{% endif %}">
                             <i class="fas fa-user me-2"></i> Customer Orders
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item {% if source_filter == 'counter' %}active{% endif %}" 
+                        <a class="dropdown-item {% if source_filter == 'counter' %}active{% endif %}"
                            href="?date_filter={{ selected_filter }}&source_filter=counter{% if selected_filter == 'custom' %}&start_date={{ start_date_val }}&end_date={{ end_date_val }}{% endif %}">
                             <i class="fas fa-cash-register me-2"></i> Counter Orders
                         </a>
@@ -136,7 +144,7 @@
             <div id="customDateRange" class="d-none align-items-center">
                 <form class="d-flex flex-column flex-sm-row align-items-sm-center" method="get">
                     <input type="hidden" name="date_filter" value="custom">
-                    <input type="hidden" name="source_filter" value="{{ source_filter }}">
+                    <input type="hidden" name="source_filter" value="{{ source_filter|default:'all' }}">
                     <input type="date" class="form-control form-control-sm me-sm-2 mb-2 mb-sm-0" name="start_date" value="{{ start_date_val }}">
                     <input type="date" class="form-control form-control-sm me-sm-2 mb-2 mb-sm-0" name="end_date" value="{{ end_date_val }}">
                     <button type="submit" class="btn btn-primary btn-sm">Apply</button>
@@ -148,7 +156,7 @@
         <div class="col-lg-4 mb-4">
             <div class="card shadow-sm">
                 <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-utensils me-2"></i>Preparing ({{ preparing_orders.count }})</h5>
+                    <h5 class="mb-0"><i class="fas fa-utensils me-2"></i>Preparing ({{ preparing_orders|length }})</h5>
                     <a class="card-header-action" data-bs-toggle="collapse" href="#preparingCollapse" role="button" aria-expanded="true" aria-controls="preparingCollapse">
                         <span class="chevron">-</span>
                     </a>
@@ -157,33 +165,32 @@
                     <div class="card-body order-list-container">
                         {% for order in preparing_orders %}
                         <div class="card" data-order-id="{{ order.id }}" data-created-at="{{ order.created_at.isoformat }}">
-                            <div class="card-body">
-                                <span class="order-source-badge badge-{{ order.order_placed_by|default:'customer' }}">
+                            <div class="card-body position-relative pt-4"> <span class="order-source-badge badge-{{ order.order_placed_by|default:'customer' }}">
                                     {% if order.order_placed_by == 'counter' %}
                                         <i class="fas fa-cash-register me-1"></i> Counter
                                     {% else %}
                                         <i class="fas fa-user me-1"></i> Customer
                                     {% endif %}
                                 </span>
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div class="flex-grow-1">
-                                        <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
-                                        <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
-                                        <ul class="list-unstyled mb-2">
-                                            {% for item in order.items_list %}
-                                            <li><small>{{ item.quantity }} x {{ item.name }}</small></li>
-                                            {% endfor %}
-                                        </ul>
-                                        <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
-                                        <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
-                                        <p class="card-text mb-0 timer">Preparing for: <span class="fw-bold">00:00:00</span></p>
-                                    </div>
-                                    <div class="order-actions">
-                                        <button class="btn btn-sm btn-success mark-ready-btn">Mark Ready</button>
-                                        <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-info text-white">
-                                            <i class="fas fa-file-invoice"></i> Invoice
-                                        </a>
-                                    </div>
+
+                                <div class="mb-2"> <h6 class="card-title fw-bold mb-1">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                    <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
+                                    <ul class="list-unstyled mb-2 ps-3" style="font-size: 0.8rem;"> {% for item in order.items_list %}
+                                            <li>{{ item.quantity }} x {{ item.name }}</li>
+                                        {% empty %}
+                                            <li><small class="text-danger">No items found</small></li>
+                                        {% endfor %}
+                                    </ul>
+                                    <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                                    <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
+                                    <p class="card-text mb-0 timer">Preparing for: <span class="fw-bold">00:00:00</span></p>
+                                </div>
+
+                                <div class="d-flex justify-content-end gap-2 mt-2">
+                                     <button class="btn btn-sm btn-success mark-ready-btn flex-grow-1 flex-md-grow-0">Mark Ready</button>
+                                     <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-info text-white flex-grow-1 flex-md-grow-0">
+                                         <i class="fas fa-file-invoice"></i> Invoice
+                                     </a>
                                 </div>
                             </div>
                         </div>
@@ -194,47 +201,44 @@
                 </div>
             </div>
         </div>
-
         <div class="col-lg-4 mb-4">
             <div class="card shadow-sm">
                 <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-shopping-bag me-2"></i>Ready ({{ ready_orders.count }})</h5>
-                    <a class="card-header-action" data-bs-toggle="collapse" href="#readyCollapse" role="button" aria-expanded="true" aria-controls="readyCollapse">
-                        <span class="chevron">-</span>
-                    </a>
+                     <h5 class="mb-0"><i class="fas fa-shopping-bag me-2"></i>Ready ({{ ready_orders|length }})</h5>
+                     <a class="card-header-action" data-bs-toggle="collapse" href="#readyCollapse" role="button" aria-expanded="true" aria-controls="readyCollapse">
+                         <span class="chevron">-</span>
+                     </a>
                 </div>
                 <div class="collapse show" id="readyCollapse">
                     <div class="card-body order-list-container">
                         {% for order in ready_orders %}
                         <div class="card" data-order-id="{{ order.id }}" data-ready-at="{{ order.ready_time.isoformat }}">
-                            <div class="card-body">
-                                <span class="order-source-badge badge-{{ order.order_placed_by|default:'customer' }}">
-                                    {% if order.order_placed_by == 'counter' %}
+                            <div class="card-body position-relative pt-4">
+                                 <span class="order-source-badge badge-{{ order.order_placed_by|default:'customer' }}">
+                                     {% if order.order_placed_by == 'counter' %}
                                         <i class="fas fa-cash-register me-1"></i> Counter
-                                    {% else %}
+                                     {% else %}
                                         <i class="fas fa-user me-1"></i> Customer
-                                    {% endif %}
-                                </span>
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div class="flex-grow-1">
-                                        <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
-                                        <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
-                                        <ul class="list-unstyled mb-2">
-                                            {% for item in order.items_list %}
-                                            <li><small>{{ item.quantity }} x {{ item.name }}</small></li>
-                                            {% endfor %}
-                                        </ul>
-                                        <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
-                                        <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
-                                        <p class="card-text mb-0 timer">Ready for: <span class="fw-bold">00:00:00</span></p>
-                                    </div>
-                                    <div class="order-actions">
-                                        <button class="btn btn-sm btn-primary mark-pickedup-btn">Picked Up</button>
-                                        <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-info text-white">
-                                            <i class="fas fa-file-invoice"></i> Invoice
-                                        </a>
-                                    </div>
-                                </div>
+                                     {% endif %}
+                                 </span>
+                                 <div class="mb-2"> <h6 class="card-title fw-bold mb-1">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                     <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
+                                     <ul class="list-unstyled mb-2 ps-3" style="font-size: 0.8rem;">
+                                         {% for item in order.items_list %}
+                                            <li>{{ item.quantity }} x {{ item.name }}</li>
+                                         {% empty %}
+                                            <li><small class="text-danger">No items found</small></li>
+                                         {% endfor %}
+                                     </ul>
+                                     <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                                     <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
+                                     <p class="card-text mb-0 timer">Ready for: <span class="fw-bold">00:00:00</span></p>
+                                 </div>
+                                 <div class="d-flex justify-content-end gap-2 mt-2"> <button class="btn btn-sm btn-primary mark-pickedup-btn flex-grow-1 flex-md-grow-0">Picked Up</button>
+                                      <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-info text-white flex-grow-1 flex-md-grow-0">
+                                          <i class="fas fa-file-invoice"></i> Invoice
+                                      </a>
+                                 </div>
                             </div>
                         </div>
                         {% empty %}
@@ -244,63 +248,56 @@
                 </div>
             </div>
         </div>
-
         <div class="col-lg-4 mb-4">
             <div class="card shadow-sm">
-                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-check-circle me-2"></i>Picked Up ({{ pickedup_orders.count }})</h5>
-                    <a class="card-header-action" data-bs-toggle="collapse" href="#pickedUpCollapse" role="button" aria-expanded="true" aria-controls="pickedUpCollapse">
-                        <span class="chevron">-</span>
-                    </a>
-                </div>
-                <div class="collapse show" id="pickedUpCollapse">
-                    <div class="card-body order-list-container">
-                        {% for order in pickedup_orders %}
-                        <div class="card bg-light" data-order-id="{{ order.id }}">
-                            <div class="card-body">
-                                <span class="order-source-badge badge-{{ order.order_placed_by|default:'customer' }}">
-                                    {% if order.order_placed_by == 'counter' %}
+                 <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                     <h5 class="mb-0"><i class="fas fa-check-circle me-2"></i>Picked Up ({{ pickedup_orders|length }})</h5>
+                     <a class="card-header-action" data-bs-toggle="collapse" href="#pickedUpCollapse" role="button" aria-expanded="true" aria-controls="pickedUpCollapse">
+                         <span class="chevron">-</span>
+                     </a>
+                 </div>
+                 <div class="collapse show" id="pickedUpCollapse">
+                     <div class="card-body order-list-container">
+                         {% for order in pickedup_orders %}
+                         <div class="card bg-light" data-order-id="{{ order.id }}">
+                            <div class="card-body position-relative pt-4">
+                                 <span class="order-source-badge badge-{{ order.order_placed_by|default:'customer' }}">
+                                     {% if order.order_placed_by == 'counter' %}
                                         <i class="fas fa-cash-register me-1"></i> Counter
-                                    {% else %}
+                                     {% else %}
                                         <i class="fas fa-user me-1"></i> Customer
-                                    {% endif %}
-                                </span>
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div class="flex-grow-1">
-                                        <h6 class="card-title fw-bold text-muted">#{{ order.order_id }} - {{ order.customer_name }}</h6>
-                                        <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
-                                        <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
-                                        {% if order.pickup_time %}
-                                        <p class="card-text mb-0"><small class="text-muted">Completed: {{ order.pickup_time|date:"h:i A" }}</small></p>
-                                        {% endif %}
-                                    </div>
-                                    <div class="order-actions">
-                                        <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-outline-secondary">
-                                            <i class="fas fa-file-invoice"></i> Invoice
-                                        </a>
-                                    </div>
-                                </div>
+                                     {% endif %}
+                                 </span>
+                                 <div class="mb-2"> <h6 class="card-title fw-bold text-muted mb-1">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                     <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
+                                     <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                                     {% if order.pickup_time %}
+                                         <p class="card-text mb-0"><small class="text-muted">Completed: {{ order.pickup_time|date:"d M, h:i A" }}</small></p>
+                                     {% endif %}
+                                 </div>
+                                 <div class="d-flex justify-content-end gap-2 mt-2"> <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-outline-secondary flex-grow-1 flex-md-grow-0">
+                                          <i class="fas fa-file-invoice"></i> Invoice
+                                      </a>
+                                 </div>
                             </div>
-                        </div>
-                        {% empty %}
-                        <p class="text-center text-muted p-4">No orders completed in this period.</p>
-                        {% endfor %}
-                    </div>
-                </div>
+                         </div>
+                         {% empty %}
+                         <p class="text-center text-muted p-4">No orders completed in this period.</p>
+                         {% endfor %}
+                     </div>
+                 </div>
             </div>
         </div>
+        </div>
     </div>
-</div>
-</main>
-
-<script>
+</main> <script>
 document.addEventListener('DOMContentLoaded', function () {
     // --- COLLAPSE ICON TOGGLER ---
     document.querySelectorAll('.card-header-action').forEach(function(element) {
         const collapseTarget = document.querySelector(element.getAttribute('href'));
         if (collapseTarget) {
             const chevron = element.querySelector('.chevron');
-            
+
             // Initial state check
             if (!collapseTarget.classList.contains('show')) {
                 chevron.style.transform = 'rotate(-90deg)';
@@ -336,38 +333,57 @@ document.addEventListener('DOMContentLoaded', function () {
         const orderCard = button.closest('.card[data-order-id]');
         if (!orderCard) {
             console.error('Could not find parent order card.');
+            alert('Error: Could not identify the order card.');
             return;
         }
         const orderId = orderCard.dataset.orderId;
+        if (!orderId) {
+             console.error('Order ID missing from card.');
+             alert('Error: Order ID is missing.');
+             return;
+        }
+
+        button.disabled = true; // Prevent double clicks
+        button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Updating...';
+
 
         try {
-            // *** THIS IS THE FIX: Changed URL to include '/api/' ***
+            // Ensure the API path is correct
             const response = await fetch('/api/update-order-status/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken')
                 },
-                body: JSON.stringify({ id: orderId, status: newStatus })
+                body: JSON.stringify({ id: orderId, status: newStatus }) // 'id' should match backend expectation (pk)
             });
 
             if (response.ok) {
-                orderCard.style.transition = 'opacity 0.5s ease';
+                orderCard.style.transition = 'opacity 0.5s ease, transform 0.3s ease';
                 orderCard.style.opacity = '0';
-                setTimeout(() => { window.location.reload(); }, 500);
+                orderCard.style.transform = 'scale(0.95)';
+                setTimeout(() => { window.location.reload(); }, 300); // Faster reload
             } else {
-                alert('Error updating status. Please try again.');
+                 const errorData = await response.json().catch(() => ({ error: 'Unknown error updating status.' }));
+                 alert(`Error updating status: ${errorData.error}`);
+                 console.error('Failed response:', response.status, errorData);
+                 // Re-enable button on failure
+                 button.disabled = false;
+                 button.textContent = newStatus === 'ready' ? 'Mark Ready' : 'Picked Up';
             }
         } catch (error) {
             console.error('Failed to update order status:', error);
             alert('A network error occurred. Please check the console.');
+             // Re-enable button on network error
+             button.disabled = false;
+             button.textContent = newStatus === 'ready' ? 'Mark Ready' : 'Picked Up';
         }
     };
-    
+
     document.querySelectorAll('.mark-ready-btn').forEach(button => {
         button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'ready'));
     });
-    
+
     document.querySelectorAll('.mark-pickedup-btn').forEach(button => {
         button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'pickedup'));
     });
@@ -376,7 +392,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const updateTimers = () => {
         const setTimer = (card, startTime) => {
             const now = new Date();
-            const diff = now - startTime;
+            const start = new Date(startTime); // Ensure startTime is a Date object
+             if (isNaN(start)) { // Check if startTime is valid
+                 console.warn("Invalid start time for timer:", startTime);
+                 return;
+             }
+            const diff = now - start;
+             if (diff < 0) return; // Don't show timer for future times (unlikely here)
+
             const totalMinutes = Math.floor(diff / (1000 * 60));
 
             const seconds = Math.floor((diff / 1000) % 60);
@@ -386,7 +409,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const timerSpan = card.querySelector('.timer span');
             if (timerSpan) {
                 timerSpan.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-                
+
                 timerSpan.classList.remove('timer-green', 'timer-amber', 'timer-red');
                 if (totalMinutes < 15) {
                     timerSpan.classList.add('timer-green');
@@ -397,13 +420,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         };
-        
-        document.querySelectorAll('.card[data-created-at]').forEach(card => {
-            setTimer(card, new Date(card.dataset.createdAt));
+
+        // Timer for 'Preparing' orders (based on creation time)
+        document.querySelectorAll('#preparingCollapse .card[data-created-at]').forEach(card => {
+            setTimer(card, card.dataset.createdAt);
         });
 
-        document.querySelectorAll('.card[data-ready-at]').forEach(card => {
-            setTimer(card, new Date(card.dataset.readyAt));
+        // Timer for 'Ready' orders (based on ready time)
+        document.querySelectorAll('#readyCollapse .card[data-ready-at]').forEach(card => {
+             // Ensure ready_time exists and is valid before setting timer
+             if (card.dataset.readyAt && !isNaN(new Date(card.dataset.readyAt))) {
+                setTimer(card, card.dataset.readyAt);
+             } else {
+                 // Optionally hide or show a placeholder if ready time is missing/invalid
+                 const timerP = card.querySelector('.timer');
+                 if(timerP) timerP.style.display = 'none';
+             }
         });
     };
 
@@ -418,9 +450,12 @@ document.addEventListener('DOMContentLoaded', function () {
         customDateBtn.addEventListener('click', (e) => {
             e.preventDefault();
             customDateRangeDiv.classList.toggle('d-none');
-            customDateRangeDiv.classList.toggle('d-flex');
+            customDateRangeDiv.classList.toggle('d-flex'); // Use d-flex to align items
+            // Hide dropdown if custom range is shown
+            var dateDropdown = bootstrap.Dropdown.getInstance(document.getElementById('dateFilterDropdown'));
+            if (dateDropdown) dateDropdown.hide();
         });
-        
+
         // If the page was loaded with a custom filter, show the date inputs
         if ("{{ selected_filter }}" === "custom") {
              customDateRangeDiv.classList.remove('d-none');
