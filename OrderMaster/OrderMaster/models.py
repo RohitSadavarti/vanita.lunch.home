@@ -146,7 +146,6 @@ def menu_management_view(request):
     }
     return render(request, 'OrderMaster/menu_management.html', context)
 
-@csrf_exempt
 @require_http_methods(["POST"])
 def api_place_order(request):
     # ... (keep existing validation logic) ...
@@ -368,6 +367,7 @@ def generate_invoice_view(request, order_id):
         'print_date': timezone.now(),
      }
      return render(request, 'OrderMaster/invoice.html', context)
+
 
 
 
