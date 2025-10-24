@@ -4,77 +4,6 @@
 {% block title %}Menu Management{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Menu Management</h1>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMenuItemModal">
-            <i class="fas fa-plus fa-sm text-white-50"></i> Add New Item
-        </button>
-    </div>
-
-    <div class="row">
-        {% for item in menu_items %}
-        <div class="col-lg-6 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body d-flex align-items-center">
-                    <img src="{{ item.image_url|default:'https://placehold.co/100x100/f8f9fa/6c757d?text=No+Image' }}" class="rounded me-3" style="width: 80px; height: 80px; object-fit: cover;" alt="{{ item.item_name }}">
-                    <div class="flex-grow-1">
-                        <h5 class="card-title">{{ item.item_name }}</h5>
-                        <h6 class="card-subtitle mb-2 text-muted">{{ item.category }}</h6>
-                        <p class="card-text mb-1"><strong>Price:</strong> ₹{{ item.price }}</p>
-                        <p class="card-text"><strong>Type:</strong> {{ item.veg_nonveg }}</p>
-                    </div>
-                    <div class="action-buttons ms-3">
-                        <button class="btn btn-info btn-sm edit-btn" data-item-id="{{ item.id }}">Edit</button>
-                        <form action="{% url 'delete_menu_item' item.id %}" method="post" class="d-inline">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this item?')">Delete</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-
-<div class="modal fade" id="addMenuItemModal" tabindex="-1" aria-labelledby="addMenuItemModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addMenuItemModalLabel">Add New Menu Item</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form action="{% url 'menu_management' %}" method="post">
-                    {% csrf_token %}
-                    <div class="row">
-                        <div class="col-md-6 mb-3">{{ add_item_form.item_name.label_tag }} {{ add_item_form.item_name }}</div>
-                        <div class="col-md-6 mb-3">{{ add_item_form.price.label_tag }} {{ add_item_form.price }}</div>
-                    </div>
-                    <div class="mb-3">{{ add_item_form.description.label_tag }} {{ add_item_form.description }}</div>
-                    <div class="mb-3">
-                        <label for="{{ add_item_form.image_url.id_for_label }}" class="form-label">Image URL</label>
-                        {{ add_item_form.image_url }}
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">{{ add_item_form.category.label_tag }} {{ add_item_form.category }}</div>
-                        <div class="col-md-6 mb-3">{{ add_item_form.veg_nonveg.label_tag }} {{ add_item_form.veg_nonveg }}</div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">{{ add_item_form.meal_type.label_tag }} {{ add_item_form.meal_type }}</div>
-                        <div class="col-md-6 mb-3">{{ add_item_form.availability_time.label_tag }} {{ add_item_form.availability_time }}</div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary">Save Item</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="modal fade" id="editMenuItemModal" tabindex="-1" aria-labelledby="editMenuItemModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -102,12 +31,13 @@
                     </div>
                     <div class="mb-3">
                         <label for="edit-image_url" class="form-label">Image URL</label>
-                        <input type="url" class="form-control" id="edit-image_url" name="image_url" placeholder="https://example.com/image.jpg">
+                        <input type="url" class="form-control" id="edit-image_url" name="image_url" placeholder="[https://example.com/image.jpg](https://example.com/image.jpg)">
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="edit-category" class="form-label">Category</label>
-                            <select class="form-select" id="edit-category" name="category">
+                            <select class="form-select" id="edit-category" name="category" required>
+                                <option value="" disabled selected>Select Category</option>
                                 <option value="Main Course">Main Course</option>
                                 <option value="Starters">Starters</option>
                                 <option value="Beverages">Beverages</option>
@@ -116,7 +46,8 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="edit-veg_nonveg" class="form-label">Type</label>
-                            <select class="form-select" id="edit-veg_nonveg" name="veg_nonveg">
+                             <select class="form-select" id="edit-veg_nonveg" name="veg_nonveg" required>
+                                <option value="" disabled selected>Select Type</option>
                                 <option value="Veg">Veg</option>
                                 <option value="Non-Veg">Non-Veg</option>
                                 <option value="Contains Egg">Contains Egg</option>
@@ -126,7 +57,8 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="edit-meal_type" class="form-label">Meal Type</label>
-                            <select class="form-select" id="edit-meal_type" name="meal_type">
+                             <select class="form-select" id="edit-meal_type" name="meal_type" required>
+                                <option value="" disabled selected>Select Meal Type</option>
                                 <option value="Breakfast">Breakfast</option>
                                 <option value="Lunch">Lunch</option>
                                 <option value="Dinner">Dinner</option>
@@ -135,7 +67,7 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="edit-availability_time" class="form-label">Availability</label>
-                            <input type="text" class="form-control" id="edit-availability_time" name="availability_time">
+                            <input type="text" class="form-control" id="edit-availability_time" name="availability_time" placeholder="e.g., 12 PM - 10 PM">
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -150,129 +82,138 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    
+
     const editModalEl = document.getElementById('editMenuItemModal');
     const editModal = new bootstrap.Modal(editModalEl);
+    const editForm = document.getElementById('editMenuItemForm'); // Reference the form itself
 
-    
-    // Replace the edit button event listener section in menu_management.html
-// This should go around line 136
+    // --- FIX: Updated Edit Button Handler ---
+    document.querySelectorAll('.edit-btn').forEach(button => {
+        button.addEventListener('click', async function() {
+            const itemId = this.dataset.itemId;
+            editForm.action = `/api/menu-item/${itemId}/`; // Set form action URL
 
-document.querySelectorAll('.edit-btn').forEach(button => {
-    button.addEventListener('click', async function() {
-        const itemId = this.dataset.itemId;
-        
-        try {
-            const response = await fetch(`/api/menu-item/${itemId}/`);
-            if (!response.ok) {
-                throw new Error('Failed to fetch item details');
+            try {
+                const response = await fetch(`/api/menu-item/${itemId}/`);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch item details (Status: ${response.status})`);
+                }
+
+                const item = await response.json();
+                console.log('Fetched item data:', item); // Debug log
+
+                // Populate all form fields
+                document.getElementById('edit-item-id').value = item.id || ''; // Hidden field
+                document.getElementById('edit-item_name').value = item.item_name || '';
+                document.getElementById('edit-price').value = item.price || '';
+                document.getElementById('edit-description').value = item.description || '';
+                document.getElementById('edit-image_url').value = item.image_url || '';
+                document.getElementById('edit-availability_time').value = item.availability_time || '';
+
+                // --- FIX: Correctly set dropdown values ---
+                const categorySelect = document.getElementById('edit-category');
+                const vegNonvegSelect = document.getElementById('edit-veg_nonveg');
+                const mealTypeSelect = document.getElementById('edit-meal_type');
+
+                // Set category (check if value exists in options)
+                if (item.category && [...categorySelect.options].some(opt => opt.value === item.category)) {
+                    categorySelect.value = item.category;
+                    console.log('Set category to:', item.category);
+                } else {
+                    categorySelect.value = ""; // Default to placeholder if not found
+                    console.warn(`Category '${item.category}' not found in dropdown options.`);
+                }
+
+                // Set veg/non-veg (check if value exists in options)
+                if (item.veg_nonveg && [...vegNonvegSelect.options].some(opt => opt.value === item.veg_nonveg)) {
+                    vegNonvegSelect.value = item.veg_nonveg;
+                    console.log('Set veg_nonveg to:', item.veg_nonveg);
+                } else {
+                    vegNonvegSelect.value = ""; // Default to placeholder
+                    console.warn(`Veg/Non-veg type '${item.veg_nonveg}' not found in dropdown options.`);
+                }
+
+                // Set meal type (check if value exists in options)
+                if (item.meal_type && [...mealTypeSelect.options].some(opt => opt.value === item.meal_type)) {
+                    mealTypeSelect.value = item.meal_type;
+                    console.log('Set meal_type to:', item.meal_type);
+                } else {
+                    mealTypeSelect.value = ""; // Default to placeholder
+                    console.warn(`Meal type '${item.meal_type}' not found in dropdown options.`);
+                }
+                // --- END FIX ---
+
+                // Show the modal
+                editModal.show();
+            } catch (error) {
+                console.error('Error fetching menu item details:', error);
+                alert(`Could not load item details: ${error.message}. Please try again.`);
             }
-            
-            const item = await response.json();
-            
-            console.log('Fetched item data:', item); // Debug log
-            
-            // Populate all form fields
-            document.getElementById('edit-item-id').value = item.id;
-            document.getElementById('edit-item_name').value = item.item_name || '';
-            document.getElementById('edit-price').value = item.price || '';
-            document.getElementById('edit-description').value = item.description || '';
-            document.getElementById('edit-image_url').value = item.image_url || '';
-            document.getElementById('edit-availability_time').value = item.availability_time || '';
-            
-            // CRITICAL FIX: Set dropdown values with proper null handling
-            const categorySelect = document.getElementById('edit-category');
-            const vegNonvegSelect = document.getElementById('edit-veg_nonveg');
-            const mealTypeSelect = document.getElementById('edit-meal_type');
-            
-            // Set category
-            if (item.category) {
-                categorySelect.value = item.category;
-                console.log('Set category to:', item.category);
-            }
-            
-            // Set veg/non-veg
-            if (item.veg_nonveg) {
-                vegNonvegSelect.value = item.veg_nonveg;
-                console.log('Set veg_nonveg to:', item.veg_nonveg);
-            }
-            
-            // Set meal type
-            if (item.meal_type) {
-                mealTypeSelect.value = item.meal_type;
-                console.log('Set meal_type to:', item.meal_type);
-            }
-            
-            // Verify values were set
-            setTimeout(() => {
-                console.log('Category value:', categorySelect.value);
-                console.log('Veg/NonVeg value:', vegNonvegSelect.value);
-                console.log('Meal Type value:', mealTypeSelect.value);
-            }, 100);
-            
-            // Show the modal
-            editModal.show();
-        } catch (error) {
-            console.error('Error fetching menu item details:', error);
-            alert('Could not load item details. Please try again.');
-        }
+        });
     });
-});    
-    document.getElementById('editMenuItemForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const itemId = document.getElementById('edit-item-id').value;
-        const formData = new FormData(this);
 
-        fetch(`/api/menu-item/${itemId}/`, {
+    // --- FIX: Updated Form Submission Handler ---
+    editForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const submitButton = editForm.querySelector('button[type="submit"]');
+        submitButton.disabled = true; // Prevent double submit
+        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+
+        const formData = new FormData(this);
+        const actionUrl = this.action; // Get URL from form action attribute
+
+        fetch(actionUrl, {
             method: 'POST',
-            body: new URLSearchParams(formData), 
+            // Use URLSearchParams for simple form data or keep FormData if you plan file uploads
+            body: new URLSearchParams(formData),
             headers: {
-                
+                // 'Content-Type': 'application/x-www-form-urlencoded', // Needed for URLSearchParams
                 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
             }
         })
-        .then(response => response.json())
-        .then(data => { // This is the start of the second .then()
-            if (data.success) {
+        .then(response => response.json().then(data => ({ status: response.status, body: data }))) // Parse JSON regardless of status
+        .then(({ status, body }) => {
+            if (status === 200 && body.success) { // Check for successful status code AND success flag
                 editModal.hide();
-                
+                // Show success message briefly before reload
+                alert('Item updated successfully!');
                 setTimeout(() => {
                     window.location.reload();
-                }, 500);
+                }, 300); // Shorter delay
             } else {
-                // *** START OF REVISED ERROR HANDLING ***
+                // --- IMPROVED ERROR HANDLING ---
                 let errorMsg = 'Error updating item. Please fix the following issues:\n\n';
-                if (data.errors && typeof data.errors === 'object') {
-                    // Loop through the errors object
-                    for (const field in data.errors) {
-                        // Make sure the field's errors exist and is an array before joining
-                        if (data.errors.hasOwnProperty(field) && Array.isArray(data.errors[field])) {
-                            const fieldName = field.charAt(0).toUpperCase() + field.slice(1).replace('_', ' ');
-                            errorMsg += `• ${fieldName}: ${data.errors[field].join(', ')}\n`;
-                        } else {
-                            // Handle cases where errors might not be structured as expected
-                            console.warn(`Unexpected error format for field '${field}':`, data.errors[field]);
-                            errorMsg += `• ${field}: Invalid error format received from server.\n`;
+                if (body.errors && typeof body.errors === 'object') {
+                    for (const field in body.errors) {
+                        if (body.errors.hasOwnProperty(field) && Array.isArray(body.errors[field])) {
+                            // Convert field name like 'item_name' to 'Item name'
+                            const fieldName = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                            errorMsg += `• ${fieldName}: ${body.errors[field].join(', ')}\n`;
                         }
                     }
-                } else {
-                    // If data.errors is not an object or doesn't exist
-                    errorMsg = 'An unknown validation error occurred. Check the browser console for details.';
-                    console.error('Received non-object errors or no errors object:', data.errors);
+                } else if (body.error) { // Handle generic errors if 'errors' object isn't present
+                     errorMsg = body.error;
                 }
-
-                alert(errorMsg); // Show the detailed error
-                console.error('Validation Errors:', data.errors);
-                // *** END OF REVISED ERROR HANDLING ***
+                 else {
+                    errorMsg = 'An unknown error occurred. Check the console for details.';
+                    console.error('Unexpected error response:', status, body);
+                }
+                alert(errorMsg); // Show detailed error
+                console.error('Validation Errors:', body.errors);
+                 // --- END IMPROVED ERROR HANDLING ---
             }
-        }) // *** MOVED THE CLOSING PARENTHESIS HERE ***
-        .catch(error => { // *** .catch IS NOW CORRECTLY PLACED ***
-            console.error('Error submitting form:', error);
-            alert('An unexpected error occurred. Please try again.');
+        })
+        .catch(error => {
+            console.error('Network or parsing error submitting form:', error);
+            alert('An unexpected network error occurred. Please try again.');
+        })
+        .finally(() => {
+             // Re-enable button and restore text
+             submitButton.disabled = false;
+             submitButton.textContent = 'Save Changes';
         });
-    }); // This closes the submit event listener
-}); // This closes DOMContentLoaded
+    });
+    // --- END FIX ---
+});
 </script>
 {% endblock %}
-
-
