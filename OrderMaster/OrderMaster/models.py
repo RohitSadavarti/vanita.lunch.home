@@ -94,7 +94,6 @@ def order_management_view(request):
     return render(request, 'OrderMaster/order_management.html', context)
 
 
-@admin_required
 @require_POST
 def update_order_status(request):
     # ... (keep existing implementation) ...
@@ -373,6 +372,7 @@ def generate_invoice_view(request, order_id):
         'print_date': timezone.now(),
      }
      return render(request, 'OrderMaster/invoice.html', context)
+
 
 
 
