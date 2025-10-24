@@ -170,18 +170,45 @@ document.querySelectorAll('.edit-btn').forEach(button => {
             
             const item = await response.json();
             
+            console.log('Fetched item data:', item); // Debug log
+            
             // Populate all form fields
             document.getElementById('edit-item-id').value = item.id;
-            document.getElementById('edit-item_name').value = item.item_name;
-            document.getElementById('edit-price').value = item.price;
+            document.getElementById('edit-item_name').value = item.item_name || '';
+            document.getElementById('edit-price').value = item.price || '';
             document.getElementById('edit-description').value = item.description || '';
             document.getElementById('edit-image_url').value = item.image_url || '';
-            
-            // CRITICAL FIX: Set the selected value for dropdowns
-            document.getElementById('edit-category').value = item.category;
-            document.getElementById('edit-veg_nonveg').value = item.veg_nonveg;
-            document.getElementById('edit-meal_type').value = item.meal_type;
             document.getElementById('edit-availability_time').value = item.availability_time || '';
+            
+            // CRITICAL FIX: Set dropdown values with proper null handling
+            const categorySelect = document.getElementById('edit-category');
+            const vegNonvegSelect = document.getElementById('edit-veg_nonveg');
+            const mealTypeSelect = document.getElementById('edit-meal_type');
+            
+            // Set category
+            if (item.category) {
+                categorySelect.value = item.category;
+                console.log('Set category to:', item.category);
+            }
+            
+            // Set veg/non-veg
+            if (item.veg_nonveg) {
+                vegNonvegSelect.value = item.veg_nonveg;
+                console.log('Set veg_nonveg to:', item.veg_nonveg);
+            }
+            
+            // Set meal type
+            if (item.meal_type) {
+                mealTypeSelect.value = item.meal_type;
+                console.log('Set meal_type to:', item.meal_type);
+            }
+            
+            // Verify values were set
+            setTimeout(() => {
+                console.log('Category value:', categorySelect.value);
+                console.log('Veg/NonVeg value:', vegNonvegSelect.value);
+                console.log('Meal Type value:', mealTypeSelect.value);
+            }, 100);
             
             // Show the modal
             editModal.show();
@@ -190,8 +217,7 @@ document.querySelectorAll('.edit-btn').forEach(button => {
             alert('Could not load item details. Please try again.');
         }
     });
-});
-    
+});    
     document.getElementById('editMenuItemForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const itemId = document.getElementById('edit-item-id').value;
@@ -248,4 +274,5 @@ document.querySelectorAll('.edit-btn').forEach(button => {
 }); // This closes DOMContentLoaded
 </script>
 {% endblock %}
+
 
