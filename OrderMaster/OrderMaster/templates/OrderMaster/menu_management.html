@@ -212,8 +212,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.location.reload();
                 }, 500);
             } else {
-                alert('Error updating item. Please check the form and try again.');
-                console.error(data.errors);
+                let errorMsg = 'Error updating item. Please fix the following issues:\n\n';
+                if (data.errors) {
+                    for (const field in data.errors) {
+                        const fieldName = field.charAt(0).toUpperCase() + field.slice(1).replace('_', ' ');
+                        errorMsg += `• ${fieldName}: ${data.errors[field].join(', ')}\n`;
+                    }
+                } else {
+                    errorMsg = 'An unknown error occurred. Please check the form and try again.';
+                }
+                alert(errorMsg);
+                console.error('Validation Errors:', data.errors);
             }
         })
         .catch(error => {
@@ -224,3 +233,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+
