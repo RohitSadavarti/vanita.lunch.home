@@ -126,7 +126,6 @@ def update_order_status(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
-@admin_required
 def menu_management_view(request):
     # ... (keep existing implementation) ...
     if request.method == 'POST':
@@ -146,8 +145,6 @@ def menu_management_view(request):
         'active_page': 'menu_management',
     }
     return render(request, 'OrderMaster/menu_management.html', context)
-
-# ... (keep delete_menu_item_view, api_menu_item_detail, api_menu_items) ...
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -371,6 +368,7 @@ def generate_invoice_view(request, order_id):
         'print_date': timezone.now(),
      }
      return render(request, 'OrderMaster/invoice.html', context)
+
 
 
 
