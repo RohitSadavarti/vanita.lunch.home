@@ -4,6 +4,118 @@
 {% block title %}Menu Management{% endblock %}
 
 {% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Menu Management</h1>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMenuItemModal">
+            <i class="fas fa-plus fa-sm text-white-50"></i> Add New Item
+        </button>
+    </div>
+
+    <div class="row">
+        {% for item in menu_items %}
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body d-flex align-items-center">
+                    <img src="{{ item.image_url|default:'https://placehold.co/100x100/f8f9fa/6c757d?text=No+Image' }}"
+                         class="rounded me-3" style="width: 80px; height: 80px; object-fit: cover;" alt="{{ item.item_name }}">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title">{{ item.item_name }}</h5>
+                        <h6 class="card-subtitle mb-2 text-muted">{{ item.category }}</h6>
+                        <p class="card-text mb-1"><strong>Price:</strong> ₹{{ item.price }}</p>
+                        <p class="card-text"><strong>Type:</strong> {{ item.veg_nonveg }}</p>
+                    </div>
+                    <div class="action-buttons ms-3">
+                        <button class="btn btn-info btn-sm edit-btn" data-bs-toggle="modal" data-bs-target="#editMenuItemModal" data-item-id="{{ item.id }}">
+                            Edit
+                        </button>
+                        <form action="{% url 'delete_menu_item' item.id %}" method="post" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete \'{{ item.item_name }}\'?')">
+                                Delete
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+            <div class="col-12">
+                <p class="text-center text-muted">No menu items found. Add one using the button above.</p>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="modal fade" id="addMenuItemModal" tabindex="-1" aria-labelledby="addMenuItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addMenuItemModalLabel">Add New Menu Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form action="{% url 'menu_management' %}" method="post">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ add_item_form.item_name.id_for_label }}" class="form-label">Item Name</label>
+                            {{ add_item_form.item_name }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                             <label for="{{ add_item_form.price.id_for_label }}" class="form-label">Price</label>
+                            {{ add_item_form.price }}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ add_item_form.description.id_for_label }}" class="form-label">Description</label>
+                        {{ add_item_form.description }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ add_item_form.image_url.id_for_label }}" class="form-label">Image URL</label>
+                        {{ add_item_form.image_url }}
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ add_item_form.category.id_for_label }}" class="form-label">Category</label>
+                            {{ add_item_form.category }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ add_item_form.veg_nonveg.id_for_label }}" class="form-label">Type</label>
+                            {{ add_item_form.veg_nonveg }}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ add_item_form.meal_type.id_for_label }}" class="form-label">Meal Type</label>
+                            {{ add_item_form.meal_type }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ add_item_form.availability_time.id_for_label }}" class="form-label">Availability</label>
+                            {{ add_item_form.availability_time }}
+                        </div>
+                    </div>
+                    {% if add_item_form.errors %}
+                        <div class="alert alert-danger">
+                            Please correct the errors below:
+                            {{ add_item_form.non_field_errors }}
+                            {% for field in add_item_form %}
+                                {% if field.errors %}
+                                    <p><strong>{{ field.label }}:</strong> {{ field.errors|striptags }}</p>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save Item</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="editMenuItemModal" tabindex="-1" aria-labelledby="editMenuItemModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -31,7 +143,7 @@
                     </div>
                     <div class="mb-3">
                         <label for="edit-image_url" class="form-label">Image URL</label>
-                        <input type="url" class="form-control" id="edit-image_url" name="image_url" placeholder="[https://example.com/image.jpg](https://example.com/image.jpg)">
+                        <input type="url" class="form-control" id="edit-image_url" name="image_url" placeholder="https://example.com/image.jpg">
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -91,9 +203,11 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.edit-btn').forEach(button => {
         button.addEventListener('click', async function() {
             const itemId = this.dataset.itemId;
-            editForm.action = `/api/menu-item/${itemId}/`; // Set form action URL
+            // Set form action URL dynamically for the specific item
+            editForm.action = `/api/menu-item/${itemId}/`;
 
             try {
+                // Fetch details for the specific item
                 const response = await fetch(`/api/menu-item/${itemId}/`);
                 if (!response.ok) {
                     throw new Error(`Failed to fetch item details (Status: ${response.status})`);
@@ -143,8 +257,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 // --- END FIX ---
 
-                // Show the modal
-                editModal.show();
+                // Modal is shown by the button's data-bs-toggle attribute now
+                // editModal.show(); // No need to manually show if using data-bs-toggle
             } catch (error) {
                 console.error('Error fetching menu item details:', error);
                 alert(`Could not load item details: ${error.message}. Please try again.`);
@@ -154,7 +268,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- FIX: Updated Form Submission Handler ---
     editForm.addEventListener('submit', function(e) {
-        e.preventDefault();
+        e.preventDefault(); // Prevent default browser submission
         const submitButton = editForm.querySelector('button[type="submit"]');
         submitButton.disabled = true; // Prevent double submit
         submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
@@ -164,8 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         fetch(actionUrl, {
             method: 'POST',
-            // Use URLSearchParams for simple form data or keep FormData if you plan file uploads
-            body: new URLSearchParams(formData),
+            body: new URLSearchParams(formData), // Use URLSearchParams for simple form data
             headers: {
                 // 'Content-Type': 'application/x-www-form-urlencoded', // Needed for URLSearchParams
                 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
@@ -175,26 +288,23 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(({ status, body }) => {
             if (status === 200 && body.success) { // Check for successful status code AND success flag
                 editModal.hide();
-                // Show success message briefly before reload
                 alert('Item updated successfully!');
                 setTimeout(() => {
-                    window.location.reload();
-                }, 300); // Shorter delay
+                    window.location.reload(); // Reload page to see changes
+                }, 300); // Short delay
             } else {
                 // --- IMPROVED ERROR HANDLING ---
                 let errorMsg = 'Error updating item. Please fix the following issues:\n\n';
                 if (body.errors && typeof body.errors === 'object') {
                     for (const field in body.errors) {
                         if (body.errors.hasOwnProperty(field) && Array.isArray(body.errors[field])) {
-                            // Convert field name like 'item_name' to 'Item name'
                             const fieldName = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
                             errorMsg += `• ${fieldName}: ${body.errors[field].join(', ')}\n`;
                         }
                     }
                 } else if (body.error) { // Handle generic errors if 'errors' object isn't present
                      errorMsg = body.error;
-                }
-                 else {
+                } else {
                     errorMsg = 'An unknown error occurred. Check the console for details.';
                     console.error('Unexpected error response:', status, body);
                 }
