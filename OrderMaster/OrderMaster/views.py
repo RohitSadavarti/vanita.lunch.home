@@ -698,20 +698,77 @@ def create_manual_order(request):
     Handles POST requests from the admin panel to create an order manually.
     Validates input, creates Order, generates custom order_id, saves it, and sends FCM.
     """
+    # --- ADD THIS LOGGING ---
     try:
-        # 1. Parse and Validate Input (Keep this part)
-        data = json.loads(request.body)
-        # ... (validation for name, mobile, items, payment_method) ...
+        raw_body = request.body.decode('utf-8')
+        logger.info(f"Received raw data for manual order: {raw_body}")
+        data = json.loads(raw_body)
+        logger.info(f"Parsed data for manual order: {data}")
+    except Exception as e:
+        logger.error(f"Error reading/parsing request body for manual order: {e}")
+        return JsonResponse({'error': 'Could not parse request data.'}, status=400)
+    # --- END LOGGING ADDITION ---
+
+    try:
+        # 1. Validate Input (Keep this part)
+        customer_name = data.get('customer_name')
+        customer_mobile = data.get('customer_mobile')
+        items_data = data.get('items')
+        payment_method = data.get('payment_method')
+
+        # Basic check for required fields
+        if not all([customer_name, customer_mobile, items_data, payment_method]):
+             logger.warning(f"Manual order missing required fields. Received: Name={customer_name}, Mobile={customer_mobile}, Items={items_data is not None}, Payment={payment_method}")
+             return JsonResponse({'error': 'Missing required fields: customer_name, customer_mobile, items, payment_method.'}, status=400)
+
+        # Validate mobile format (optional but good)
+        if not (customer_mobile.isdigit() and len(customer_mobile) == 10):
+             logger.warning(f"Manual order invalid mobile: {customer_mobile}")
+             return JsonResponse({'error': 'Invalid 10-digit mobile number format.'}, status=400)
+
+        # Validate items structure
+        if not isinstance(items_data, list):
+            logger.warning(f"Manual order items data is not a list. Received: {type(items_data)}")
+            return JsonResponse({'error': '"items" must be a list.'}, status=400)
 
         # 2. Calculate Subtotal and Validate Items (Keep this part)
         subtotal = Decimal('0.00')
         validated_items = []
-        # ... (loop through items, validate, calculate subtotal) ...
+        # ... (loop through items_data, validate, calculate subtotal) ...
+        # (Make sure this loop correctly processes item IDs and quantities)
+        for item_data in items_data:
+             logger.debug(f"Processing manual order item: {item_data}") # Debug item data
+             if not all(k in item_data for k in ['id', 'quantity']):
+                 logger.warning(f"Manual order invalid item data format: {item_data}")
+                 return JsonResponse({'error': 'Invalid item data format. Each item needs "id" and "quantity".'}, status=400)
+             try:
+                 menu_item = MenuItem.objects.get(id=int(item_data['id']))
+                 quantity = int(item_data['quantity'])
+                 if quantity <= 0:
+                     logger.warning(f"Skipping manual order item ID {menu_item.id} with zero/negative quantity.")
+                     continue
+                 item_total = menu_item.price * quantity
+                 subtotal += item_total
+                 validated_items.append({
+                     'id': menu_item.id,
+                     'name': menu_item.item_name,
+                     'price': float(menu_item.price),
+                     'quantity': quantity,
+                 })
+             except MenuItem.DoesNotExist:
+                 logger.warning(f"Manual order item ID {item_data['id']} not found.")
+                 return JsonResponse({'error': f'Menu item with ID {item_data["id"]} not found.'}, status=400)
+             except (ValueError, TypeError):
+                  logger.warning(f"Manual order invalid quantity for item ID {item_data.get('id', 'unknown')}.")
+                  return JsonResponse({'error': f'Invalid quantity for item ID {item_data.get("id", "unknown")}.'}, status=400)
+
 
         if not validated_items:
+            logger.warning("Manual order failed: No valid items found after validation.")
             return JsonResponse({'error': 'No valid items provided.'}, status=400)
 
         # 3. Create the Order (WITHOUT order_id initially)
+        # ... (Order.objects.create as before) ...
         new_order = Order.objects.create(
             customer_name=customer_name,
             customer_mobile=customer_mobile,
@@ -724,11 +781,10 @@ def create_manual_order(request):
             payment_id=payment_method, # Simple ID for manual orders
             order_status='open', # Start as 'preparing'
             order_placed_by='counter' # Set source correctly
-            # order_id is NOT set here
         )
-        logger.info(f"Initial Manual Order (PK: {new_order.pk}) created for {new_order.customer_name}.")
 
-        # --- NEW: Generate and save custom order_id ---
+        # 4. Generate and save custom order_id (Keep this part)
+        # ... (while loop to generate ID, new_order.save(update_fields...)) ...
         try:
             while True: # Loop to ensure uniqueness
                 timestamp = timezone.now().strftime('%y%m%d%H%M%S')
@@ -741,16 +797,12 @@ def create_manual_order(request):
                     break # Exit loop
         except Exception as e_genid:
              logger.error(f"Failed to generate and save custom order_id for PK {new_order.pk}: {e_genid}", exc_info=True)
-             # Decide how to handle this - maybe delete the order or return an error?
-             # For now, let's return an error
-             # Optionally: new_order.delete()
              return JsonResponse({'error': 'Failed to finalize order ID.'}, status=500)
-        # --- END NEW SECTION ---
 
-        # Use the generated ID for notifications etc.
         generated_order_id = new_order.order_id
 
-        # 4. Send Firebase notification (Keep this part, uses generated_order_id)
+        # 5. Send Firebase notification (Keep this part)
+        # ... (FCM logic) ...
         try:
              items_json = json.dumps(new_order.items)
              order_db_id = str(new_order.pk) # Use integer PK for FCM data 'id'
@@ -762,7 +814,6 @@ def create_manual_order(request):
                  'items': items_json,
                  'order_source': 'counter'
              }
-             # ... (rest of FCM logic) ...
              message = messaging.Message( # Example structure
                  notification=messaging.Notification(
                      title='✅ Counter Order Created',
@@ -775,9 +826,9 @@ def create_manual_order(request):
              logger.info(f'Successfully sent FCM message for manual order {generated_order_id}')
         except Exception as e_fcm:
             logger.error(f"Error sending counter order notification for {generated_order_id}: {e_fcm}", exc_info=True)
-            # Logged, proceed
 
-        # 5. Return Success Response
+
+        # 6. Return Success Response
         return JsonResponse({
             'success': True,
             'order_id': generated_order_id, # Return the VLH-... ID
@@ -787,6 +838,7 @@ def create_manual_order(request):
         })
 
     # --- Exception Handling (Keep as is) ---
+    # ... (except blocks for JSONDecodeError, KeyError, ValueError, TypeError, MenuItem.DoesNotExist, Exception) ...
     except (json.JSONDecodeError, KeyError, ValueError, TypeError) as e:
          logger.warning(f"Invalid manual order request data format: {e}")
          return JsonResponse({'error': f'Invalid data format: {e}'}, status=400)
@@ -795,7 +847,6 @@ def create_manual_order(request):
          return JsonResponse({'error': 'An invalid menu item was included in the order.'}, status=400)
     except Exception as e:
         logger.error(f"Error creating manual order: {e}", exc_info=True)
-        # traceback.print_exc() # Alternatively print to console
         return JsonResponse({'error': 'An internal server error occurred.'}, status=500)
         
 @admin_required
@@ -814,6 +865,7 @@ def generate_invoice_view(request, order_id):
     }
     
     return render(request, 'OrderMaster/invoice.html', context)
+
 
 
 
