@@ -155,40 +155,42 @@ document.addEventListener('DOMContentLoaded', function() {
     const editModal = new bootstrap.Modal(editModalEl);
 
     
-    document.querySelectorAll('.edit-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const itemId = this.dataset.itemId;
-            
-            
-            fetch(`/api/menu-item/${itemId}/`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    
-                    document.getElementById('edit-item-id').value = data.id;
-                    document.getElementById('edit-item_name').value = data.item_name;
-                    document.getElementById('edit-price').value = data.price;
-                    document.getElementById('edit-description').value = data.description;
-                    document.getElementById('edit-image_url').value = data.image_url || '';
-                    document.getElementById('edit-category').value = data.category;
-                    document.getElementById('edit-veg_nonveg').value = data.veg_nonveg;
-                    document.getElementById('edit-meal_type').value = data.meal_type;
-                    document.getElementById('edit-availability_time').value = data.availability_time;
-                    
-                    
-                    editModal.show();
-                })
-                .catch(error => {
-                    console.error('Error fetching menu item details:', error);
-                    alert('Could not load item details. Please try again.');
-                });
-        });
-    });
+    // Replace the edit button event listener section in menu_management.html
+// This should go around line 136
 
+document.querySelectorAll('.edit-btn').forEach(button => {
+    button.addEventListener('click', async function() {
+        const itemId = this.dataset.itemId;
+        
+        try {
+            const response = await fetch(`/api/menu-item/${itemId}/`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch item details');
+            }
+            
+            const item = await response.json();
+            
+            // Populate all form fields
+            document.getElementById('edit-item-id').value = item.id;
+            document.getElementById('edit-item_name').value = item.item_name;
+            document.getElementById('edit-price').value = item.price;
+            document.getElementById('edit-description').value = item.description || '';
+            document.getElementById('edit-image_url').value = item.image_url || '';
+            
+            // CRITICAL FIX: Set the selected value for dropdowns
+            document.getElementById('edit-category').value = item.category;
+            document.getElementById('edit-veg_nonveg').value = item.veg_nonveg;
+            document.getElementById('edit-meal_type').value = item.meal_type;
+            document.getElementById('edit-availability_time').value = item.availability_time || '';
+            
+            // Show the modal
+            editModal.show();
+        } catch (error) {
+            console.error('Error fetching menu item details:', error);
+            alert('Could not load item details. Please try again.');
+        }
+    });
+});
     
     document.getElementById('editMenuItemForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -246,3 +248,4 @@ document.addEventListener('DOMContentLoaded', function() {
 }); // This closes DOMContentLoaded
 </script>
 {% endblock %}
+
