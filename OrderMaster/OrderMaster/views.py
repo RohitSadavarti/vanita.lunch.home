@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from django.db.models import Count, Sum
 from collections import Counter
 import os
+import io
 import json
 import random
 import uuid
@@ -157,8 +158,6 @@ def dashboard_view(request):
 from django.db.models.functions import TruncHour, TruncDay
 from django.db.models import Count
 
-# ... other imports at the top of the file ...
-
 def analytics_api_view(request):
     # Get filters from the request
     date_filter = request.GET.get('date_filter', 'this_month')
@@ -179,19 +178,15 @@ def analytics_api_view(request):
     elif date_filter == 'custom' and start_date_str and end_date_str:
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
-    else: # Default to this_month
+    else:
         start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         end_date = now
 
-    # Base query for all completed orders in the date range
     base_completed_orders = Order.objects.filter(order_status='pickedup', created_at__range=(start_date, end_date))
-
-    # Apply payment filter for KPIs and certain charts
     filtered_orders = base_completed_orders
     if payment_filter != 'Total':
         filtered_orders = base_completed_orders.filter(payment_method=payment_filter)
 
-    # --- Calculations for KPIs, Most Ordered, etc. (uses filtered data) ---
     total_revenue = filtered_orders.aggregate(total=Sum('total_price'))['total'] or 0
     total_orders_count = filtered_orders.count()
     average_order_value = total_revenue / total_orders_count if total_orders_count > 0 else 0
@@ -205,24 +200,15 @@ def analytics_api_view(request):
     most_common_items = item_counter.most_common(5)
     top_5_names = [item[0] for item in most_common_items]
 
-    # --- Calculations for Charts ---
-
-    # *** FIX IS HERE: Donut Chart now uses the 'filtered_orders' queryset ***
     payment_distribution = filtered_orders.values('payment_method').annotate(total=Sum('total_price')).order_by('-total')
-
-    # Donut Chart: Order Status (uses base data for context)
     order_status_distribution = base_completed_orders.values('status').annotate(count=Count('id')).order_by('-count')
-
-    # Line Chart: Orders by Hour (uses filtered data)
     orders_by_hour = filtered_orders.annotate(hour=TruncHour('created_at')).values('hour').annotate(count=Count('id')).order_by('hour')
     
-    # Combined Bar Chart: Day-wise Revenue & Orders (uses filtered data)
     day_wise_revenue = filtered_orders.annotate(day=TruncDay('created_at')).values('day').annotate(
         revenue=Sum('total_price'),
         orders=Count('id')
     ).order_by('day')
 
-    # Stacked Bar Chart: Day-wise Top 5 Items (uses filtered data)
     day_wise_menu_query = filtered_orders.annotate(day=TruncDay('created_at')).values('day').order_by('day').distinct()
     day_labels = [d['day'].strftime('%d %b') for d in day_wise_menu_query]
     
@@ -249,7 +235,6 @@ def analytics_api_view(request):
             'backgroundColor': colors[i % len(colors)]
         })
 
-    # --- Recent Orders Table ---
     table_orders = filtered_orders.order_by('-created_at')[:100]
     table_data = []
     for order in table_orders:
@@ -264,7 +249,6 @@ def analytics_api_view(request):
             'order_status': order.status,
         })
         
-    # --- Prepare data for JSON response ---
     data = {
         'key_metrics': {
             'total_revenue': f'{total_revenue:,.2f}',
@@ -303,7 +287,7 @@ def analytics_api_view(request):
 @admin_required
 def order_management_view(request):
     date_filter = request.GET.get('date_filter', 'today')
-    source_filter = request.GET.get('source_filter', 'all')  # NEW: source filter
+    source_filter = request.GET.get('source_filter', 'all')
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
 
@@ -328,15 +312,12 @@ def order_management_view(request):
         end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
         date_filter = 'today'
 
-    # Base queryset with date filter
     base_orders = Order.objects.filter(created_at__range=(start_date, end_date))
     
-    # NEW: Apply source filter
     if source_filter == 'customer':
         base_orders = base_orders.filter(order_placed_by='customer')
     elif source_filter == 'counter':
         base_orders = base_orders.filter(order_placed_by='counter')
-    # else 'all' - no additional filtering
 
     preparing_orders = base_orders.filter(order_status='open')
     ready_orders = base_orders.filter(order_status='ready')
@@ -355,7 +336,7 @@ def order_management_view(request):
         'pickedup_orders': pickedup_orders,
         'date_display_str': date_filter.replace('_', ' ').title(),
         'selected_filter': date_filter,
-        'source_filter': source_filter,  # NEW: pass to template
+        'source_filter': source_filter,
         'start_date_val': start_date_str if date_filter == 'custom' else '',
         'end_date_val': end_date_str if date_filter == 'custom' else '',
         'active_page': 'order_management',
@@ -449,20 +430,49 @@ def api_menu_item_detail(request, item_id):
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 
+# ============================================================================
+# CRITICAL FIX: This is the endpoint your Flutter app is calling
+# ============================================================================
 def api_menu_items(request):
+    """
+    Returns menu items in the format that Flutter app expects.
+    IMPORTANT: Returns array directly with 'menu_items' wrapper.
+    """
     try:
-        menu_items = MenuItem.objects.all().values(
-            'id', 'item_name', 'description', 'price', 'category',
-            'veg_nonveg', 'meal_type', 'availability_time', 'image_url'
-        ).order_by('category', 'item_name')
-
-        items_list = [
-            {**item, 'price': float(item['price'])} for item in menu_items
-        ]
-        return JsonResponse(items_list, safe=False)
+        logger.info("📡 API /api/menu-items/ called")
+        
+        # Get all menu items from database
+        menu_items = MenuItem.objects.all().order_by('category', 'item_name')
+        
+        logger.info(f"✅ Found {menu_items.count()} menu items in database")
+        
+        # Convert to list of dictionaries
+        items_list = []
+        for item in menu_items:
+            items_list.append({
+                'id': item.id,
+                'item_name': item.item_name,
+                'description': item.description or '',
+                'price': float(item.price),
+                'category': item.category,
+                'veg_nonveg': item.veg_nonveg,
+                'meal_type': item.meal_type,
+                'availability_time': item.availability_time or '',
+                'image_url': item.image_url or ''
+            })
+        
+        # Return in the format Flutter expects: {'menu_items': [...]}
+        response_data = {'menu_items': items_list}
+        
+        logger.info(f"✅ Returning {len(items_list)} items in response")
+        return JsonResponse(response_data, safe=False)
+        
     except Exception as e:
-        logger.error(f"API menu items error: {e}")
-        return JsonResponse({'error': 'Server error occurred.'}, status=500)
+        logger.error(f"❌ Error in api_menu_items: {e}", exc_info=True)
+        return JsonResponse({
+            'error': 'Server error occurred while fetching menu items.',
+            'details': str(e)
+        }, status=500)
 
 
 @csrf_exempt
@@ -470,27 +480,59 @@ def api_menu_items(request):
 def api_place_order(request):
     """
     Handles POST requests to place a new order from the customer app/web.
-    Validates input, creates Order, generates custom order_id, saves it, and sends FCM.
     """
     try:
-        # 1. Parse and Validate Input Data (Keep this part as is)
         data = json.loads(request.body)
-        # ... (validation for required_fields, mobile, items format) ...
-        # ...
+        
+        # Validate required fields
+        required_fields = ['customer_name', 'customer_mobile', 'items', 'total_price', 'payment_method']
+        for field in required_fields:
+            if field not in data:
+                return JsonResponse({'error': f'Missing required field: {field}'}, status=400)
+        
+        # Validate mobile number
+        if not data['customer_mobile'].isdigit() or len(data['customer_mobile']) != 10:
+            return JsonResponse({'error': 'Invalid mobile number format. Must be 10 digits.'}, status=400)
+        
+        # Validate items
+        if not isinstance(data['items'], list) or len(data['items']) == 0:
+            return JsonResponse({'error': 'Items must be a non-empty list.'}, status=400)
 
-        # 2. Validate Items and Calculate Subtotal Server-Side (Keep this part as is)
+        # Validate and calculate total
         calculated_subtotal = Decimal('0.00')
         validated_items_for_db = []
-        # ... (loop through items, validate, calculate subtotal) ...
-        # ...
+        
+        for item_data in data['items']:
+            if not all(k in item_data for k in ['id', 'quantity']):
+                return JsonResponse({'error': 'Each item must have id and quantity.'}, status=400)
+            
+            try:
+                menu_item = MenuItem.objects.get(id=int(item_data['id']))
+                quantity = int(item_data['quantity'])
+                
+                if quantity <= 0:
+                    continue
+                
+                item_total = menu_item.price * quantity
+                calculated_subtotal += item_total
+                
+                validated_items_for_db.append({
+                    'id': menu_item.id,
+                    'name': menu_item.item_name,
+                    'price': float(menu_item.price),
+                    'quantity': quantity,
+                })
+            except MenuItem.DoesNotExist:
+                return JsonResponse({'error': f'Menu item with ID {item_data["id"]} not found.'}, status=400)
+            except (ValueError, TypeError):
+                return JsonResponse({'error': 'Invalid item data format.'}, status=400)
 
         if not validated_items_for_db:
-             logger.warning("Place order attempt failed: No valid items found after validation.")
-             return JsonResponse({'error': 'No valid items found in the order.'}, status=400)
+            return JsonResponse({'error': 'No valid items found in the order.'}, status=400)
 
         final_total_client = Decimal(str(data['total_price']))
 
-        # 3. Create the Order in the Database (WITHOUT order_id initially)
+        # Create order without order_id initially
         new_order = Order.objects.create(
             customer_name=data['customer_name'],
             customer_mobile=data['customer_mobile'],
@@ -503,69 +545,66 @@ def api_place_order(request):
             payment_id=data.get('payment_id', None),
             order_status='open',
             order_placed_by='customer'
-            # order_id is NOT set here
         )
-        logger.info(f"Initial Order (PK: {new_order.pk}) created for {new_order.customer_name}.")
+        
+        logger.info(f"✅ Initial Order (PK: {new_order.pk}) created for {new_order.customer_name}.")
 
-        # --- NEW: Generate and save custom order_id ---
+        # Generate and save custom order_id
         try:
-            while True: # Loop to ensure uniqueness
+            while True:
                 generated_id = str(random.randint(10000000, 99999999))
                 if not Order.objects.filter(order_id=generated_id).exists():
                     new_order.order_id = generated_id
-                    new_order.save(update_fields=['order_id']) # Save only the order_id field
-                    logger.info(f"Assigned custom Order ID {new_order.order_id} to PK {new_order.pk}.")
-                    break # Exit loop
+                    new_order.save(update_fields=['order_id'])
+                    logger.info(f"✅ Assigned custom Order ID {new_order.order_id} to PK {new_order.pk}.")
+                    break
         except Exception as e_genid:
-             logger.error(f"Failed to generate and save custom order_id for PK {new_order.pk}: {e_genid}", exc_info=True)
-             return JsonResponse({'error': 'Failed to finalize order ID.'}, status=500)
+            logger.error(f"❌ Failed to generate order_id for PK {new_order.pk}: {e_genid}", exc_info=True)
+            return JsonResponse({'error': 'Failed to finalize order ID.'}, status=500)
         
         generated_order_id = new_order.order_id
 
-        # 4. Send Firebase Notification (Keep this part, uses generated_order_id)
+        # Send Firebase notification
         try:
             items_json = json.dumps(new_order.items)
-            order_db_id = str(new_order.pk) # Use the integer PK for FCM data 'id'
+            order_db_id = str(new_order.pk)
             message_data = {
-                 'id': order_db_id,
-                 'order_id': generated_order_id, # Use the VLH-... ID here
-                 'customer_name': new_order.customer_name,
-                 'total_price': str(new_order.total_price),
-                 'items': items_json,
-                 'order_source': 'customer'
-             }
-            # ... (rest of FCM logic: logger.info, messaging.Message, messaging.send) ...
-            message = messaging.Message( # Example structure
-                 notification=messaging.Notification(
-                     title='🔔 New Customer Order!',
-                     body=f'Order #{generated_order_id} from {new_order.customer_name} - ₹{new_order.total_price}'
-                 ),
-                 data=message_data,
-                 topic='new_orders'
-             )
+                'id': order_db_id,
+                'order_id': generated_order_id,
+                'customer_name': new_order.customer_name,
+                'total_price': str(new_order.total_price),
+                'items': items_json,
+                'order_source': 'customer'
+            }
+            
+            message = messaging.Message(
+                notification=messaging.Notification(
+                    title='🔔 New Customer Order!',
+                    body=f'Order #{generated_order_id} from {new_order.customer_name} - ₹{new_order.total_price}'
+                ),
+                data=message_data,
+                topic='new_orders'
+            )
             response = messaging.send(message)
-            logger.info(f'Successfully sent FCM message for customer order {generated_order_id}: {response}')
+            logger.info(f'✅ Successfully sent FCM message for customer order {generated_order_id}: {response}')
 
         except Exception as e_fcm:
-            logger.error(f"Error sending FCM message for customer order ID {generated_order_id} (PK: {new_order.pk}): {e_fcm}", exc_info=True)
-            # Logged, but proceed
+            logger.error(f"❌ Error sending FCM message for customer order ID {generated_order_id}: {e_fcm}", exc_info=True)
 
-        # 5. Return Success Response
         return JsonResponse({
             'success': True,
-            'order_id': generated_order_id, # Return the VLH-... ID
+            'order_id': generated_order_id,
             'message': 'Order placed successfully!'
         })
 
-    # --- Exception Handling (Keep as is) ---
     except (json.JSONDecodeError, KeyError, ValueError, TypeError) as e:
-        logger.warning(f"Invalid order request data format: {e}")
+        logger.warning(f"⚠️ Invalid order request data format: {e}")
         return JsonResponse({'error': f'Invalid data format: {e}'}, status=400)
     except MenuItem.DoesNotExist as e:
-        logger.warning(f"Invalid menu item specified in order: {e}")
+        logger.warning(f"⚠️ Invalid menu item specified in order: {e}")
         return JsonResponse({'error': 'An invalid menu item was included in the order.'}, status=400)
     except Exception as e:
-        logger.error(f"Unexpected error during place customer order: {e}", exc_info=True)
+        logger.error(f"❌ Unexpected error during place customer order: {e}", exc_info=True)
         return JsonResponse({'error': 'An unexpected server error occurred while placing the order.'}, status=500)
         
 @admin_required
@@ -606,13 +645,10 @@ def get_orders_api(request):
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
 
-# Add this new API endpoint to your views.py
-
 @admin_required
 def get_pending_orders(request):
     """API endpoint to fetch pending orders that need admin action."""
     try:
-        # Get all pending orders that haven't been accepted or rejected
         pending_orders = Order.objects.filter(
             status='Pending'
         ).order_by('created_at')
@@ -643,14 +679,14 @@ def handle_order_action(request):
     """Updated version with better handling"""
     try:
         data = json.loads(request.body)
-        order_id = data.get('order_id')  # This is the database ID, not order_id field
+        order_id = data.get('order_id')
         action = data.get('action')
 
         order = get_object_or_404(Order, id=order_id)
 
         if action == 'accept':
             order.status = 'Confirmed'
-            order.order_status = 'open'  # Move to preparing
+            order.order_status = 'open'
             message = f'Order #{order.order_id} accepted successfully.'
         elif action == 'reject':
             order.status = 'Rejected'
@@ -685,159 +721,139 @@ def take_order_view(request):
 
 @csrf_exempt
 @require_POST
-@admin_required # Ensure only admins can use this
+@admin_required
 def create_manual_order(request):
     """
     Handles POST requests from the admin panel to create an order manually.
-    Validates input, creates Order, generates custom order_id, saves it, and sends FCM.
     """
-    # --- ADD THIS LOGGING ---
     try:
         raw_body = request.body.decode('utf-8')
-        logger.info(f"Received raw data for manual order: {raw_body}")
+        logger.info(f"📥 Received raw data for manual order: {raw_body}")
         data = json.loads(raw_body)
-        logger.info(f"Parsed data for manual order: {data}")
+        logger.info(f"✅ Parsed data for manual order: {data}")
     except Exception as e:
-        logger.error(f"Error reading/parsing request body for manual order: {e}")
+        logger.error(f"❌ Error reading/parsing request body for manual order: {e}")
         return JsonResponse({'error': 'Could not parse request data.'}, status=400)
-    # --- END LOGGING ADDITION ---
 
     try:
-        # 1. Validate Input (Keep this part)
         customer_name = data.get('customer_name')
         customer_mobile = data.get('customer_mobile')
         items_data = data.get('items')
         payment_method = data.get('payment_method')
 
-        # Basic check for required fields
         if not all([customer_name, customer_mobile, items_data, payment_method]):
-             logger.warning(f"Manual order missing required fields. Received: Name={customer_name}, Mobile={customer_mobile}, Items={items_data is not None}, Payment={payment_method}")
-             return JsonResponse({'error': 'Missing required fields: customer_name, customer_mobile, items, payment_method.'}, status=400)
+            logger.warning(f"⚠️ Manual order missing required fields. Received: Name={customer_name}, Mobile={customer_mobile}, Items={items_data is not None}, Payment={payment_method}")
+            return JsonResponse({'error': 'Missing required fields: customer_name, customer_mobile, items, payment_method.'}, status=400)
 
-        # Validate mobile format (optional but good)
         if not (customer_mobile.isdigit() and len(customer_mobile) == 10):
-             logger.warning(f"Manual order invalid mobile: {customer_mobile}")
-             return JsonResponse({'error': 'Invalid 10-digit mobile number format.'}, status=400)
+            logger.warning(f"⚠️ Manual order invalid mobile: {customer_mobile}")
+            return JsonResponse({'error': 'Invalid 10-digit mobile number format.'}, status=400)
 
-        # Validate items structure
         if not isinstance(items_data, list):
-            logger.warning(f"Manual order items data is not a list. Received: {type(items_data)}")
+            logger.warning(f"⚠️ Manual order items data is not a list. Received: {type(items_data)}")
             return JsonResponse({'error': '"items" must be a list.'}, status=400)
 
-        # 2. Calculate Subtotal and Validate Items (Keep this part)
         subtotal = Decimal('0.00')
         validated_items = []
-        # ... (loop through items_data, validate, calculate subtotal) ...
-        # (Make sure this loop correctly processes item IDs and quantities)
+        
         for item_data in items_data:
-             logger.debug(f"Processing manual order item: {item_data}") # Debug item data
-             if not all(k in item_data for k in ['id', 'quantity']):
-                 logger.warning(f"Manual order invalid item data format: {item_data}")
-                 return JsonResponse({'error': 'Invalid item data format. Each item needs "id" and "quantity".'}, status=400)
-             try:
-                 menu_item = MenuItem.objects.get(id=int(item_data['id']))
-                 quantity = int(item_data['quantity'])
-                 if quantity <= 0:
-                     logger.warning(f"Skipping manual order item ID {menu_item.id} with zero/negative quantity.")
-                     continue
-                 item_total = menu_item.price * quantity
-                 subtotal += item_total
-                 validated_items.append({
-                     'id': menu_item.id,
-                     'name': menu_item.item_name,
-                     'price': float(menu_item.price),
-                     'quantity': quantity,
-                 })
-             except MenuItem.DoesNotExist:
-                 logger.warning(f"Manual order item ID {item_data['id']} not found.")
-                 return JsonResponse({'error': f'Menu item with ID {item_data["id"]} not found.'}, status=400)
-             except (ValueError, TypeError):
-                  logger.warning(f"Manual order invalid quantity for item ID {item_data.get('id', 'unknown')}.")
-                  return JsonResponse({'error': f'Invalid quantity for item ID {item_data.get("id", "unknown")}.'}, status=400)
-
+            logger.debug(f"🔍 Processing manual order item: {item_data}")
+            if not all(k in item_data for k in ['id', 'quantity']):
+                logger.warning(f"⚠️ Manual order invalid item data format: {item_data}")
+                return JsonResponse({'error': 'Invalid item data format. Each item needs "id" and "quantity".'}, status=400)
+            try:
+                menu_item = MenuItem.objects.get(id=int(item_data['id']))
+                quantity = int(item_data['quantity'])
+                if quantity <= 0:
+                    logger.warning(f"⚠️ Skipping manual order item ID {menu_item.id} with zero/negative quantity.")
+                    continue
+                item_total = menu_item.price * quantity
+                subtotal += item_total
+                validated_items.append({
+                    'id': menu_item.id,
+                    'name': menu_item.item_name,
+                    'price': float(menu_item.price),
+                    'quantity': quantity,
+                })
+            except MenuItem.DoesNotExist:
+                logger.warning(f"⚠️ Manual order item ID {item_data['id']} not found.")
+                return JsonResponse({'error': f'Menu item with ID {item_data["id"]} not found.'}, status=400)
+            except (ValueError, TypeError):
+                logger.warning(f"⚠️ Manual order invalid quantity for item ID {item_data.get('id', 'unknown')}.")
+                return JsonResponse({'error': f'Invalid quantity for item ID {item_data.get("id", "unknown")}.'}, status=400)
 
         if not validated_items:
-            logger.warning("Manual order failed: No valid items found after validation.")
+            logger.warning("⚠️ Manual order failed: No valid items found after validation.")
             return JsonResponse({'error': 'No valid items provided.'}, status=400)
 
-        # 3. Create the Order (WITHOUT order_id initially)
-        # ... (Order.objects.create as before) ...
         new_order = Order.objects.create(
             customer_name=customer_name,
             customer_mobile=customer_mobile,
             items=validated_items,
             subtotal=subtotal,
             discount=Decimal('0.00'),
-            total_price=subtotal, # Assuming no discount for manual orders yet
-            status='Confirmed', # Manual orders are confirmed immediately
+            total_price=subtotal,
+            status='Confirmed',
             payment_method=payment_method,
-            payment_id=payment_method, # Simple ID for manual orders
-            order_status='open', # Start as 'preparing'
-            order_placed_by='counter' # Set source correctly
+            payment_id=payment_method,
+            order_status='open',
+            order_placed_by='counter'
         )
 
-        # 4. Generate and save custom order_id (Keep this part)
-        # ... (while loop to generate ID, new_order.save(update_fields...)) ...
         try:
-            while True: # Loop to ensure uniqueness
+            while True:
                 generated_id = str(random.randint(10000000, 99999999))
                 if not Order.objects.filter(order_id=generated_id).exists():
                     new_order.order_id = generated_id
-                    new_order.save(update_fields=['order_id']) # Save only the order_id field
-                    logger.info(f"Assigned custom Order ID {new_order.order_id} to PK {new_order.pk}.")
-                    break # Exit loop
+                    new_order.save(update_fields=['order_id'])
+                    logger.info(f"✅ Assigned custom Order ID {new_order.order_id} to PK {new_order.pk}.")
+                    break
         except Exception as e_genid:
-             logger.error(f"Failed to generate and save custom order_id for PK {new_order.pk}: {e_genid}", exc_info=True)
-             return JsonResponse({'error': 'Failed to finalize order ID.'}, status=500)
+            logger.error(f"❌ Failed to generate and save custom order_id for PK {new_order.pk}: {e_genid}", exc_info=True)
+            return JsonResponse({'error': 'Failed to finalize order ID.'}, status=500)
 
         generated_order_id = new_order.order_id
 
-        # 5. Send Firebase notification (Keep this part)
-        # ... (FCM logic) ...
         try:
-             items_json = json.dumps(new_order.items)
-             order_db_id = str(new_order.pk) # Use integer PK for FCM data 'id'
-             message_data = {
-                 'id': order_db_id,
-                 'order_id': generated_order_id, # Use VLH-... ID here
-                 'customer_name': customer_name,
-                 'total_price': str(subtotal),
-                 'items': items_json,
-                 'order_source': 'counter'
-             }
-             message = messaging.Message( # Example structure
-                 notification=messaging.Notification(
-                     title='✅ Counter Order Created',
-                     body=f'Order #{generated_order_id} - {customer_name} - ₹{subtotal}'
-                 ),
-                 data=message_data,
-                 topic='new_orders'
-             )
-             messaging.send(message)
-             logger.info(f'Successfully sent FCM message for manual order {generated_order_id}')
+            items_json = json.dumps(new_order.items)
+            order_db_id = str(new_order.pk)
+            message_data = {
+                'id': order_db_id,
+                'order_id': generated_order_id,
+                'customer_name': customer_name,
+                'total_price': str(subtotal),
+                'items': items_json,
+                'order_source': 'counter'
+            }
+            message = messaging.Message(
+                notification=messaging.Notification(
+                    title='✅ Counter Order Created',
+                    body=f'Order #{generated_order_id} - {customer_name} - ₹{subtotal}'
+                ),
+                data=message_data,
+                topic='new_orders'
+            )
+            messaging.send(message)
+            logger.info(f'✅ Successfully sent FCM message for manual order {generated_order_id}')
         except Exception as e_fcm:
-            logger.error(f"Error sending counter order notification for {generated_order_id}: {e_fcm}", exc_info=True)
+            logger.error(f"❌ Error sending counter order notification for {generated_order_id}: {e_fcm}", exc_info=True)
 
-
-        # 6. Return Success Response
         return JsonResponse({
             'success': True,
-            'order_id': generated_order_id, # Return the VLH-... ID
+            'order_id': generated_order_id,
             'order_pk': new_order.pk,
             'total': float(subtotal),
             'message': 'Order created successfully!'
         })
 
-    # --- Exception Handling (Keep as is) ---
-    # ... (except blocks for JSONDecodeError, KeyError, ValueError, TypeError, MenuItem.DoesNotExist, Exception) ...
     except (json.JSONDecodeError, KeyError, ValueError, TypeError) as e:
-         logger.warning(f"Invalid manual order request data format: {e}")
-         return JsonResponse({'error': f'Invalid data format: {e}'}, status=400)
+        logger.warning(f"⚠️ Invalid manual order request data format: {e}")
+        return JsonResponse({'error': f'Invalid data format: {e}'}, status=400)
     except MenuItem.DoesNotExist as e:
-         logger.warning(f"Invalid menu item specified in manual order: {e}")
-         return JsonResponse({'error': 'An invalid menu item was included in the order.'}, status=400)
+        logger.warning(f"⚠️ Invalid menu item specified in manual order: {e}")
+        return JsonResponse({'error': 'An invalid menu item was included in the order.'}, status=400)
     except Exception as e:
-        logger.error(f"Error creating manual order: {e}", exc_info=True)
+        logger.error(f"❌ Error creating manual order: {e}", exc_info=True)
         return JsonResponse({'error': 'An internal server error occurred.'}, status=500)
         
 @admin_required
@@ -856,21 +872,3 @@ def generate_invoice_view(request, order_id):
     }
     
     return render(request, 'OrderMaster/invoice.html', context)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
