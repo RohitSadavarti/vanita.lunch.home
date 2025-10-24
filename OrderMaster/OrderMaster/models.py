@@ -215,7 +215,6 @@ def analytics_view(request):
     return render(request, 'OrderMaster/analytics.html', context)
 
 
-@admin_required
 def settings_view(request):
     # ... (keep existing implementation) ...
      context = {
@@ -224,7 +223,6 @@ def settings_view(request):
      return render(request, 'OrderMaster/settings.html', context)
 
 
-@admin_required
 def get_orders_api(request):
     # ... (keep existing implementation) ...
      try:
@@ -245,7 +243,6 @@ def get_orders_api(request):
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
 
 
-@admin_required
 def get_pending_orders(request):
     # ... (keep existing implementation) ...
      try:
@@ -271,7 +268,6 @@ def get_pending_orders(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
-@admin_required
 def take_order_view(request):
     # ... (keep existing implementation) ...
     menu_items = MenuItem.objects.all().order_by('category', 'item_name')
@@ -282,9 +278,6 @@ def take_order_view(request):
     return render(request, 'OrderMaster/take_order.html', context)
 
 
-@csrf_exempt
-@require_POST
-@admin_required # Ensure only admins can use this
 def create_manual_order(request):
     # ... (keep existing validation logic) ...
     try:
@@ -346,7 +339,6 @@ def create_manual_order(request):
         return JsonResponse({'error': 'An internal server error occurred.'}, status=500)
 
 
-@admin_required
 def generate_invoice_view(request, order_id):
     # ... (keep existing implementation) ...
      order = get_object_or_404(Order, id=order_id)
@@ -365,12 +357,3 @@ def generate_invoice_view(request, order_id):
         'print_date': timezone.now(),
      }
      return render(request, 'OrderMaster/invoice.html', context)
-
-
-
-
-
-
-
-
-
