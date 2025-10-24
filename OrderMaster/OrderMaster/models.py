@@ -9,10 +9,6 @@ import random
 
 logger = logging.getLogger(__name__)
 
-# ... (keep subscribe_to_topic, customer_order_view, firebase_messaging_sw, handle_order_action, admin_required, login_view, logout_view, dashboard_view, etc.) ...
-
-# Make sure analytics_api_view is correct (was duplicated in provided file)
-@admin_required
 def analytics_api_view(request):
     # ... (keep the correct implementation for analytics API) ...
     # Placeholder for the structure
@@ -379,3 +375,4 @@ def generate_invoice_view(request, order_id):
         'print_date': timezone.now(),
      }
      return render(request, 'OrderMaster/invoice.html', context)
+
