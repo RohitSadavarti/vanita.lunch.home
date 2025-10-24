@@ -510,9 +510,7 @@ def api_place_order(request):
         # --- NEW: Generate and save custom order_id ---
         try:
             while True: # Loop to ensure uniqueness
-                timestamp = timezone.now().strftime('%y%m%d%H%M%S')
-                random_part = random.randint(100, 999)
-                generated_id = f"VLH-{timestamp}-{random_part}"
+                generated_id = str(random.randint(10000000, 99999999))
                 if not Order.objects.filter(order_id=generated_id).exists():
                     new_order.order_id = generated_id
                     new_order.save(update_fields=['order_id']) # Save only the order_id field
@@ -520,13 +518,8 @@ def api_place_order(request):
                     break # Exit loop
         except Exception as e_genid:
              logger.error(f"Failed to generate and save custom order_id for PK {new_order.pk}: {e_genid}", exc_info=True)
-             # Decide how to handle this - maybe delete the order or return an error?
-             # For now, let's return an error as the order might be incomplete without the custom ID
-             # Optionally, you could delete the just-created order: new_order.delete()
              return JsonResponse({'error': 'Failed to finalize order ID.'}, status=500)
-        # --- END NEW SECTION ---
-
-        # Use the generated ID for notifications etc.
+        
         generated_order_id = new_order.order_id
 
         # 4. Send Firebase Notification (Keep this part, uses generated_order_id)
@@ -787,9 +780,7 @@ def create_manual_order(request):
         # ... (while loop to generate ID, new_order.save(update_fields...)) ...
         try:
             while True: # Loop to ensure uniqueness
-                timestamp = timezone.now().strftime('%y%m%d%H%M%S')
-                random_part = random.randint(100, 999)
-                generated_id = f"VLH-{timestamp}-{random_part}"
+                generated_id = str(random.randint(10000000, 99999999))
                 if not Order.objects.filter(order_id=generated_id).exists():
                     new_order.order_id = generated_id
                     new_order.save(update_fields=['order_id']) # Save only the order_id field
@@ -865,6 +856,7 @@ def generate_invoice_view(request, order_id):
     }
     
     return render(request, 'OrderMaster/invoice.html', context)
+
 
 
 
