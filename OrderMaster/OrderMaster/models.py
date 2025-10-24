@@ -207,7 +207,6 @@ def api_place_order(request):
         return JsonResponse({'error': 'An unexpected server error occurred.'}, status=500)
 
 
-@admin_required
 def analytics_view(request):
     # ... (keep existing implementation) ...
     context = {
@@ -366,6 +365,7 @@ def generate_invoice_view(request, order_id):
         'print_date': timezone.now(),
      }
      return render(request, 'OrderMaster/invoice.html', context)
+
 
 
 
