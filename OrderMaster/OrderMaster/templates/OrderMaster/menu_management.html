@@ -212,19 +212,31 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.location.reload();
                 }, 500);
             } else {
+                // *** START OF REVISED CHANGES ***
                 let errorMsg = 'Error updating item. Please fix the following issues:\n\n';
-                if (data.errors) {
+                if (data.errors && typeof data.errors === 'object') {
+                    // Loop through the errors object
                     for (const field in data.errors) {
-                        const fieldName = field.charAt(0).toUpperCase() + field.slice(1).replace('_', ' ');
-                        errorMsg += `• ${fieldName}: ${data.errors[field].join(', ')}\n`;
+                        // Make sure the field's errors exist and is an array before joining
+                        if (data.errors.hasOwnProperty(field) && Array.isArray(data.errors[field])) {
+                            const fieldName = field.charAt(0).toUpperCase() + field.slice(1).replace('_', ' ');
+                            errorMsg += `• ${fieldName}: ${data.errors[field].join(', ')}\n`;
+                        } else {
+                            // Handle cases where errors might not be structured as expected
+                            console.warn(`Unexpected error format for field '${field}':`, data.errors[field]);
+                            errorMsg += `• ${field}: Invalid error format received from server.\n`;
+                        }
                     }
                 } else {
-                    errorMsg = 'An unknown error occurred. Please check the form and try again.';
+                    // If data.errors is not an object or doesn't exist
+                    errorMsg = 'An unknown validation error occurred. Check the browser console for details.';
+                    console.error('Received non-object errors or no errors object:', data.errors);
                 }
-                alert(errorMsg);
+
+                alert(errorMsg); // Show the detailed error
                 console.error('Validation Errors:', data.errors);
+                // *** END OF REVISED CHANGES ***
             }
-        })
         .catch(error => {
             console.error('Error submitting form:', error);
             alert('An unexpected error occurred. Please try again.');
@@ -233,4 +245,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+
 
