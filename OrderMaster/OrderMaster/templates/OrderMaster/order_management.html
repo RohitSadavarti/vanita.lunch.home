@@ -5,361 +5,429 @@
 
 {% block content %}
 <style>
-    /* Custom styles for the collapse trigger */
-    .card-header-action {
-        text-decoration: none;
-        color: inherit;
-        font-size: 1.5rem;
-        line-height: 1;
-        cursor: pointer;
-    }
-    .card-header-action .chevron {
-        transition: transform 0.2s ease-in-out;
-    }
-    .card-header-action[aria-expanded="false"] .chevron {
-        transform: rotate(-90deg);
-    }
+    /* Custom styles for the collapse trigger */
+    .card-header-action {
+        text-decoration: none;
+        color: inherit;
+        font-size: 1.5rem;
+        line-height: 1;
+        cursor: pointer;
+    }
+    .card-header-action .chevron {
+        transition: transform 0.2s ease-in-out;
+    }
+    .card-header-action[aria-expanded="false"] .chevron {
+        transform: rotate(-90deg);
+    }
 
-    /* Timer Colors */
-    .timer-green { color: #198754; }
-    .timer-amber { color: #ffc107; }
-    .timer-red { color: #dc3545; }
+    /* Timer Colors */
+    .timer-green { color: #198754; }
+    .timer-amber { color: #ffc107; }
+    .timer-red { color: #dc3545; }
 
-    /* Order card styling */
-    .order-list-container {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        max-height: 70vh;
-        overflow-y: auto;
-        padding: 1rem;
-    }
-    @media (max-width: 991.98px) {
-        .order-list-container {
-            max-height: none; /* Allow natural height on mobile */
-            overflow-y: visible;
-        }
-    }
+    /* Order card styling */
+    .order-list-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        max-height: 70vh;
+        overflow-y: auto;
+        padding: 1rem;
+    }
+    @media (max-width: 991.98px) {
+        .order-list-container {
+            max-height: none; /* Allow natural height on mobile */
+            overflow-y: visible;
+        }
+    }
 
-    /* Action buttons container */
-    .order-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        align-items: stretch;
-    }
+    /* Action buttons container */
+    .order-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: stretch;
+    }
 
-    /* Invoice button styling */
-    .invoice-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.25rem;
-        font-size: 0.875rem;
-        white-space: nowrap;
-    }
+    /* Invoice button styling */
+    .invoice-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
+        font-size: 0.875rem;
+        white-space: nowrap;
+    }
+
+    /* --- NEW BADGE STYLES --- */
+    .order-source-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+    }
+    .badge-customer {
+        background-color: #3b82f6;
+        color: white;
+    }
+    .badge-counter {
+        background-color: #10b981;
+        color: white;
+    }
 </style>
 
 <div class="container-fluid">
-    <!-- Page Header -->
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
-        <div>
-            <h1 class="h3 mb-0 text-gray-800">Order Management</h1>
-            <p class="text-muted mb-0">Live view of kitchen and pickup status for: <strong>{{ date_display_str }}</strong></p>
-        </div>
-        
-        <!-- Date Filter Form -->
-        <div class="d-flex align-items-center mt-3 mt-md-0">
-            <div class="dropdown me-2">
-                <button class="btn btn-secondary dropdown-toggle btn-sm" type="button" id="dateFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    {{ date_display_str }}
-                </button>
-                <ul class="dropdown-menu" aria-labelledby="dateFilterDropdown">
-                    <li><a class="dropdown-item" href="?date_filter=today">Today</a></li>
-                    <li><a class="dropdown-item" href="?date_filter=yesterday">Yesterday</a></li>
-                    <li><a class="dropdown-item" href="?date_filter=this_week">This Week</a></li>
-                    <li><a class="dropdown-item" href="?date_filter=this_month">This Month</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" id="customDateBtn">Custom Range</a></li>
-                </ul>
-            </div>
-            <div id="customDateRange" class="d-none align-items-center">
-                <form class="d-flex flex-column flex-sm-row align-items-sm-center" method="get">
-                    <input type="hidden" name="date_filter" value="custom">
-                    <input type="date" class="form-control form-control-sm me-sm-2 mb-2 mb-sm-0" name="start_date" value="{{ start_date_val }}">
-                    <input type="date" class="form-control form-control-sm me-sm-2 mb-2 mb-sm-0" name="end_date" value="{{ end_date_val }}">
-                    <button type="submit" class="btn btn-primary btn-sm">Apply</button>
-                </form>
-            </div>
-        </div>
-    </div>
-    
-    <div class="row align-items-start">
-        <!-- Preparing Orders Column -->
-        <div class="col-lg-4 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-utensils me-2"></i>Preparing ({{ preparing_orders.count }})</h5>
-                    <a class="card-header-action" data-bs-toggle="collapse" href="#preparingCollapse" role="button" aria-expanded="true" aria-controls="preparingCollapse">
-                        <span class="chevron">-</span>
-                    </a>
-                </div>
-                <div class="collapse show" id="preparingCollapse">
-                    <div class="card-body order-list-container">
-                        {% for order in preparing_orders %}
-                        <div class="card" data-order-id="{{ order.id }}" data-created-at="{{ order.created_at.isoformat }}">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div class="flex-grow-1">
-                                        <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
-                                        <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
-                                        <ul class="list-unstyled mb-2">
-                                            {% for item in order.items_list %}
-                                            <li><small>{{ item.quantity }} x {{ item.name }}</small></li>
-                                            {% endfor %}
-                                        </ul>
-                                        <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
-                                        <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
-                                        <p class="card-text mb-0 timer">Preparing for: <span class="fw-bold">00:00:00</span></p>
-                                    </div>
-                                    <div class="order-actions">
-                                        <button class="btn btn-sm btn-success mark-ready-btn">Mark Ready</button>
-                                        <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-info text-white">
-                                            <i class="fas fa-file-invoice"></i> Invoice
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% empty %}
-                        <p class="text-center text-muted p-4">No orders are currently being prepared.</p>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">Order Management</h1>
+            <p class="text-muted mb-0">Live view of kitchen and pickup status for: <strong>{{ date_display_str }}</strong></p>
+        </div>
+        
+                <div class="d-flex flex-column flex-md-row gap-2 mt-3 mt-md-0">
+                        <div class="dropdown">
+                <button class="btn btn-secondary dropdown-toggle btn-sm" type="button" id="dateFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-calendar me-1"></i> {{ date_display_str }}
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="dateFilterDropdown">
+                    <li><a class="dropdown-item" href="?date_filter=today&source_filter={{ source_filter }}">Today</a></li>
+                    <li><a class="dropdown-item" href="?date_filter=yesterday&source_filter={{ source_filter }}">Yesterday</a></li>
+                    <li><a class="dropdown-item" href="?date_filter=this_week&source_filter={{ source_filter }}">This Week</a></li>
+                    <li><a class="dropdown-item" href="?date_filter=this_month&source_filter={{ source_filter }}">This Month</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" id="customDateBtn">Custom Range</a></li>
+                </ul>
+            </div>
+            
+                        <div class="dropdown">
+                <button class="btn btn-outline-primary dropdown-toggle btn-sm" type="button" id="sourceFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-filter me-1"></i> 
+                    {% if source_filter == 'customer' %}
+                        Customer Orders
+                    {% elif source_filter == 'counter' %}
+                        Counter Orders
+                    {% else %}
+                        All Orders
+                    {% endif %}
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="sourceFilterDropdown">
+                    <li>
+                        <a class="dropdown-item {% if source_filter == 'all' %}active{% endif %}" 
+                           href="?date_filter={{ selected_filter }}&source_filter=all{% if selected_filter == 'custom' %}&start_date={{ start_date_val }}&end_date={{ end_date_val }}{% endif %}">
+                            <i class="fas fa-list me-2"></i> All Orders
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item {% if source_filter == 'customer' %}active{% endif %}" 
+                           href="?date_filter={{ selected_filter }}&source_filter=customer{% if selected_filter == 'custom' %}&start_date={{ start_date_val }}&end_date={{ end_date_val }}{% endif %}">
+                            <i class="fas fa-user me-2"></i> Customer Orders
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item {% if source_filter == 'counter' %}active{% endif %}" 
+                           href="?date_filter={{ selected_filter }}&source_filter=counter{% if selected_filter == 'custom' %}&start_date={{ start_date_val }}&end_date={{ end_date_val }}{% endif %}">
+                            <i class="fas fa-cash-register me-2"></i> Counter Orders
+                        </a>
+                    </li>
+                </ul>
+            </div>
 
-        <!-- Ready for Pickup Column -->
-        <div class="col-lg-4 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-shopping-bag me-2"></i>Ready ({{ ready_orders.count }})</h5>
-                    <a class="card-header-action" data-bs-toggle="collapse" href="#readyCollapse" role="button" aria-expanded="true" aria-controls="readyCollapse">
-                        <span class="chevron">-</span>
-                    </a>
-                </div>
-                <div class="collapse show" id="readyCollapse">
-                    <div class="card-body order-list-container">
-                        {% for order in ready_orders %}
-                        <div class="card" data-order-id="{{ order.id }}" data-ready-at="{{ order.ready_time.isoformat }}">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div class="flex-grow-1">
-                                        <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
-                                        <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
-                                        <ul class="list-unstyled mb-2">
-                                            {% for item in order.items_list %}
-                                            <li><small>{{ item.quantity }} x {{ item.name }}</small></li>
-                                            {% endfor %}
-                                        </ul>
-                                        <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
-                                        <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
-                                        <p class="card-text mb-0 timer">Ready for: <span class="fw-bold">00:00:00</span></p>
-                                    </div>
-                                    <div class="order-actions">
-                                        <button class="btn btn-sm btn-primary mark-pickedup-btn">Picked Up</button>
-                                        <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-info text-white">
-                                            <i class="fas fa-file-invoice"></i> Invoice
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% empty %}
-                        <p class="text-center text-muted p-4">No orders are ready for pickup.</p>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
+                        <div id="customDateRange" class="d-none align-items-center">
+                <form class="d-flex flex-column flex-sm-row align-items-sm-center" method="get">
+                    <input type="hidden" name="date_filter" value="custom">
+                    <input type="hidden" name="source_filter" value="{{ source_filter }}">
+                    <input type="date" class="form-control form-control-sm me-sm-2 mb-2 mb-sm-0" name="start_date" value="{{ start_date_val }}">
+                    <input type="date" class="form-control form-control-sm me-sm-2 mb-2 mb-sm-0" name="end_date" value="{{ end_date_val }}">
+                    <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+                </form>
+            </div>
+        </div>
+    </div>
+        
+    <div class="row align-items-start">
+                <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-utensils me-2"></i>Preparing ({{ preparing_orders.count }})</h5>
+                    <a class="card-header-action" data-bs-toggle="collapse" href="#preparingCollapse" role="button" aria-expanded="true" aria-controls="preparingCollapse">
+                        <span class="chevron">-</span>
+                    </a>
+                </div>
+                <div class="collapse show" id="preparingCollapse">
+                    <div class="card-body order-list-container">
+                        {% for order in preparing_orders %}
+                        <div class="card" data-order-id="{{ order.id }}" data-created-at="{{ order.created_at.isoformat }}">
+                            <div class="card-body">
+                                                                <span class="order-source-badge badge-{{ order.order_placed_by|default:'customer' }}">
+                                    {% if order.order_placed_by == 'counter' %}
+                                        <i class="fas fa-cash-register me-1"></i> Counter
+                                    {% else %}
+                                        <i class="fas fa-user me-1"></i> Customer
+                                    {% endif %}
+                                </span>
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                        <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
+                                        <ul class="list-unstyled mb-2">
+                                            {% for item in order.items_list %}
+                                            <li><small>{{ item.quantity }} x {{ item.name }}</small></li>
+                                            {% endfor %}
+                                        </ul>
+                                        <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                                        <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
+                                        <p class="card-text mb-0 timer">Preparing for: <span class="fw-bold">00:00:00</span></p>
+                                    </div>
+                                    <div class="order-actions">
+                                        <button class="btn btn-sm btn-success mark-ready-btn">Mark Ready</button>
+                                        <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-info text-white">
+                                            <i class="fas fa-file-invoice"></i> Invoice
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-center text-muted p-4">No orders are currently being prepared.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        <!-- Picked Up Column -->
-        <div class="col-lg-4 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-check-circle me-2"></i>Picked Up ({{ pickedup_orders.count }})</h5>
-                    <a class="card-header-action" data-bs-toggle="collapse" href="#pickedUpCollapse" role="button" aria-expanded="true" aria-controls="pickedUpCollapse">
-                        <span class="chevron">-</span>
-                    </a>
-                </div>
-                <div class="collapse show" id="pickedUpCollapse">
-                    <div class="card-body order-list-container">
-                        {% for order in pickedup_orders %}
-                        <div class="card bg-light" data-order-id="{{ order.id }}">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div class="flex-grow-1">
-                                        <h6 class="card-title fw-bold text-muted">#{{ order.order_id }} - {{ order.customer_name }}</h6>
-                                        <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
-                                        <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
-                                        {% if order.pickup_time %}
-                                        <p class="card-text mb-0"><small class="text-muted">Completed: {{ order.pickup_time|date:"h:i A" }}</small></p>
-                                        {% endif %}
-                                    </div>
-                                    <div class="order-actions">
-                                        <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-outline-secondary">
-                                            <i class="fas fa-file-invoice"></i> Invoice
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% empty %}
-                        <p class="text-center text-muted p-4">No orders completed in this period.</p>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+                <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-shopping-bag me-2"></i>Ready ({{ ready_orders.count }})</h5>
+                    <a class="card-header-action" data-bs-toggle="collapse" href="#readyCollapse" role="button" aria-expanded="true" aria-controls="readyCollapse">
+                        <span class="chevron">-</span>
+                    </a>
+                </div>
+                <div class="collapse show" id="readyCollapse">
+                    <div class="card-body order-list-container">
+                        {% for order in ready_orders %}
+                        <div class="card" data-order-id="{{ order.id }}" data-ready-at="{{ order.ready_time.isoformat }}">
+                            <div class="card-body">
+                                                                <span class="order-source-badge badge-{{ order.order_placed_by|default:'customer' }}">
+                                    {% if order.order_placed_by == 'counter' %}
+                                        <i class="fas fa-cash-register me-1"></i> Counter
+                                    {% else %}
+                                        <i class="fas fa-user me-1"></i> Customer
+                                    {% endif %}
+                                </span>
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="card-title fw-bold">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                        <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
+                                        <ul class="list-unstyled mb-2">
+                                            {% for item in order.items_list %}
+                                            <li><small>{{ item.quantity }} x {{ item.name }}</small></li>
+                                            {% endfor %}
+                                        </ul>
+                                        <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+s                                     <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
+                                        <p class="card-text mb-0 timer">Ready for: <span class="fw-bold">00:00:00</span></p>
+                                    </div>
+                                    <div class="order-actions">
+                                        <button class="btn btn-sm btn-primary mark-pickedup-btn">Picked Up</button>
+                              _       <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-info text-white">
+                                            <i class="fas fa-file-invoice"></i> Invoice
+                                        </a>
+                                    </div>
+                                </div>
+s                       </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-center text-muted p-4">No orders are ready for pickup.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+                <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-check-circle me-2"></i>Picked Up ({{ pickedup_orders.count }})</h5>
+                    <a class="card-header-action" data-bs-toggle="collapse" href="#pickedUpCollapse" role="button" aria-expanded="true" aria-controls="pickedUpCollapse">
+                        <span class="chevron">-</span>
+                    </a>
+                </div>
+is           <div class="collapse show" id="pickedUpCollapse">
+                    <div class="card-body order-list-container">
+                        {% for order in pickedup_orders %}
+                        <div class="card bg-light" data-order-id="{{ order.id }}">
+s                         <div class="card-body">
+                                                                <span class="order-source-badge badge-{{ order.order_placed_by|default:'customer' }}">
+                                    {% if order.order_placed_by == 'counter' %}
+s                                     <i class="fas fa-cash-register me-1"></i> Counter
+s                                 {% else %}
+                                        <i class="fas fa-user me-1"></i> Customer
+                                    {% endif %}
+                                </span>
+                                <div class="d-flex justify-content-between align-items-start">
+A                               <div class="flex-grow-1">
+                                        <h6 class="card-title fw-bold text-muted">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                        <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
+                                        <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+S                                     {% if order.pickup_time %}
+                                        <p class="card-text mb-0"><small class="text-muted">Completed: {{ order.pickup_time|date:"h:i A" }}</small></p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="order-actions">
+                                        <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-outline-secondary">
+S                                         <i class="fas fa-file-invoice"></i> Invoice
+                                        </a>
+Two                             </div>
+                                </div>
+                            </div>
+                    s   </div>
+                        {% empty %}
+                        <p class="text-center text-muted p-4">No orders completed in this period.</p>
+g                     {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 </main>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // --- COLLAPSE ICON TOGGLER ---
-    document.querySelectorAll('.card-header-action').forEach(function(element) {
-        const collapseTarget = document.querySelector(element.getAttribute('href'));
-        if (collapseTarget) {
-            const chevron = element.querySelector('.chevron');
-            
-            // Initial state check
-            if (!collapseTarget.classList.contains('show')) {
-                chevron.style.transform = 'rotate(-90deg)';
-            }
+    // --- COLLAPSE ICON TOGGLER ---
+    document.querySelectorAll('.card-header-action').forEach(function(element) {
+        const collapseTarget = document.querySelector(element.getAttribute('href'));
+        if (collapseTarget) {
+            const chevron = element.querySelector('.chevron');
+            
+            // Initial state check
+            if (!collapseTarget.classList.contains('show')) {
+                chevron.style.transform = 'rotate(-90deg)';
+s           }
 
-            element.addEventListener('click', function(e) {
-                e.preventDefault();
-                const isOpening = !collapseTarget.classList.contains('show');
-                chevron.style.transform = isOpening ? 'rotate(0deg)' : 'rotate(-90deg)';
-                new bootstrap.Collapse(collapseTarget, { toggle: true });
-            });
-        }
-    });
+            element.addEventListener('click', function(e) {
+                e.preventDefault();
+                const isOpening = !collapseTarget.classList.contains('show');
+                chevron.style.transform = isOpening ? 'rotate(0deg)' : 'rotate(-90deg)';
+                new bootstrap.Collapse(collapseTarget, { toggle: true });
+            });
+        }
+    });
 
-    // --- UTILITY: Get CSRF Token ---
-    const getCookie = (name) => {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    };
+    // --- UTILITY: Get CSRF Token ---
+    const getCookie = (name) => {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    };
 
-    // --- ORDER STATUS UPDATE ---
-    const handleStatusUpdate = async (button, newStatus) => {
-        const orderCard = button.closest('.card[data-order-id]');
-        if (!orderCard) {
-            console.error('Could not find parent order card.');
-            return;
-        }
-        const orderId = orderCard.dataset.orderId;
+    // --- ORDER STATUS UPDATE ---
+s   const handleStatusUpdate = async (button, newStatus) => {
+        const orderCard = button.closest('.card[data-order-id]');
+        if (!orderCard) {
+            console.error('Could not find parent order card.');
+            return;
+        }
+        const orderId = orderCard.dataset.orderId;
 
-        try {
-            // *** THIS IS THE FIX: Changed URL to include '/api/' ***
-            const response = await fetch('/api/update-order-status/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify({ id: orderId, status: newStatus })
-            });
+        try {
+            // *** THIS IS THE FIX: Changed URL to include '/api/' ***
+            const response = await fetch('/api/update-order-status/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+s                 'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ id: orderId, status: newStatus })
+t         });
 
-            if (response.ok) {
-                orderCard.style.transition = 'opacity 0.5s ease';
-                orderCard.style.opacity = '0';
-                setTimeout(() => { window.location.reload(); }, 500);
-            } else {
-                alert('Error updating status. Please try again.');
-            }
-        } catch (error) {
-            console.error('Failed to update order status:', error);
-            alert('A network error occurred. Please check the console.');
-        }
-    };
-    
-    document.querySelectorAll('.mark-ready-btn').forEach(button => {
-        button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'ready'));
-    });
-    
-    document.querySelectorAll('.mark-pickedup-btn').forEach(button => {
-        button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'pickedup'));
-    });
+            if (response.ok) {
+                orderCard.style.transition = 'opacity 0.5s ease';
+                orderCard.style.opacity = '0';
+                setTimeout(() => { window.location.reload(); }, 500);
+s         } else {
+                alert('Error updating status. Please try again.');
+            }
+        } catch (error) {
+            console.error('Failed to update order status:', error);
+            alert('A network error occurred. Please check the console.');
+        }
+    };
+    
+    document.querySelectorAll('.mark-ready-btn').forEach(button => {
+i       button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'ready'));
+    });
+    
+    document.querySelectorAll('.mark-pickedup-btn').forEach(button => {
+        button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'pickedup'));
+    });
 
-    // --- TIMER FUNCTIONALITY ---
-    const updateTimers = () => {
-        const setTimer = (card, startTime) => {
-            const now = new Date();
-            const diff = now - startTime;
-            const totalMinutes = Math.floor(diff / (1000 * 60));
+    // --- TIMER FUNCTIONALITY ---
+    const updateTimers = () => {
+        const setTimer = (card, startTime) => {
+            const now = new Date();
+            const diff = now - startTime;
+            const totalMinutes = Math.floor(diff / (1000 * 60));
 
-            const seconds = Math.floor((diff / 1000) % 60);
-            const minutes = Math.floor((diff / (1000 * 60)) % 60);
-            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const seconds = Math.floor((diff / 1000) % 60);
+            const minutes = Math.floor((diff / (1000 * 60)) % 60);
+            const hours = Math.floor(diff / (1000 * 60 * 60));
 
-            const timerSpan = card.querySelector('.timer span');
-            if (timerSpan) {
-                timerSpan.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-                
-                timerSpan.classList.remove('timer-green', 'timer-amber', 'timer-red');
-                if (totalMinutes < 15) {
-                    timerSpan.classList.add('timer-green');
-                } else if (totalMinutes < 30) {
-                    timerSpan.classList.add('timer-amber');
-                } else {
-                    timerSpan.classList.add('timer-red');
-                }
-            }
-        };
-        
-        document.querySelectorAll('.card[data-created-at]').forEach(card => {
-            setTimer(card, new Date(card.dataset.createdAt));
-        });
+            const timerSpan = card.querySelector('.timer span');
+            if (timerSpan) {
+                timerSpan.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                
+                timerSpan.classList.remove('timer-green', 'timer-amber', 'timer-red');
+                if (totalMinutes < 15) {
+                    timerSpan.classList.add('timer-green');
+                } else if (totalMinutes < 30) {
+                    timerSpan.classList.add('timer-amber');
+                } else {
+                    timerSpan.classList.add('timer-red');
+                }
+            }
+        };
+        
+        document.querySelectorAll('.card[data-created-at]').forEach(card => {
+            setTimer(card, new Date(card.dataset.createdAt));
+        });
 
-        document.querySelectorAll('.card[data-ready-at]').forEach(card => {
-            setTimer(card, new Date(card.dataset.readyAt));
-        });
-    };
+        document.querySelectorAll('.card[data-ready-at]').forEach(card => {
+is         setTimer(card, new Date(card.dataset.readyAt));
+        });
+    };
 
-    setInterval(updateTimers, 1000);
-    updateTimers(); // Initial call
+    setInterval(updateTimers, 1000);
+    updateTimers(); // Initial call
 
-    // --- DATE FILTER ---
-    const customDateBtn = document.getElementById('customDateBtn');
-    const customDateRangeDiv = document.getElementById('customDateRange');
+t   // --- DATE FILTER ---
+    const customDateBtn = document.getElementById('customDateBtn');
+    const customDateRangeDiv = document.getElementById('customDateRange');
 
-    if (customDateBtn && customDateRangeDiv) {
-        customDateBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            customDateRangeDiv.classList.toggle('d-none');
-            customDateRangeDiv.classList.toggle('d-flex');
-        });
-        
-        // If the page was loaded with a custom filter, show the date inputs
-        if ("{{ selected_filter }}" === "custom") {
-             customDateRangeDiv.classList.remove('d-none');
-             customDateRangeDiv.classList.add('d-flex');
-        }
-    }
+    if (customDateBtn && customDateRangeDiv) {
+        customDateBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            customDateRangeDiv.classList.toggle('d-none');
+            customDateRangeDiv.classList.toggle('d-flex');
+        });
+        
+        // If the page was loaded with a custom filter, show the date inputs
+A       if ("{{ selected_filter }}" === "custom") {
+             customDateRangeDiv.classList.remove('d-none');
+             customDateRangeDiv.classList.add('d-flex');
+        }
+    }
 });
 </script>
 {% endblock %}
-
