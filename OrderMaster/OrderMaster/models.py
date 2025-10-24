@@ -4,7 +4,7 @@ from django.db import models
 from django.utils import timezone
 import bcrypt
 import random
-# Removed json import as it's not needed directly in models after correction
+# Removed json import as it's not needed directly in models
 # Removed all view-related imports and function definitions
 
 class MenuItem(models.Model):
@@ -35,7 +35,8 @@ class Order(models.Model):
         ('Rejected', 'Rejected'),
         ('Cancelled', 'Cancelled'),
     ]
-    order_id = models.CharField(max_length=50, unique=True, blank=True)
+    # NOTE: order_id is now only defined here, generation logic moved to views
+    order_id = models.CharField(max_length=50, unique=True, blank=True, null=True)
     customer_name = models.CharField(max_length=200)
     customer_mobile = models.CharField(max_length=15)
     items = models.JSONField() # Stores list of items as JSON
@@ -56,16 +57,13 @@ class Order(models.Model):
         default='customer'
     )
 
-    def save(self, *args, **kwargs):
-        if not self.order_id:
-            # Generate a unique order ID
-            timestamp = timezone.now().strftime('%y%m%d%H%M%S')
-            random_part = random.randint(100, 999)
-            self.order_id = f"VLH-{timestamp}-{random_part}" # Added prefix
-        super(Order, self).save(*args, **kwargs)
+    # --- CUSTOM SAVE METHOD REMOVED ---
+    # The default save() method will be used.
 
     def __str__(self):
-        return f"Order {self.order_id} - {self.customer_name}"
+        # Display PK if order_id isn't set yet
+        display_id = self.order_id if self.order_id else f"(PK:{self.pk})"
+        return f"Order {display_id} - {self.customer_name}"
 
     class Meta:
         db_table = 'orders'
