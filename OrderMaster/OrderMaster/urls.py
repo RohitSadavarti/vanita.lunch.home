@@ -3,8 +3,8 @@
 from django.urls import path, include, re_path
 from django.http import HttpResponse
 from django.template.loader import render_to_string
-from . import views
-from .scripts.analytics_views import urlpatterns as analytics_urlpatterns
+from .. import views  # <--- THE FIX: Changed from "." to ".." to go one directory up
+from ..scripts.analytics_views import urlpatterns as analytics_urlpatterns
 
 # This view dynamically serves the Firebase Service Worker JS file
 def firebase_messaging_sw(request):
@@ -50,5 +50,3 @@ urlpatterns = [
     path('api/create-manual-order/', views.create_manual_order, name='create_manual_order'),
     path('invoice/<int:order_id>/', views.generate_invoice_view, name='generate_invoice'),
 ]
-
-
