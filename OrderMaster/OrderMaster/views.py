@@ -789,7 +789,7 @@ def get_all_orders_api(request):
             'success': False,
             'error': 'Server error occurred while fetching orders.'
         }, status=500)
-
+        
 @csrf_exempt
 @admin_required
 @require_POST
