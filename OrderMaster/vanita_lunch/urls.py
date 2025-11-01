@@ -5,8 +5,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    # --- FIX: Point explicitly to the nested urls.py file ---
-    path('', include('OrderMaster.OrderMaster.urls')),
+    # Reverted to the original include statement that correctly locates the app
+    path('', include('OrderMaster.urls')),
 ]
 
 if settings.DEBUG:
