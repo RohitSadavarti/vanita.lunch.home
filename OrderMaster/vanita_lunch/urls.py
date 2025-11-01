@@ -5,8 +5,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    # This line tells Django to use the URLs defined in your OrderMaster app
-    path('', include('OrderMaster.urls')),
+    # --- FIX: Point explicitly to the nested urls.py file ---
+    path('', include('OrderMaster.OrderMaster.urls')),
 ]
 
 if settings.DEBUG:
