@@ -713,7 +713,82 @@ def get_pending_orders(request):
     except Exception as e:
         logger.error(f"Error fetching pending orders: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
+@csrf_exempt
+@require_http_methods(["GET"])
+def get_all_orders_api(request):
+    """
+    API endpoint to fetch ALL orders for a specific date.
+    Used by Flutter app's counter_order_screen.
+    """
+    try:
+        # Get date from query parameters
+        date_str = request.GET.get('date')
+        
+        if date_str:
+            try:
+                # Parse the date string (format: YYYY-MM-DD)
+                target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                logger.info(f"📅 Fetching orders for date: {target_date}")
+            except ValueError as e:
+                logger.error(f"❌ Invalid date format: {date_str}")
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Invalid date format. Use YYYY-MM-DD'
+                }, status=400)
+        else:
+            # Default to today's date
+            target_date = timezone.now().date()
+            logger.info(f"📅 No date provided, using today: {target_date}")
+        
+        # Query orders for the target date
+        start_datetime = timezone.make_aware(
+            datetime.combine(target_date, datetime.min.time())
+        )
+        end_datetime = timezone.make_aware(
+            datetime.combine(target_date, datetime.max.time())
+        )
+        
+        orders = Order.objects.filter(
+            created_at__range=(start_datetime, end_datetime)
+        ).order_by('-created_at')
+        
+        logger.info(f"✅ Found {orders.count()} orders for {target_date}")
+        
+        # Serialize orders
+        orders_data = []
+        for order in orders:
+            try:
+                # Parse items if it's a JSON string
+                items_list = order.items if isinstance(order.items, list) else json.loads(order.items)
+                
+                orders_data.append({
+                    'id': order.id,
+                    'order_id': order.order_id,
+                    'customer_name': order.customer_name,
+                    'customer_mobile': order.customer_mobile,
+                    'items': items_list,
+                    'total_price': float(order.total_price),
+                    'status': order.status,
+                    'order_placed_by': order.order_placed_by,  # Important for filtering
+                    'created_at': order.created_at.isoformat(),
+                })
+            except Exception as e:
+                logger.error(f"❌ Error serializing order {order.id}: {e}")
+                continue
+        
+        return JsonResponse({
+            'success': True,
+            'orders': orders_data,
+            'date': target_date.isoformat(),
+            'count': len(orders_data)
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Error in get_all_orders_api: {e}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': 'Server error occurred while fetching orders.'
+        }, status=500)
 
 @csrf_exempt
 @admin_required
