@@ -71,13 +71,15 @@ def place_order():
     try:
         data = request.get_json()
         
-        name = data.get('name', '').strip()
-        mobile = data.get('mobile', '').strip()
-        address = data.get('address', '').strip()
-        cart_items = data.get('cart_items', [])
+        # --- FIX: Mismatched keys from customer.js ---
+        # customer.js is sending: customer_name, customer_mobile, customer_address, items
+        name = data.get('customer_name', '').strip()
+        mobile = data.get('customer_mobile', '').strip()
+        address = data.get('customer_address', '').strip()
+        cart_items = data.get('items', []) # 'items' not 'cart_items'
 
         if not all([name, mobile, address, cart_items]):
-            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+            return jsonify({'success': False, 'error': 'Missing required fields (name, mobile, address, items)'}), 400
         
         conn = get_db_connection()
         cur = conn.cursor()
@@ -105,30 +107,47 @@ def place_order():
                 'name': menu_item[1],
                 'price': actual_price,
                 'quantity': quantity,
-                'total': item_total
+                'total': item_total # This key name is different from your Django app, but we'll include it
             })
         
         total_price = subtotal
         order_id = str(random.randint(10000000, 99999999))
 
+        # --- MODIFICATION #1: Added 'order_placed_by' to the query ---
+        # --- MODIFICATION #2: Added 'RETURNING id' to get the database PK ---
         cur.execute("""
-            INSERT INTO orders (order_id, customer_name, customer_mobile, items, subtotal, total_price, status, payment_method, created_at, updated_at, order_status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO orders (order_id, customer_name, customer_mobile, items, subtotal, total_price, status, payment_method, created_at, updated_at, order_status, order_placed_by)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
         """, (
             order_id, name, mobile, json.dumps(validated_items), subtotal, total_price, 
-            'confirmed', 'Cash', datetime.now(), datetime.now(), 'open'
+            'confirmed', 'Cash', datetime.now(), datetime.now(), 'open', 'customer' # <-- Added 'customer'
         ))
+        
+        # --- MODIFICATION #3: Get the returned primary key 'id' ---
+        new_order_db_id = cur.fetchone()[0]
         
         conn.commit()
 
         # --- Send Firebase notification only if Firebase is initialized ---
         if firebase_admin._apps:
             try:
+                # --- MODIFICATION #4: Added full data payload for admin popup ---
+                message_data = {
+                    'id': str(new_order_db_id), # The database primary key
+                    'order_id': order_id,      # The random 8-digit ID
+                    'customer_name': name,
+                    'total_price': str(total_price),
+                    'items': json.dumps(validated_items), # Send items as JSON string
+                    'order_source': 'customer' # This tells the admin panel to show the popup
+                }
+
                 message = messaging.Message(
                     notification=messaging.Notification(
-                        title='New Order Received!',
+                        title='🔔 New Customer Order!',
                         body=f'Order #{order_id} from {name} for ₹{total_price:.2f} has been placed.'
                     ),
+                    data=message_data, # <-- Added the data payload
                     topic='new_orders'
                 )
                 response = messaging.send(message)
@@ -150,4 +169,3 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
-
