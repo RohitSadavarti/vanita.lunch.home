@@ -1,307 +1,308 @@
-// Global variables
-let menuItems = [];
-let cart = [];
-let filteredMenuItems = [];
-let currentCategory = 'all';
-let currentVegFilter = 'all';
-let currentSearchTerm = '';
+$(document).ready(function() {
+    let currentOrders = { preparing: [], ready: [] };
+    let newOrderSound = new Audio('/static/notification.mp3'); // Path to your sound file
+    let newOrdersQueue = [];
+    let isModalOpen = false;
 
-// Initialize the application
-document.addEventListener('DOMContentLoaded', function() {
-    lucide.createIcons();
-    loadMenuItems();
-    setupEventListeners();
-    loadCartFromStorage();
-});
-
-// Setup event listeners
-function setupEventListeners() {
-    document.getElementById('cartBtn').addEventListener('click', toggleCart);
-    document.getElementById('closeCartBtn').addEventListener('click', toggleCart);
-    document.getElementById('cartOverlay').addEventListener('click', toggleCart);
-    document.getElementById('payNowBtn').addEventListener('click', handleOrderSubmit);
-    
-    document.getElementById('searchInput').addEventListener('input', handleSearch);
-    document.querySelectorAll('.category-filter').forEach(button => {
-        button.addEventListener('click', handleCategoryFilter);
-    });
-    document.querySelectorAll('.veg-filter').forEach(button => {
-        button.addEventListener('click', handleVegFilter);
-    });
-
-    document.getElementById('customerForm').addEventListener('submit', (e) => e.preventDefault());
-}
-
-// Load menu items from the backend API
-
-async function loadMenuItems() {
-    const menuContainer = document.getElementById('menu-container');
-    try {
-        // --- THIS URL IS NOW CORRECTED ---
-        const response = await fetch('/api/menu-items'); // Changed from /api/menu
-        if (!response.ok) throw new Error('Failed to load menu');
-        
-        menuItems = await response.json();
-        applyFilters();
-
-    } catch (error) {
-        console.error('Error loading menu:', error);
-        menuContainer.innerHTML = `<p class="col-span-full text-center text-red-500">Could not load menu.</p>`;
-    }
-}
-
-// Render menu items on the page
-function renderMenu() {
-    const container = document.getElementById('menu-container');
-    container.innerHTML = ''; 
-
-    if (filteredMenuItems.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center py-12"><h3 class="text-lg font-medium">No items found matching your criteria.</h3></div>`;
-        return;
+    // --- UTILITY: Get CSRF Token ---
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
     }
 
-    filteredMenuItems.forEach(item => {
-        const imageUrl = item.image_url || `https://placehold.co/600x400/f3f4f6/6b7280?text=No+Image`;
+    // --- NOTIFICATION MODAL ---
+    function showNewOrderPopup() {
+        if (isModalOpen || newOrdersQueue.length === 0) {
+            return; // Don't show if modal is already open or queue is empty
+        }
         
-        const card = document.createElement('div');
-        card.className = 'bg-white rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-transform duration-300';
-        card.innerHTML = `
-            <img src="${imageUrl}" alt="${item.item_name}" class="h-48 w-full object-cover">
-            <div class="p-4">
-                <h4 class="text-lg font-bold">${item.item_name}</h4>
-                <p class="text-sm text-gray-600 mt-1 h-10 overflow-hidden">${item.description || ''}</p>
-                <div class="flex justify-between items-center mt-4">
-                    <span class="text-lg font-bold text-orange-600">₹${parseFloat(item.price).toFixed(2)}</span>
-                    <button class="add-to-cart-btn bg-orange-100 text-orange-700 font-semibold px-4 py-2 rounded-lg hover:bg-orange-200" onclick="addToCart(${item.id})">Add to Cart</button>
-                </div>
-            </div>
+        isModalOpen = true;
+        const orderData = newOrdersQueue.shift(); // Get the first order from the queue
+        
+        const modal = new bootstrap.Modal(document.getElementById('newOrderModal'));
+        const detailsContainer = document.getElementById('newOrderDetails');
+        
+        let items;
+        try {
+            // Check if items is a JSON string, otherwise assume it's an object
+            items = typeof orderData.items === 'string' ? JSON.parse(orderData.items) : orderData.items;
+        } catch (e) {
+            items = []; // Fallback
+        }
+
+        let itemsHtml = '<ul class="list-group list-group-flush">';
+        if (Array.isArray(items)) {
+             items.forEach(item => {
+                itemsHtml += `<li class="list-group-item d-flex justify-content-between">
+                                <span>${item.quantity} x ${item.name}</span>
+                                <strong>₹${item.price}</strong>
+                              </li>`;
+            });
+        } else if (typeof items === 'object' && items !== null) {
+             // Handle object format {item_name: quantity}
+            for (const [name, qty] of Object.entries(items)) {
+                itemsHtml += `<li class="list-group-item">${qty} x ${name}</li>`;
+            }
+        }
+        itemsHtml += '</ul>';
+
+        detailsContainer.innerHTML = `
+            <h4 class="mb-3">Order #${orderData.order_id}</h4>
+            <p><strong>Customer:</strong> ${orderData.customer_name}</p>
+            <p><strong>Total:</strong> <strong class="text-danger fs-5">₹${orderData.total_price}</strong></p>
+            <div><strong>Items:</strong>${itemsHtml}</div>
         `;
-        container.appendChild(card);
-    });
-}
 
-// --- THIS FUNCTION IS FIXED ---
-// It now safely checks for null values before calling .toLowerCase()
-function applyFilters() {
-    filteredMenuItems = menuItems.filter(item => {
-        const categoryMatch = currentCategory === 'all' || (item.category && item.category.toLowerCase() === currentCategory);
+        // Add event listeners for accept/reject buttons
+        $('#acceptOrderBtn').off('click').on('click', () => handleOrderAction(orderData.id, 'accept', modal));
+        $('#rejectOrderBtn').off('click').on('click', () => handleOrderAction(orderData.id, 'reject', modal));
         
-        const vegMatch = currentVegFilter === 'all' || (item.veg_nonveg && item.veg_nonveg.toLowerCase().replace(/ /g, '-') === currentVegFilter);
+        // When modal is hidden, check queue for next order
+        $('#newOrderModal').off('hidden.bs.modal').on('hidden.bs.modal', function () {
+            isModalOpen = false;
+            setTimeout(showNewOrderPopup, 500); // Check for next order
+        });
 
-        const searchMatch = !currentSearchTerm ||
-            (item.item_name && item.item_name.toLowerCase().includes(currentSearchTerm)) ||
-            (item.description && item.description.toLowerCase().includes(currentSearchTerm));
-            
-        return categoryMatch && vegMatch && searchMatch;
-    });
-    renderMenu();
-}
-
-function handleSearch(e) {
-    currentSearchTerm = e.target.value.toLowerCase();
-    applyFilters();
-}
-
-function handleCategoryFilter(e) {
-    document.querySelectorAll('.category-filter').forEach(btn => {
-        btn.classList.remove('active', 'bg-orange-500', 'text-white');
-        btn.classList.add('bg-gray-200', 'text-gray-700');
-    });
-    const clickedButton = e.currentTarget;
-    clickedButton.classList.add('active', 'bg-orange-500', 'text-white');
-    clickedButton.classList.remove('bg-gray-200', 'text-gray-700');
-    currentCategory = clickedButton.dataset.category;
-    applyFilters();
-}
-
-function handleVegFilter(e) {
-    document.querySelectorAll('.veg-filter').forEach(btn => {
-        btn.classList.remove('active');
-        btn.classList.remove('bg-green-100', 'text-green-800');
-        btn.classList.remove('bg-red-100', 'text-red-800');
-        btn.classList.add('bg-gray-100', 'text-gray-700');
-    });
-    const clickedButton = e.currentTarget;
-    clickedButton.classList.add('active');
-    clickedButton.classList.remove('bg-gray-100', 'text-gray-700');
-    if (clickedButton.dataset.type === 'veg') {
-        clickedButton.classList.add('bg-green-100', 'text-green-800');
-    } else if (clickedButton.dataset.type === 'non-veg') {
-         clickedButton.classList.add('bg-red-100', 'text-red-800');
+        modal.show();
+        newOrderSound.play().catch(e => console.warn("Audio play failed:", e));
     }
 
-    currentVegFilter = clickedButton.dataset.type;
-    applyFilters();
-}
+    async function handleOrderAction(orderId, action, modalInstance) {
+        try {
+            const response = await fetch('/api/handle-order-action/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ order_id: orderId, action: action })
+            });
 
-// Cart and Order functions
-function addToCart(itemId) {
-    const item = menuItems.find(i => i.id === itemId);
-    if (!item) return;
-    const existingItem = cart.find(i => i.id === itemId);
-    if (existingItem) {
-        existingItem.quantity++;
-    } else {
-        cart.push({ id: item.id, name: item.item_name, price: item.price, quantity: 1 });
-    }
-    updateCartDisplay();
-    saveCartToStorage();
-    showToast(`${item.item_name} added to cart!`);
-}
-
-function updateQuantity(itemId, change) {
-    const item = cart.find(i => i.id === itemId);
-    if (item) {
-        item.quantity += change;
-        if (item.quantity <= 0) {
-            cart = cart.filter(i => i.id !== itemId);
+            if (response.ok) {
+                modalInstance.hide();
+                fetchOrders(); // Manually refresh the board
+            } else {
+                alert(`Failed to ${action} the order.`);
+            }
+        } catch (error) {
+            console.error(`Error ${action}ing order:`, error);
+            alert('An error occurred. Please try again.');
         }
     }
-    updateCartDisplay();
-    saveCartToStorage();
-}
 
-function removeFromCart(itemId) {
-    const item = cart.find(i => i.id === itemId);
-    cart = cart.filter(i => i.id !== itemId);
-    updateCartDisplay();
-    saveCartToStorage();
-    showToast(`${item.name} removed from cart.`, 'info');
-}
 
-function updateCartDisplay() {
-    const cartCount = document.getElementById('cartCount');
-    const cartItems = document.getElementById('cart-page-items');
-    const cartSummary = document.getElementById('cart-page-summary');
-    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+    // --- KANBAN BOARD LOGIC ---
+    function fetchOrders() {
+        $.ajax({
+            url: '/api/get-orders',
+            type: 'GET',
+            dataType: 'json',
+            success: function(data) {
+                const preparingList = $('#preparing-orders-list');
+                const readyList = $('#ready-orders-list');
 
-    cartCount.textContent = totalItems;
-    cartCount.classList.toggle('hidden', totalItems === 0);
+                // Check for new orders to show popup
+                const newPreparingOrders = data.preparing_orders.filter(order => 
+                    !currentOrders.preparing.some(o => o.id === order.id)
+                );
+                
+                if (newPreparingOrders.length > 0) {
+                    newOrdersQueue.push(...newPreparingOrders);
+                    showNewOrderPopup(); // Try to show popup
+                }
+                
+                // Update current orders
+                currentOrders.preparing = data.preparing_orders;
+                currentOrders.ready = data.ready_orders;
 
-    if (cart.length === 0) {
-        cartItems.innerHTML = '<p class="text-gray-500 text-center py-4">Your cart is empty</p>';
-        cartSummary.innerHTML = '';
-        return;
-    }
-    
-    let cartHTML = '';
-    cart.forEach(item => {
-        cartHTML += `
-            <div class="py-3 border-b">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <h6 class="font-semibold">${item.name}</h6>
-                        <small class="text-gray-500">₹${parseFloat(item.price).toFixed(2)} x ${item.quantity}</small>
-                    </div>
-                    <div class="font-bold">₹${(item.price * item.quantity).toFixed(2)}</div>
-                </div>
-                <div class="flex items-center mt-2">
-                    <button class="bg-gray-200 w-7 h-7 rounded-full font-bold" onclick="updateQuantity(${item.id}, -1)">-</button>
-                    <span class="mx-3">${item.quantity}</span>
-                    <button class="bg-gray-200 w-7 h-7 rounded-full font-bold" onclick="updateQuantity(${item.id}, 1)">+</button>
-                    <button class="text-red-500 hover:text-red-700 ml-auto text-sm font-medium" onclick="removeFromCart(${item.id})">Remove</button>
-                </div>
-            </div>`;
-    });
-    cartItems.innerHTML = cartHTML;
-    
-    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    cartSummary.innerHTML = `<div class="flex justify-between font-bold mt-2 text-lg"><span>Total</span><span>₹${subtotal.toFixed(2)}</span></div>`;
-}
-
-function toggleCart() {
-    const cartSidebar = document.getElementById('cartSidebar');
-    const cartOverlay = document.getElementById('cartOverlay');
-    cartSidebar.classList.toggle('translate-x-full');
-    cartOverlay.classList.toggle('hidden');
-    document.body.style.overflow = cartSidebar.classList.contains('translate-x-full') ? '' : 'hidden';
-}
-
-async function handleOrderSubmit() {
-    const submitBtn = document.getElementById('payNowBtn');
-    submitBtn.querySelector('span').textContent = 'Placing...';
-    submitBtn.disabled = true;
-
-    // --- CRITICAL FIX: Check cart before proceeding ---
-    if (cart.length === 0) {
-        showToast('Your cart is empty. Please add items first.', 'error');
-        submitBtn.querySelector('span').textContent = 'Place Order (Cash)';
-        submitBtn.disabled = false;
-        return;
-    }
-    
-    const customerName = document.getElementById('customerNameCart').value.trim();
-    const customerMobile = document.getElementById('customerMobileCart').value.trim();
-    const customerAddress = document.getElementById('customerAddress').value.trim();
-
-    if (!customerName || !customerMobile || !customerAddress) {
-        showToast('Please fill in all delivery details.', 'error');
-        submitBtn.querySelector('span').textContent = 'Place Order (Cash)';
-        submitBtn.disabled = false;
-        return;
-    }
-
-    // --- FIXED: Match the field names expected by Flask backend ---
-    const orderData = {
-        customer_name: customerName,     // Changed from 'name'
-        customer_mobile: customerMobile, // Changed from 'mobile'
-        customer_address: customerAddress, // Changed from 'address'
-        items: cart.map(item => ({       // Changed from 'cart_items'
-            id: item.id, 
-            quantity: item.quantity
-        }))
-    };
-
-    try {
-        const response = await fetch('/api/order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(orderData)
+                // --- Render Preparing Orders ---
+                preparingList.empty();
+                if (currentOrders.preparing.length === 0) {
+                    preparingList.html('<div class="text-center py-5 text-muted">No orders in preparation.</div>');
+                } else {
+                    currentOrders.preparing.forEach(order => {
+                        preparingList.append(createOrderCard(order, 'preparing'));
+                    });
+                }
+                
+                // --- Render Ready Orders ---
+                readyList.empty();
+                if (currentOrders.ready.length === 0) {
+                    readyList.html('<div class="text-center py-5 text-muted">No orders are ready for pickup.</div>');
+                } else {
+                    currentOrders.ready.forEach(order => {
+                        readyList.append(createOrderCard(order, 'ready'));
+                    });
+                }
+                
+                // Update counts
+                $('#preparing-count').text(currentOrders.preparing.length);
+                $('#ready-count').text(currentOrders.ready.length);
+                updateTimers(); // Refresh all timers
+            },
+            error: function(xhr, status, error) {
+                console.error("Failed to fetch orders: ", error);
+            }
         });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'Failed to place order.');
+    }
+
+    function createOrderCard(order, status) {
+        let itemsHtml = '<ul class="list-unstyled small mt-1 mb-0">';
+        let items;
+        try {
+            items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+        } catch (e) { items = []; }
+
+        if (Array.isArray(items)) {
+             items.forEach(item => {
+                itemsHtml += `<li>• ${item.quantity} x ${item.name}</li>`;
+            });
+        } else if (typeof items === 'object' && items !== null) {
+            for (const [name, qty] of Object.entries(items)) {
+                itemsHtml += `<li>• ${qty} x ${name}</li>`;
+            }
+        }
+        itemsHtml += '</ul>';
+
+        let cardHtml = `
+            <div class="card mb-3 order-card" data-order-id="${order.id}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="card-title mb-0">Order #${order.order_id}</h6>
+                        <span class="badge ${status === 'preparing' ? 'bg-warning text-dark' : 'bg-success'}">${status === 'preparing' ? 'Preparing' : 'Ready'}</span>
+                    </div>
+                    <p class="card-text mb-1">
+                        <strong>Customer:</strong> ${order.customer_name}
+                    </p>
+                    <div class="mt-2">
+                        <strong>Items:</strong>
+                        ${itemsHtml}
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div class="d-flex flex-column">
+                            <strong class="text-danger fs-6">Total: ₹${order.total_price}</strong>`;
         
-        showToast(result.message, 'success');
-        clearCart();
-        resetCheckoutForm();
-        toggleCart();
-    } catch (error) {
-        showToast(error.message, 'error');
-    } finally {
-        submitBtn.querySelector('span').textContent = 'Place Order (Cash)';
-        submitBtn.disabled = false;
-    }
-}
-// Helper functions
-function clearCart() {
-    cart = [];
-    updateCartDisplay();
-    saveCartToStorage();
-}
-function resetCheckoutForm() {
-    document.getElementById('customerForm').reset();
-}
-function saveCartToStorage() {
-    localStorage.setItem('vanita_cart', JSON.stringify(cart));
-}
-function loadCartFromStorage() {
-    const savedCart = localStorage.getItem('vanita_cart');
-    if (savedCart) {
-        cart = JSON.parse(savedCart);
-        updateCartDisplay();
-    }
-}
-function showToast(message, type = 'success') {
-    const toastEl = document.getElementById('toast');
-    const toastMessage = document.getElementById('toast-message');
-    toastMessage.textContent = message;
-    
-    const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500' };
-    toastEl.className = `fixed bottom-5 right-5 text-white px-6 py-3 rounded-lg shadow-lg animate-pop z-50 ${colors[type] || colors.success}`;
+        if (status === 'preparing') {
+            cardHtml += `<small class="text-muted fw-bold">
+                            <span class="order-timer" data-time="${order.created_at}">00:00:00</span>
+                         </small>`;
+        } else { // 'ready' status
+            // Use the data-time attribute for the 'Ready' timer
+            cardHtml += `<small class="text-primary fw-bold">
+                            <span class="order-timer" data-time="${order.ready_time}">00:00:00</span>
+                         </small>`;
+        }
 
-    toastEl.classList.remove('hidden');
-    setTimeout(() => {
-        toastEl.classList.add('hidden');
-    }, 3000);
-}
+        cardHtml += `</div>`; // Close timer column
+        
+        if (status === 'preparing') {
+            cardHtml += `<button class="btn btn-success btn-sm mark-ready" data-order-pk="${order.id}">Mark as Ready</button>`;
+        } else {
+            cardHtml += `<button class="btn btn-primary btn-sm mark-pickedup" data-order-pk="${order.id}">Mark Picked Up</button>`;
+        }
 
+        cardHtml += `</div></div></div>`;
+        return cardHtml;
+    }
+
+    function updateTimers() {
+        $('.order-timer').each(function() {
+            const timeStr = $(this).data('time');
+
+            // --- THIS IS THE FIX ---
+            // If timeStr is null, undefined, or the string "null", stop.
+            if (!timeStr || timeStr === "null") {
+                $(this).text('00:00:00'); // Show a default time
+                return; // Skip this timer
+            }
+            // --- END FIX ---
+
+            const orderTime = new Date(timeStr);
+            if (isNaN(orderTime)) {
+                // Handle Invalid Date
+                $(this).text('--:--:--');
+                return;
+            }
+
+            const now = new Date();
+            let diff = now - orderTime;
+
+            // Handle clock skew (browser time behind server time)
+            if (diff < 0) { diff = 0; }
+
+            let totalSeconds = Math.floor(diff / 1000);
+            let hours = Math.floor(totalSeconds / 3600);
+            totalSeconds %= 3600;
+            let minutes = Math.floor(totalSeconds / 60);
+            let seconds = totalSeconds % 60;
+
+            $(this).text(
+                `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+            );
+        });
+    }
+
+    // --- BUTTON CLICK HANDLERS ---
+    $(document).on('click', '.mark-ready, .mark-pickedup', function() {
+        const orderPk = $(this).data('order-pk');
+        const isReadyButton = $(this).hasClass('mark-ready');
+        const newStatus = isReadyButton ? 'ready' : 'pickedup';
+        const card = $(this).closest('.order-card');
+
+        // Optimistic UI update
+        card.fadeOut(300, function() {
+            if (isReadyButton) {
+                // Move from Preparing to Ready
+                $('#ready-orders-list').prepend(card);
+                // Update card content
+                card.find('.badge').removeClass('bg-warning text-dark').addClass('bg-success').text('Ready');
+                card.find('.mark-ready').removeClass('mark-ready btn-success').addClass('mark-pickedup btn-primary').text('Mark Picked Up');
+                // The timer will be updated on the next fetch
+            } else {
+                // Move from Ready to Picked Up (remove from board)
+                card.remove();
+            }
+            card.fadeIn(300);
+            // Update counts
+            $('#preparing-count').text($('#preparing-orders-list .order-card').length);
+            $('#ready-count').text($('#ready-orders-list .order-card').length);
+        });
+
+        // Send update to server
+        $.ajax({
+            url: '/api/update-order-status',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ order_id: orderPk, status: newStatus }),
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            success: function(response) {
+                if (!response.success) {
+                    alert('Error updating order: ' + response.error);
+                    fetchOrders(); // Force refresh on error
+                }
+                // On success, do nothing (optimistic update handled)
+            },
+            error: function(xhr) {
+                alert('Server error. Please try again.');
+                fetchOrders(); // Force refresh on error
+            }
+        });
+    });
+
+    // --- INITIALIZE ---
+    fetchOrders(); // Initial load
+    setInterval(fetchOrders, 10000); // Refresh every 10 seconds
+    setInterval(updateTimers, 1000); // Update timers every second
+});
