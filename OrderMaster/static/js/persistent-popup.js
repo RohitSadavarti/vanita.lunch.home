@@ -3,107 +3,75 @@
 (function() {
     'use strict';
 
-    let pendingOrdersQueue = [];
-    let isPopupVisible = false;
-
     // This function is called by firebase-init.js when a message is received
     window.handleNewOrderNotification = function(orderData) {
+        console.log('📱 New order notification received:', orderData);
         
-        // MODIFICATION:
         // Check for 'order_source' which is sent from views.py
-        // 'customer' orders will trigger the popup.
-        // 'counter' orders will be ignored by this popup.
-        if (orderData.order_source && orderData.order_source.toLowerCase() === 'customer') {
-            // Add the new order to the queue
-            pendingOrdersQueue.push(orderData);
+        // 'customer' orders with 'pending' status will trigger page reload to show modal
+        if (orderData.order_source && 
+            orderData.order_source.toLowerCase() === 'customer' && 
+            orderData.status === 'pending') {
             
-            // If a popup isn't already showing, display the next one
-            if (!isPopupVisible) {
-                showNextOrderPopup();
-            }
+            console.log('🔔 New customer order requires action - reloading page');
+            
+            // Show a brief notification before reload
+            showBriefNotification(`New order #${orderData.order_id} from ${orderData.customer_name}`);
+            
+            // Reload the page after a brief delay to show the blocking modal
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            console.log('ℹ️ Order notification ignored (not a pending customer order)');
         }
     };
 
-    function showNextOrderPopup() {
-        if (pendingOrdersQueue.length === 0) {
-            isPopupVisible = false;
-            return;
-        }
-
-        isPopupVisible = true;
-        const orderData = pendingOrdersQueue[0]; // Get the first order in the queue
-        displayPopup(orderData);
-    }
-
-    function displayPopup(orderData) {
-        const modalElement = document.getElementById('newOrderModal');
-        const modal = new bootstrap.Modal(modalElement);
-
-        const detailsContainer = document.getElementById('newOrderDetails');
-        // Check if items is already an object or a string
-        const items = (typeof orderData.items === 'string') ? JSON.parse(orderData.items) : orderData.items;
-        
-        let itemsHtml = '<ul>';
-        if (Array.isArray(items)) {
-            items.forEach(item => {
-                itemsHtml += `<li>${item.quantity} x ${item.name}</li>`;
-            });
-        }
-        itemsHtml += '</ul>';
-
-        detailsContainer.innerHTML = `
-            <p><strong>Order ID:</strong> #${orderData.order_id}</p>
-            <p><strong>Customer:</strong> ${orderData.customer_name}</p>
-            <p><strong>Total:</strong> ₹${orderData.total_price}</p>
-            <div><strong>Items:</strong>${itemsHtml}</div>
+    function showBriefNotification(message) {
+        // Create a simple toast notification
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            z-index: 10000;
+            font-weight: 600;
+            animation: slideIn 0.3s ease-out;
         `;
-
-        // Setup button listeners
-        const acceptBtn = document.getElementById('acceptOrderBtn');
-        const rejectBtn = document.getElementById('rejectOrderBtn');
-
-        // Use .onclick to easily replace the listener for each new order
-        acceptBtn.onclick = () => handleOrderAction(orderData.id, 'accept', modal);
-        rejectBtn.onclick = () => handleOrderAction(orderData.id, 'reject', modal);
-
-        modal.show();
-    }
-
-    async function handleOrderAction(orderId, action, modal) {
-        // Disable buttons to prevent double-clicking
-        document.getElementById('acceptOrderBtn').disabled = true;
-        document.getElementById('rejectOrderBtn').disabled = true;
-
-        try {
-            const response = await fetch('/api/handle-order-action/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify({ order_id: orderId, action: action })
-            });
-
-            if (response.ok) {
-                // Order action was successful
-                modal.hide();
-                pendingOrdersQueue.shift(); // Remove the processed order from the queue
-                showNextOrderPopup(); // Show the next order, if any
-                location.reload(); // Reload to update order lists on the page
-            } else {
-                alert(`Failed to ${action} the order.`);
+        toast.innerHTML = `
+            <i class="fas fa-bell me-2"></i>
+            ${message}
+        `;
+        
+        // Add animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(400px);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
             }
-        } catch (error) {
-            console.error('Error handling order action:', error);
-            alert('An error occurred. Please try again.');
-        } finally {
-            // Re-enable buttons in case of an error
-            // Need to check if modal is hidden, otherwise this can error
-            const acceptBtn = document.getElementById('acceptOrderBtn');
-            const rejectBtn = document.getElementById('rejectOrderBtn');
-            if (acceptBtn) acceptBtn.disabled = false;
-            if (rejectBtn) rejectBtn.disabled = false;
-        }
+        `;
+        document.head.appendChild(style);
+        
+        document.body.appendChild(toast);
+        
+        // Remove after 1 second
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(400px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 700);
     }
 
     // Helper function to get CSRF token
