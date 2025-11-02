@@ -30,7 +30,8 @@ async function loadMenuItems() {
     const loadingIndicator = document.getElementById('loadingIndicator');
 
     try {
-        const response = await fetch('/api/menu-items/');
+        // --- FIX 1: Removed trailing slash to match Flask app.py endpoint ---
+        const response = await fetch('/api/menu-items');
 
         if (!response.ok) {
             throw new Error('Failed to load menu items');
@@ -255,25 +256,24 @@ async function handleOrderSubmit(e) {
         return;
     }
 
-    const subtotal = cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
-    const deliveryFee = subtotal >= 300 ? 0 : 40;
-    const totalAmount = subtotal + deliveryFee;
-
+    // --- FIX 3: Changed keys to match what app.py expects ---
     const orderData = {
-        customer_name: customerName,
-        customer_mobile: customerMobile,
-        customer_address: customerAddress,
-        items: cart,  // Send as array, not stringified
-        total_amount: totalAmount,
-        payment_id: 'COD_' + Date.now()
+        name: customerName,         // Was 'customer_name'
+        mobile: customerMobile,       // Was 'customer_mobile'
+        address: customerAddress,     // Was 'customer_address'
+        cart_items: cart,             // Was 'items'
+        // 'total_amount' and 'payment_id' are not read by the backend
+        // but it is fine to send them.
     };
 
     try {
-        const response = await fetch('/api/place-order/', {
+        // --- FIX 2: Changed endpoint from '/api/place-order/' to '/api/order' ---
+        const response = await fetch('/api/order', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
+                // --- FIX 4: Removed Django's CSRF token, not needed for this Flask app ---
+                // 'X-CSRFToken': getCookie('csrftoken')
             },
             body: JSON.stringify(orderData)
         });
@@ -281,7 +281,7 @@ async function handleOrderSubmit(e) {
         const result = await response.json();
 
         if (response.ok && result.success) {
-            showToast('Order placed successfully! Order ID: ' + result.order_id, 'success');
+            showToast('Order placed successfully! Order ID: ' + result.message.split(': ')[1], 'success');
             clearCart();
             resetCheckoutForm();
             toggleCart();
