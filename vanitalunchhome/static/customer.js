@@ -1,9 +1,10 @@
-// Customer Interface JavaScript - static/js/customer.js
-
 // Global variables
 let menuItems = [];
 let cart = [];
-let filteredItems = [];
+let filteredMenuItems = [];
+let currentCategory = 'all';
+let currentVegFilter = 'all';
+let currentSearchTerm = '';
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
@@ -15,103 +16,137 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Setup event listeners
 function setupEventListeners() {
-    // Cart functionality
     document.getElementById('cartBtn').addEventListener('click', toggleCart);
     document.getElementById('closeCartBtn').addEventListener('click', toggleCart);
     document.getElementById('cartOverlay').addEventListener('click', toggleCart);
+    document.getElementById('payNowBtn').addEventListener('click', handleOrderSubmit);
+    
+    document.getElementById('searchInput').addEventListener('input', handleSearch);
+    document.querySelectorAll('.category-filter').forEach(button => {
+        button.addEventListener('click', handleCategoryFilter);
+    });
+    // Note: Your HTML does not have '.veg-filter' elements, but I left the code.
+    document.querySelectorAll('.veg-filter').forEach(button => {
+        button.addEventListener('click', handleVegFilter);
+    });
 
-    // Checkout
-    document.getElementById('proceedToCheckout').addEventListener('click', showCheckoutForm);
-    document.getElementById('customerForm').addEventListener('submit', handleOrderSubmit);
+    document.getElementById('customerForm').addEventListener('submit', (e) => e.preventDefault());
 }
 
-// Load menu items from Django backend
+// Load menu items from the backend API
 async function loadMenuItems() {
-    const loadingIndicator = document.getElementById('loadingIndicator');
-
+    const menuContainer = document.getElementById('menu-container');
     try {
-        // --- FIX 1: Removed trailing slash to match Flask app.py endpoint ---
         const response = await fetch('/api/menu-items');
-
-        if (!response.ok) {
-            throw new Error('Failed to load menu items');
-        }
-
+        if (!response.ok) throw new Error('Failed to load menu');
+        
         menuItems = await response.json();
-        filteredItems = [...menuItems];
-
-        loadingIndicator.style.display = 'none';
-        renderMenuItems();
+        applyFilters();
 
     } catch (error) {
-        console.error('Error loading menu items:', error);
-        loadingIndicator.innerHTML = `
-            <div class="col-12 text-center py-5">
-                <h4>Unable to load menu</h4>
-                <p class="text-muted">Please check your connection and try again</p>
-                <button class="btn btn-primary" onclick="loadMenuItems()">Retry</button>
-            </div>
-        `;
+        console.error('Error loading menu:', error);
+        menuContainer.innerHTML = `<p class="col-span-full text-center text-red-500">Could not load menu.</p>`;
     }
 }
 
-// Render menu items
-function renderMenuItems() {
-    const container = document.getElementById('menuContainer');
+// Render menu items on the page
+function renderMenu() {
+    const container = document.getElementById('menu-container');
+    container.innerHTML = ''; 
 
-    if (filteredItems.length === 0) {
-        container.innerHTML = `
-            <div class="col-12 text-center py-5">
-                <h4>No items found</h4>
-            </div>
-        `;
+    if (filteredMenuItems.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center py-12"><h3 class="text-lg font-medium">No items found matching your criteria.</h3></div>`;
         return;
     }
 
-    let menuHTML = '';
-    filteredItems.forEach(item => {
-        const imageUrl = item.image || 'https://placehold.co/600x400/f97316/ffffff?text=No+Image';
-        menuHTML += `
-            <div class="bg-white rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-transform duration-300">
-                <img src="${imageUrl}" alt="${item.item_name}" class="h-48 w-full object-cover">
-                <div class="p-4">
-                    <h4 class="text-lg font-bold">${item.item_name}</h4>
-                    <p class="text-sm text-gray-600 mt-1">${item.description}</p>
-                    <div class="flex justify-between items-center mt-4">
-                        <span class="text-lg font-bold text-orange-600">₹${parseFloat(item.price).toFixed(2)}</span>
-                        <button class="add-to-cart-btn bg-orange-100 text-orange-700 font-semibold px-4 py-2 rounded-lg hover:bg-orange-200 transition-colors text-sm" onclick="addToCart(${item.id})">Add to Cart</button>
-                    </div>
+    filteredMenuItems.forEach(item => {
+        const imageUrl = item.image_url || `https://placehold.co/600x400/f3f4f6/6b7280?text=No+Image`;
+        
+        const card = document.createElement('div');
+        card.className = 'bg-white rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-transform duration-300';
+        card.innerHTML = `
+            <img src="${imageUrl}" alt="${item.item_name}" class="h-48 w-full object-cover">
+            <div class="p-4">
+                <h4 class="text-lg font-bold">${item.item_name}</h4>
+                <p class="text-sm text-gray-600 mt-1 h-10 overflow-hidden">${item.description || ''}</p>
+                <div class="flex justify-between items-center mt-4">
+                    <span class="text-lg font-bold text-orange-600">₹${parseFloat(item.price).toFixed(2)}</span>
+                    <button class="add-to-cart-btn bg-orange-100 text-orange-700 font-semibold px-4 py-2 rounded-lg hover:bg-orange-200" onclick="addToCart(${item.id})">Add to Cart</button>
                 </div>
             </div>
         `;
+        container.appendChild(card);
     });
-
-    container.innerHTML = menuHTML;
 }
 
-// Add item to cart
+// Apply all active filters
+function applyFilters() {
+    filteredMenuItems = menuItems.filter(item => {
+        const categoryMatch = currentCategory === 'all' || (item.category && item.category.toLowerCase() === currentCategory);
+        
+        const vegMatch = currentVegFilter === 'all' || (item.veg_nonveg && item.veg_nonveg.toLowerCase().replace(/ /g, '-') === currentVegFilter);
+
+        const searchMatch = !currentSearchTerm ||
+            (item.item_name && item.item_name.toLowerCase().includes(currentSearchTerm)) ||
+            (item.description && item.description.toLowerCase().includes(currentSearchTerm));
+            
+        return categoryMatch && vegMatch && searchMatch;
+    });
+    renderMenu();
+}
+
+function handleSearch(e) {
+    currentSearchTerm = e.target.value.toLowerCase();
+    applyFilters();
+}
+
+function handleCategoryFilter(e) {
+    document.querySelectorAll('.category-filter').forEach(btn => {
+        btn.classList.remove('active', 'bg-orange-500', 'text-white');
+        btn.classList.add('bg-gray-200', 'text-gray-700');
+    });
+    const clickedButton = e.currentTarget;
+    clickedButton.classList.add('active', 'bg-orange-500', 'text-white');
+    clickedButton.classList.remove('bg-gray-200', 'text-gray-700');
+    currentCategory = clickedButton.dataset.category;
+    applyFilters();
+}
+
+function handleVegFilter(e) {
+    document.querySelectorAll('.veg-filter').forEach(btn => {
+        btn.classList.remove('active');
+        btn.classList.remove('bg-green-100', 'text-green-800');
+        btn.classList.remove('bg-red-100', 'text-red-800');
+        btn.classList.add('bg-gray-100', 'text-gray-700');
+    });
+    const clickedButton = e.currentTarget;
+    clickedButton.classList.add('active');
+    clickedButton.classList.remove('bg-gray-100', 'text-gray-700');
+    if (clickedButton.dataset.type === 'veg') {
+        clickedButton.classList.add('bg-green-100', 'text-green-800');
+    } else if (clickedButton.dataset.type === 'non-veg') {
+         clickedButton.classList.add('bg-red-100', 'text-red-800');
+    }
+
+    currentVegFilter = clickedButton.dataset.type;
+    applyFilters();
+}
+
+// Cart and Order functions
 function addToCart(itemId) {
     const item = menuItems.find(i => i.id === itemId);
     if (!item) return;
-
     const existingItem = cart.find(i => i.id === itemId);
     if (existingItem) {
-        existingItem.quantity += 1;
+        existingItem.quantity++;
     } else {
-        cart.push({
-            id: item.id,
-            name: item.item_name,
-            price: item.price,
-            quantity: 1
-        });
+        cart.push({ id: item.id, name: item.item_name, price: item.price, quantity: 1 });
     }
-
     updateCartDisplay();
     saveCartToStorage();
-    showToast(`${item.item_name} added to cart!`, 'success');
+    showToast(`${item.item_name} added to cart!`);
 }
 
-// Update cart quantity
 function updateQuantity(itemId, change) {
     const item = cart.find(i => i.id === itemId);
     if (item) {
@@ -119,252 +154,149 @@ function updateQuantity(itemId, change) {
         if (item.quantity <= 0) {
             cart = cart.filter(i => i.id !== itemId);
         }
-        updateCartDisplay();
-        saveCartToStorage();
     }
+    updateCartDisplay();
+    saveCartToStorage();
 }
 
-// Remove item from cart
 function removeFromCart(itemId) {
     const item = cart.find(i => i.id === itemId);
-    const itemName = item ? item.name : 'Item';
     cart = cart.filter(i => i.id !== itemId);
     updateCartDisplay();
     saveCartToStorage();
-    showToast(`${itemName} removed from cart`, 'warning');
+    showToast(`${item.name} removed from cart.`, 'info');
 }
 
-// Update cart display
 function updateCartDisplay() {
     const cartCount = document.getElementById('cartCount');
-    const cartItems = document.getElementById('cartItems');
-    const cartSummary = document.getElementById('cartSummary');
-    const proceedBtn = document.getElementById('proceedToCheckout');
-
+    const cartItems = document.getElementById('cart-page-items');
+    const cartSummary = document.getElementById('cart-page-summary');
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-    // Update cart count badge
-    if (totalItems > 0) {
-        cartCount.textContent = totalItems;
-        cartCount.classList.remove('d-none');
-    } else {
-        cartCount.classList.add('d-none');
-    }
+    cartCount.textContent = totalItems;
+    cartCount.classList.toggle('hidden', totalItems === 0);
 
-    // Update cart items
     if (cart.length === 0) {
-        cartItems.innerHTML = '<p class="text-muted text-center py-4" id="emptyCartMessage">Your cart is empty</p>';
+        cartItems.innerHTML = '<p class="text-gray-500 text-center py-4">Your cart is empty</p>';
         cartSummary.innerHTML = '';
-        proceedBtn.classList.add('d-none');
         return;
     }
-
-    proceedBtn.classList.remove('d-none');
-
+    
     let cartHTML = '';
     cart.forEach(item => {
-        const itemTotal = parseFloat(item.price) * item.quantity;
         cartHTML += `
-            <div class="cart-item py-2 border-bottom">
-                <div class="d-flex justify-content-between align-items-center">
+            <div class="py-3 border-b">
+                <div class="flex justify-between items-center">
                     <div>
-                        <h6 class="mb-0">${item.name}</h6>
-                        <small class="text-muted">₹${parseFloat(item.price).toFixed(2)} x ${item.quantity}</small>
+                        <h6 class="font-semibold">${item.name}</h6>
+                        <small class="text-gray-500">₹${parseFloat(item.price).toFixed(2)} x ${item.quantity}</small>
                     </div>
-                    <div class="fw-bold">₹${itemTotal.toFixed(2)}</div>
+                    <div class="font-bold">₹${(item.price * item.quantity).toFixed(2)}</div>
                 </div>
-                <div class="d-flex align-items-center mt-2">
-                     <button class="btn btn-sm btn-outline-secondary" onclick="updateQuantity(${item.id}, -1)">-</button>
-                     <span class="mx-2">${item.quantity}</span>
-                     <button class="btn btn-sm btn-outline-secondary" onclick="updateQuantity(${item.id}, 1)">+</button>
-                    <button class="btn btn-sm btn-outline-danger ms-auto" onclick="removeFromCart(${item.id})">Remove</button>
+                <div class="flex items-center mt-2">
+                    <button class="bg-gray-200 w-7 h-7 rounded-full font-bold" onclick="updateQuantity(${item.id}, -1)">-</button>
+                    <span class="mx-3">${item.quantity}</span>
+                    <button class="bg-gray-200 w-7 h-7 rounded-full font-bold" onclick="updateQuantity(${item.id}, 1)">+</button>
+                    <button class="text-red-500 hover:text-red-700 ml-auto text-sm font-medium" onclick="removeFromCart(${item.id})">Remove</button>
                 </div>
-            </div>
-        `;
+            </div>`;
     });
-
     cartItems.innerHTML = cartHTML;
-
-    // Update summary
-    const subtotal = cart.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
-    const deliveryFee = subtotal >= 300 ? 0 : 40;
-    const total = subtotal + deliveryFee;
-
-    cartSummary.innerHTML = `
-        <div class="d-flex justify-content-between">
-            <span>Subtotal</span>
-            <span>₹${subtotal.toFixed(2)}</span>
-        </div>
-        <div class="d-flex justify-content-between">
-            <span>Delivery Fee</span>
-            <span>${deliveryFee === 0 ? 'FREE' : '₹' + deliveryFee.toFixed(2)}</span>
-        </div>
-        <div class="d-flex justify-content-between fw-bold mt-2">
-            <span>Total</span>
-            <span>₹${total.toFixed(2)}</span>
-        </div>
-    `;
+    
+    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    cartSummary.innerHTML = `<div class="flex justify-between font-bold mt-2 text-lg"><span>Total</span><span>₹${subtotal.toFixed(2)}</span></div>`;
 }
 
-// Toggle cart sidebar
 function toggleCart() {
     const cartSidebar = document.getElementById('cartSidebar');
     const cartOverlay = document.getElementById('cartOverlay');
-    
-    cartSidebar.classList.toggle('open');
-    cartOverlay.classList.toggle('open');
-    
-    document.body.style.overflow = cartSidebar.classList.contains('open') ? 'hidden' : '';
+    cartSidebar.classList.toggle('translate-x-full');
+    cartOverlay.classList.toggle('hidden');
+    document.body.style.overflow = cartSidebar.classList.contains('translate-x-full') ? '' : 'hidden';
 }
 
-// Show checkout form
-function showCheckoutForm() {
+async function handleOrderSubmit() {
+    const submitBtn = document.getElementById('payNowBtn');
+    submitBtn.querySelector('span').textContent = 'Placing...';
+    submitBtn.disabled = true;
+
+    // --- THIS IS THE FIX ---
     if (cart.length === 0) {
-        showToast('Your cart is empty!', 'error');
+        showToast('Your cart is empty. Please add items first.', 'error');
+        submitBtn.querySelector('span').textContent = 'Place Order (Cash)';
+        submitBtn.disabled = false;
         return;
     }
+    // --- END OF FIX ---
     
-    document.getElementById('proceedToCheckout').classList.add('d-none');
-    document.getElementById('checkoutForm').classList.remove('d-none');
-}
-
-// Handle order submission
-async function handleOrderSubmit(e) {
-    e.preventDefault();
-    
-    const submitBtn = document.getElementById('placeOrderBtn');
-    const originalText = submitBtn.textContent;
-    submitBtn.textContent = 'Placing Order...';
-    submitBtn.disabled = true;
-    
-    const customerName = document.getElementById('customerName').value.trim();
-    const customerMobile = document.getElementById('customerMobile').value.trim();
+    const customerName = document.getElementById('customerNameCart').value.trim();
+    const customerMobile = document.getElementById('customerMobileCart').value.trim();
     const customerAddress = document.getElementById('customerAddress').value.trim();
 
-    // Validate inputs
     if (!customerName || !customerMobile || !customerAddress) {
-        showToast('Please fill in all fields', 'error');
-        submitBtn.textContent = originalText;
+        showToast('Please fill in all delivery details.', 'error');
+        submitBtn.querySelector('span').textContent = 'Place Order (Cash)';
         submitBtn.disabled = false;
         return;
     }
 
-    if (!/^\d{10}$/.test(customerMobile)) {
-        showToast('Please enter a valid 10-digit mobile number', 'error');
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-        return;
-    }
-
-    // --- FIX 3: Changed keys to match what app.py expects ---
     const orderData = {
-        name: customerName,         // Was 'customer_name'
-        mobile: customerMobile,       // Was 'customer_mobile'
-        address: customerAddress,     // Was 'customer_address'
-        cart_items: cart,             // Was 'items'
-        // 'total_amount' and 'payment_id' are not read by the backend
-        // but it is fine to send them.
+        name: customerName,
+        mobile: customerMobile,
+        address: customerAddress,
+        cart_items: cart.map(item => ({ id: item.id, quantity: item.quantity })),
     };
 
     try {
-        // --- FIX 2: Changed endpoint from '/api/place-order/' to '/api/order' ---
         const response = await fetch('/api/order', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                // --- FIX 4: Removed Django's CSRF token, not needed for this Flask app ---
-                // 'X-CSRFToken': getCookie('csrftoken')
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(orderData)
         });
-
         const result = await response.json();
-
-        if (response.ok && result.success) {
-            showToast('Order placed successfully! Order ID: ' + result.message.split(': ')[1], 'success');
-            clearCart();
-            resetCheckoutForm();
-            toggleCart();
-        } else {
-            throw new Error(result.error || 'Failed to place order');
-        }
+        if (!response.ok) throw new Error(result.error || 'Failed to place order.');
+        
+        showToast(result.message, 'success');
+        clearCart();
+        resetCheckoutForm();
+        toggleCart();
     } catch (error) {
-        console.error('Order placement error:', error);
-        showToast(error.message || 'Failed to place order. Please try again.', 'error');
+        showToast(error.message, 'error');
     } finally {
-        submitBtn.textContent = originalText;
+        submitBtn.querySelector('span').textContent = 'Place Order (Cash)';
         submitBtn.disabled = false;
     }
 }
 
-// Clear cart
+// Helper functions
 function clearCart() {
     cart = [];
     updateCartDisplay();
     saveCartToStorage();
 }
-
-// Reset checkout form
 function resetCheckoutForm() {
     document.getElementById('customerForm').reset();
-    document.getElementById('proceedToCheckout').classList.remove('d-none');
-    document.getElementById('checkoutForm').classList.add('d-none');
 }
-
-// Save cart to localStorage
 function saveCartToStorage() {
     localStorage.setItem('vanita_cart', JSON.stringify(cart));
 }
-
-// Load cart from localStorage
 function loadCartFromStorage() {
     const savedCart = localStorage.getItem('vanita_cart');
     if (savedCart) {
-        try {
-            cart = JSON.parse(savedCart);
-            updateCartDisplay();
-        } catch (error) {
-            console.error('Error loading cart from storage:', error);
-            cart = [];
-        }
+        cart = JSON.parse(savedCart);
+        updateCartDisplay();
     }
 }
-
-// Show toast notification using Bootstrap Toast
 function showToast(message, type = 'success') {
     const toastEl = document.getElementById('toast');
-    const toastBody = document.getElementById('toastMessage');
-    const toastTitle = document.getElementById('toastTitle');
+    const toastMessage = document.getElementById('toast-message');
+    toastMessage.textContent = message;
+    
+    const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500' };
+    toastEl.className = `fixed bottom-5 right-5 text-white px-6 py-3 rounded-lg shadow-lg animate-pop z-50 ${colors[type] || colors.success}`;
 
-    toastTitle.textContent = type.charAt(0).toUpperCase() + type.slice(1);
-    toastBody.textContent = message;
-
-    // Add color classes based on type
-    toastEl.className = 'toast';
-    if (type === 'success') {
-        toastEl.classList.add('bg-success', 'text-white');
-    } else if (type === 'error') {
-        toastEl.classList.add('bg-danger', 'text-white');
-    } else if (type === 'warning') {
-        toastEl.classList.add('bg-warning', 'text-dark');
-    }
-
-    const toast = new bootstrap.Toast(toastEl);
-    toast.show();
-}
-
-// Get CSRF token for Django
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
+    toastEl.classList.remove('hidden');
+    setTimeout(() => {
+        toastEl.classList.add('hidden');
+    }, 3000);
 }
