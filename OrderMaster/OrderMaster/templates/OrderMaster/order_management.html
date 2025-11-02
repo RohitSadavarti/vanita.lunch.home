@@ -212,11 +212,9 @@
 
     <div class="tab-content" id="orderTabsContent">
         
-        <!-- ONLINE ORDERS TAB -->
         <div class="tab-pane fade show active" id="online-orders" role="tabpanel" aria-labelledby="online-tab">
             <div class="row align-items-start">
                 
-                <!-- Preparing Column -->
                 <div class="col-lg-4 mb-4">
                     <div class="card shadow-sm">
                         <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
@@ -243,7 +241,7 @@
                                                     <li><small class="text-danger">No items found</small></li>
                                                 {% endfor %}
                                             </ul>
-                                            <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                                            <p class="card-text mb-0"><strong>Total: &#8377;{{ order.total_price }}</strong></p>
                                             <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
                                             <p class="card-text mb-0 timer">Preparing for: <span class="fw-bold">00:00:00</span></p>
                                         </div>
@@ -263,7 +261,6 @@
                     </div>
                 </div>
 
-                <!-- Ready Column -->
                 <div class="col-lg-4 mb-4">
                     <div class="card shadow-sm">
                         <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
@@ -290,7 +287,7 @@
                                                     <li><small class="text-danger">No items found</small></li>
                                                 {% endfor %}
                                             </ul>
-                                            <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                                            <p class="card-text mb-0"><strong>Total: &#8377;{{ order.total_price }}</strong></p>
                                             <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
                                             <p class="card-text mb-0 timer">Ready for: <span class="fw-bold">00:00:00</span></p>
                                         </div>
@@ -310,7 +307,6 @@
                     </div>
                 </div>
 
-                <!-- Picked Up Column -->
                 <div class="col-lg-4 mb-4">
                     <div class="card shadow-sm">
                         <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
@@ -330,7 +326,7 @@
                                         <div class="mb-2">
                                             <h6 class="card-title fw-bold text-muted mb-1">#{{ order.order_id }} - {{ order.customer_name }}</h6>
                                             <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
-                                            <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                                            <p class="card-text mb-0"><strong>Total: &#8377;{{ order.total_price }}</strong></p>
                                             {% if order.pickup_time %}
                                                 <p class="card-text mb-0"><small class="text-muted">Completed: {{ order.pickup_time|date:"d M, h:i A" }}</small></p>
                                             {% endif %}
@@ -352,7 +348,6 @@
             </div>
         </div>
 
-        <!-- COUNTER ORDERS TAB - FIXED -->
         <div class="tab-pane fade" id="counter-orders" role="tabpanel" aria-labelledby="counter-tab">
             <div class="row">
                 <div class="col-12">
@@ -385,7 +380,7 @@
                                     
                                     <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap">
                                         <div class="mb-2 mb-sm-0">
-                                            <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                                            <p class="card-text mb-0"><strong>Total: &#8377;{{ order.total_price }}</strong></p>
                                             <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
                                         </div>
                                         <div class="d-flex justify-content-end gap-2">
@@ -410,6 +405,179 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // ... JavaScript code continues ...
+    
+    /**
+     * Gets the CSRF token from cookies.
+     */
+    function getCSRFToken() {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, 'csrftoken'.length + 1) === ('csrftoken' + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring('csrftoken'.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    /**
+     * Handles the API call to update order status.
+     * @param {string} orderId - The database PK of the order.
+     * @param {string} newStatus - The new status ('ready' or 'pickedup').
+     * @param {HTMLElement} buttonElement - The button that was clicked.
+     */
+    async function handleOrderStatusUpdate(orderId, newStatus, buttonElement) {
+        buttonElement.disabled = true;
+        buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+
+        try {
+            const response = await fetch('/api/update-order-status/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify({
+                    id: orderId,
+                    status: newStatus
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Success: remove the card from the UI
+                const card = buttonElement.closest('.card');
+                card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.95)';
+                setTimeout(() => card.remove(), 500);
+                // TODO: Update the count in the card header
+            } else {
+                // Handle server-side error
+                console.error('Failed to update order:', data.error);
+                alert(`Error: ${data.error || 'Failed to update order status.'}`);
+                buttonElement.disabled = false;
+                buttonElement.textContent = newStatus === 'ready' ? 'Mark Ready' : 'Picked Up';
+            }
+        } catch (error) {
+            // Handle network/fetch error
+            console.error('Network error:', error);
+            alert('A network error occurred. Please try again.');
+            buttonElement.disabled = false;
+            buttonElement.textContent = newStatus === 'ready' ? 'Mark Ready' : 'Picked Up';
+        }
+    }
+
+    /**
+     * Formats milliseconds into HH:MM:SS and applies color.
+     * @param {HTMLElement} span - The <span> element to update.
+     * @param {Date} startTime - The start time (Date object).
+     */
+    function updateTimer(span, startTime) {
+        const now = new Date();
+        const diffMs = now - startTime;
+        const totalSeconds = Math.floor(diffMs / 1000);
+        
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        span.textContent = 
+            `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        
+        // Color coding
+        const totalMinutes = totalSeconds / 60;
+        span.classList.remove('timer-green', 'timer-amber', 'timer-red');
+        if (totalMinutes >= 30) {
+            span.classList.add('timer-red');
+        } else if (totalMinutes >= 15) {
+            span.classList.add('timer-amber');
+        } else {
+            span.classList.add('timer-green');
+        }
+    }
+
+    /**
+     * Initializes all timers on the page.
+     */
+    function initializeAllTimers() {
+        // --- Preparing Timers ---
+        document.querySelectorAll('#preparingCollapse .card[data-created-at]').forEach(card => {
+            const startTime = new Date(card.dataset.createdAt);
+            const timerSpan = card.querySelector('.timer span');
+            if (!timerSpan) return;
+
+            updateTimer(timerSpan, startTime); // Call immediately
+            setInterval(() => updateTimer(timerSpan, startTime), 1000); // Then set interval
+        });
+
+        // --- Ready Timers ---
+        document.querySelectorAll('#readyCollapse .card[data-ready-at]').forEach(card => {
+            const startTime = new Date(card.dataset.readyAt);
+            const timerSpan = card.querySelector('.timer span');
+            if (!timerSpan) return;
+
+            updateTimer(timerSpan, startTime); // Call immediately
+            setInterval(() => updateTimer(timerSpan, startTime), 1000); // Then set interval
+        });
+    }
+
+    // --- MAIN EXECUTION ---
+
+    // 1. Initialize Timers
+    initializeAllTimers();
+
+    // 2. Add Event Listeners for Buttons
+    
+    // Mark Ready Buttons
+    document.querySelectorAll('.mark-ready-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const card = this.closest('.card');
+            const orderId = card.dataset.orderId;
+            if (orderId) {
+                handleOrderStatusUpdate(orderId, 'ready', this);
+            } else {
+                console.error('No order ID found on card.');
+            }
+        });
+    });
+
+    // Mark Picked Up Buttons
+    document.querySelectorAll('.mark-pickedup-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const card = this.closest('.card');
+            const orderId = card.dataset.orderId;
+            if (orderId) {
+                handleOrderStatusUpdate(orderId, 'pickedup', this);
+            } else {
+                console.error('No order ID found on card.');
+            }
+        });
+    });
+
+    // 3. Custom Date Range Toggle
+    const customDateBtn = document.getElementById('customDateBtn');
+    const customDateRange = document.getElementById('customDateRange');
+    
+    if (customDateBtn && customDateRange) {
+        customDateBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            customDateRange.classList.toggle('d-none');
+            customDateRange.classList.toggle('d-flex');
+        });
+    }
+    
+    // Also show if custom is pre-selected on page load
+    if ('{{ selected_filter }}' === 'custom' && customDateRange) {
+        customDateRange.classList.remove('d-none');
+        customDateRange.classList.add('d-flex');
+    }
+
+});
 </script>
 {% endblock %}
