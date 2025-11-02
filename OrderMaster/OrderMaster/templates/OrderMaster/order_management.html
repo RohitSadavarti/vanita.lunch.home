@@ -440,7 +440,7 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     async function handleOrderStatusUpdate(orderId, newStatus, buttonElement) {
         buttonElement.disabled = true;
-        buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ...';
+        buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Updatting';
 
         const card = buttonElement.closest('.card'); // Get card early
 
@@ -700,3 +700,4 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 {% endblock %}
+
