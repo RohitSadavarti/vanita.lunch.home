@@ -629,7 +629,7 @@ def api_place_order(request):
                 'customer_name': new_order.customer_name,
                 'total_price': str(new_order.total_price),
                 'items': items_json,
-                'order_source': 'customer'
+                'order_source': 'customer' # This tells the client to show the popup
             }
             
             message = messaging.Message(
@@ -944,6 +944,7 @@ def create_manual_order(request):
 
         generated_order_id = new_order.order_id
 
+        # --- MODIFICATION: Changed FCM message for counter orders ---
         try:
             items_json = json.dumps(new_order.items)
             order_db_id = str(new_order.pk)
@@ -953,12 +954,12 @@ def create_manual_order(request):
                 'customer_name': customer_name,
                 'total_price': str(subtotal),
                 'items': items_json,
-                'order_source': 'counter'
+                'order_source': 'counter' # This tells the client *NOT* to show the popup
             }
             message = messaging.Message(
                 notification=messaging.Notification(
-                    title='✅ Counter Order Created',
-                    body=f'Order #{generated_order_id} - {customer_name} - ₹{subtotal}'
+                    title='✅ Counter Order Placed', # Changed title
+                    body=f'Order #{generated_order_id} for {customer_name} created.' # Changed body
                 ),
                 data=message_data,
                 topic='new_orders'
