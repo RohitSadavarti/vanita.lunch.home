@@ -71,15 +71,24 @@ def place_order():
     try:
         data = request.get_json()
         
-        # --- FIX: Mismatched keys from customer.js ---
-        # customer.js is sending: customer_name, customer_mobile, customer_address, items
+        # Log received data for debugging
+        print("Received order data:", json.dumps(data, indent=2))
+        
+        # Get fields from request
         name = data.get('customer_name', '').strip()
         mobile = data.get('customer_mobile', '').strip()
         address = data.get('customer_address', '').strip()
-        cart_items = data.get('items', []) # 'items' not 'cart_items'
-
-        if not all([name, mobile, address, cart_items]):
-            return jsonify({'success': False, 'error': 'Missing required fields (name, mobile, address, items)'}), 400
+        cart_items = data.get('items', [])
+        
+        # More detailed validation with specific error messages
+        if not name:
+            return jsonify({'success': False, 'error': 'Customer name is required'}), 400
+        if not mobile:
+            return jsonify({'success': False, 'error': 'Mobile number is required'}), 400
+        if not address:
+            return jsonify({'success': False, 'error': 'Address is required'}), 400
+        if not cart_items or not isinstance(cart_items, list) or len(cart_items) == 0:
+            return jsonify({'success': False, 'error': 'Cart is empty or invalid'}), 400
         
         conn = get_db_connection()
         cur = conn.cursor()
@@ -90,11 +99,15 @@ def place_order():
         for cart_item in cart_items:
             item_id = cart_item.get('id')
             quantity = int(cart_item.get('quantity', 0))
-            if not item_id or quantity <= 0:
-                return jsonify({'error': 'Invalid item or quantity'}), 400
+            
+            if not item_id:
+                return jsonify({'error': 'Item ID is missing'}), 400
+            if quantity <= 0:
+                return jsonify({'error': f'Invalid quantity for item ID {item_id}'}), 400
             
             cur.execute("SELECT id, item_name, price FROM menu_items WHERE id = %s", (item_id,))
             menu_item = cur.fetchone()
+            
             if not menu_item:
                 return jsonify({'error': f'Menu item with ID {item_id} not found'}), 400
             
@@ -107,47 +120,42 @@ def place_order():
                 'name': menu_item[1],
                 'price': actual_price,
                 'quantity': quantity,
-                'total': item_total # This key name is different from your Django app, but we'll include it
             })
         
         total_price = subtotal
         order_id = str(random.randint(10000000, 99999999))
 
-        # --- MODIFICATION #1: Added 'order_placed_by' to the query ---
-        # --- MODIFICATION #2: Added 'RETURNING id' to get the database PK ---
+        # Insert order into database
         cur.execute("""
             INSERT INTO orders (order_id, customer_name, customer_mobile, items, subtotal, total_price, status, payment_method, created_at, updated_at, order_status, order_placed_by)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         """, (
             order_id, name, mobile, json.dumps(validated_items), subtotal, total_price, 
-            'confirmed', 'Cash', datetime.now(), datetime.now(), 'open', 'customer' # <-- Added 'customer'
+            'confirmed', 'Cash', datetime.now(), datetime.now(), 'open', 'customer'
         ))
         
-        # --- MODIFICATION #3: Get the returned primary key 'id' ---
         new_order_db_id = cur.fetchone()[0]
-        
         conn.commit()
 
-        # --- Send Firebase notification only if Firebase is initialized ---
+        # Send Firebase notification if initialized
         if firebase_admin._apps:
             try:
-                # --- MODIFICATION #4: Added full data payload for admin popup ---
                 message_data = {
-                    'id': str(new_order_db_id), # The database primary key
-                    'order_id': order_id,      # The random 8-digit ID
+                    'id': str(new_order_db_id),
+                    'order_id': order_id,
                     'customer_name': name,
                     'total_price': str(total_price),
-                    'items': json.dumps(validated_items), # Send items as JSON string
-                    'order_source': 'customer' # This tells the admin panel to show the popup
+                    'items': json.dumps(validated_items),
+                    'order_source': 'customer'
                 }
 
                 message = messaging.Message(
                     notification=messaging.Notification(
                         title='🔔 New Customer Order!',
-                        body=f'Order #{order_id} from {name} for ₹{total_price:.2f} has been placed.'
+                        body=f'Order #{order_id} from {name} for ₹{total_price:.2f}'
                     ),
-                    data=message_data, # <-- Added the data payload
+                    data=message_data,
                     topic='new_orders'
                 )
                 response = messaging.send(message)
@@ -155,17 +163,28 @@ def place_order():
             except Exception as e:
                 print(f"Error sending Firebase notification: {e}")
 
-        return jsonify({'success': True, 'message': f'Order placed successfully! Your Order ID is: {order_id}'})
+        return jsonify({
+            'success': True, 
+            'message': f'Order placed successfully! Your Order ID is: {order_id}',
+            'order_id': order_id
+        })
         
+    except json.JSONDecodeError:
+        return jsonify({'error': 'Invalid JSON data'}), 400
     except Exception as e:
-        if conn: conn.rollback()
+        if conn:
+            conn.rollback()
         print(f"Error in place_order: {str(e)}")
-        return jsonify({'error': 'Failed to place order'}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Failed to place order: {str(e)}'}), 500
     finally:
-        if cur: cur.close()
-        if conn: conn.close()
-
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
+
