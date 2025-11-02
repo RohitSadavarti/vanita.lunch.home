@@ -530,11 +530,14 @@ def api_menu_items(request):
         }, status=500)
 
 
+# In OrderMaster/views.py - Replace the api_place_order function
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_place_order(request):
     """
     Handles POST requests to place a new order from the customer app/web.
+    Orders start in 'Pending' status and require admin acceptance.
     """
     try:
         data = json.loads(request.body)
@@ -587,7 +590,7 @@ def api_place_order(request):
 
         final_total_client = Decimal(str(data['total_price']))
 
-        # Create order without order_id initially
+        # Create order with 'Pending' status - REQUIRES ADMIN ACCEPTANCE
         new_order = Order.objects.create(
             customer_name=data['customer_name'],
             customer_mobile=data['customer_mobile'],
@@ -595,14 +598,11 @@ def api_place_order(request):
             subtotal=calculated_subtotal,
             discount=Decimal('0.00'),
             total_price=final_total_client,
-            status='Pending',
+            status='Pending',  # ← This is the key change
             payment_method=data.get('payment_method', 'COD'),
             payment_id=data.get('payment_id', None),
-            order_status='open',
-            
-            # --- THIS IS THE FIX ---
-            # We hard-code 'customer' because this API is only for customer orders.
-            order_placed_by='customer' 
+            order_status='pending',  # ← Also set to pending
+            order_placed_by='customer'
         )
         
         logger.info(f"✅ Initial Order (PK: {new_order.pk}) created for {new_order.customer_name}.")
@@ -630,14 +630,16 @@ def api_place_order(request):
                 'id': order_db_id,
                 'order_id': generated_order_id,
                 'customer_name': new_order.customer_name,
+                'customer_mobile': new_order.customer_mobile,
                 'total_price': str(new_order.total_price),
                 'items': items_json,
-                'order_source': 'customer' # This tells the client to show the popup
+                'order_source': 'customer',
+                'status': 'pending'  # ← Include status
             }
             
             message = messaging.Message(
                 notification=messaging.Notification(
-                    title='🔔 New Customer Order!',
+                    title='🔔 New Customer Order - Action Required!',
                     body=f'Order #{generated_order_id} from {new_order.customer_name} - ₹{new_order.total_price}'
                 ),
                 data=message_data,
@@ -652,7 +654,7 @@ def api_place_order(request):
         return JsonResponse({
             'success': True,
             'order_id': generated_order_id,
-            'message': 'Order placed successfully!'
+            'message': 'Order placed successfully! Awaiting restaurant confirmation.'
         })
 
     except (json.JSONDecodeError, KeyError, ValueError, TypeError) as e:
@@ -664,7 +666,7 @@ def api_place_order(request):
     except Exception as e:
         logger.error(f"❌ Unexpected error during place customer order: {e}", exc_info=True)
         return JsonResponse({'error': 'An unexpected server error occurred while placing the order.'}, status=500)
-                
+        
 @admin_required
 def analytics_view(request):
     """Renders the analytics page."""
@@ -805,41 +807,54 @@ def get_all_orders_api(request):
             'error': 'Server error occurred while fetching orders.'
         }, status=500)
         
+# In OrderMaster/views.py - Replace the handle_order_action function
+
 @csrf_exempt
 @admin_required
 @require_POST
 def handle_order_action(request):
-    """Updated version with better handling"""
+    """Handle acceptance or rejection of pending customer orders"""
     try:
         data = json.loads(request.body)
-        order_id = data.get('order_id')
+        order_id = data.get('order_id')  # This is the database PK (id)
         action = data.get('action')
+
+        if not order_id or not action:
+            return JsonResponse({'success': False, 'error': 'Missing order_id or action'}, status=400)
 
         order = get_object_or_404(Order, id=order_id)
 
         if action == 'accept':
             order.status = 'Confirmed'
-            order.order_status = 'open'
-            message = f'Order #{order.order_id} accepted successfully.'
+            order.order_status = 'open'  # Move to "Preparing" column
+            message = f'Order #{order.order_id} accepted and moved to preparation.'
+            logger.info(f"✅ Order {order.order_id} accepted by admin")
+            
         elif action == 'reject':
             order.status = 'Rejected'
             order.order_status = 'cancelled'
-            message = f'Order #{order.order_id} rejected.'
+            message = f'Order #{order.order_id} has been rejected.'
+            logger.info(f"❌ Order {order.order_id} rejected by admin")
+            
         else:
-            return JsonResponse({'success': False, 'error': 'Invalid action'}, status=400)
+            return JsonResponse({'success': False, 'error': 'Invalid action. Must be "accept" or "reject"'}, status=400)
 
         order.save()
 
         return JsonResponse({
             'success': True,
             'message': message,
-            'order_id': order.order_id
+            'order_id': order.order_id,
+            'action': action
         })
 
+    except Order.DoesNotExist:
+        logger.error(f"Order with ID {order_id} not found")
+        return JsonResponse({'success': False, 'error': 'Order not found'}, status=404)
     except Exception as e:
-        logger.error(f"Error handling order action: {e}")
+        logger.error(f"Error handling order action: {e}", exc_info=True)
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
+        
 @admin_required
 def take_order_view(request):
     """View for staff to manually take customer orders"""
