@@ -183,16 +183,13 @@
         </div>
     </div>
 
-    <!-- Mobile Cart Button (Fixed Position) -->
     <button class="mobile-cart-btn" id="mobileCartBtn" type="button">
         <i class="fas fa-shopping-cart fa-lg"></i>
         <span class="badge d-none" id="mobileCartBadge">0</span>
     </button>
 
-    <!-- Mobile Cart Overlay -->
     <div class="mobile-cart-overlay" id="mobileCartOverlay"></div>
 
-    <!-- Mobile Cart Sidebar -->
     <div class="mobile-cart-sidebar" id="mobileCartSidebar">
         <div class="mobile-cart-header">
             <h5 class="mb-0">Current Order</h5>
@@ -283,7 +280,6 @@
             </div>
         </div>
 
-        <!-- Desktop Cart Column -->
         <div class="col-lg-4 col-12 desktop-cart-column">
             <div class="card shadow-lg cart-summary">
                 <div class="card-header bg-primary text-white">
@@ -337,7 +333,6 @@
     </div>
 </div>
 
-<!-- Success Modal -->
 <div class="modal fade" id="successModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -741,6 +736,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await response.json();
 
             if (response.ok && result.success) {
+                // --- MODIFIED REDIRECT ---
+                // Redirect to the order page and auto-open the counter tab
+                window.location.href = '/orders/?active_tab=counter';
+                
+                /*
+                // Old modal logic (disabled)
                 currentOrderId = result.order_pk;
                 const successOrderIdEl = document.getElementById('successOrderId');
                 const successOrderTotalEl = document.getElementById('successOrderTotal');
@@ -755,6 +756,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (isMobile) {
                     closeMobileCartFunc();
                 }
+                */
             } else {
                 alert(result.error || `Failed to create order. Status: ${response.status}`);
                 console.error('Order creation failed:', result);
