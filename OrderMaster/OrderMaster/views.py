@@ -414,18 +414,22 @@ def update_order_status(request):
         order = get_object_or_404(Order, pk=order_pk)
         order.order_status = new_status
 
+        response_data = {'success': True}
+        
         if new_status == 'ready':
             order.ready_time = timezone.now()
+            response_data['ready_time'] = order.ready_time.isoformat()
         elif new_status == 'pickedup':
             order.pickup_time = timezone.now()
+            response_data['pickup_time'] = order.pickup_time.isoformat()
 
         order.save()
-        return JsonResponse({'success': True})
+        return JsonResponse(response_data)
     except Order.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Order not found'}, status=404)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
+        
 @admin_required
 def menu_management_view(request):
     if request.method == 'POST':
