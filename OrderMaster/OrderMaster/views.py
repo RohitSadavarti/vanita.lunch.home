@@ -330,7 +330,7 @@ def analytics_api_view(request):
 @admin_required
 def order_management_view(request):
     date_filter = request.GET.get('date_filter', 'today')
-    source_filter = request.GET.get('source_filter', 'all')
+    # --- REMOVED source_filter ---
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
 
@@ -357,29 +357,41 @@ def order_management_view(request):
 
     base_orders = Order.objects.filter(created_at__range=(start_date, end_date))
     
-    if source_filter == 'customer':
-        base_orders = base_orders.filter(order_placed_by='customer')
-    elif source_filter == 'counter':
-        base_orders = base_orders.filter(order_placed_by='counter')
+    # --- NEW: Split queries by order_placed_by ---
 
-    preparing_orders = base_orders.filter(order_status='open')
-    ready_orders = base_orders.filter(order_status='ready')
-    pickedup_orders = base_orders.filter(order_status='pickedup')
+    # 1. Online Orders (for 3-column layout)
+    online_orders_base = base_orders.filter(order_placed_by='customer')
+    preparing_orders = online_orders_base.filter(order_status='open')
+    ready_orders = online_orders_base.filter(order_status='ready')
+    pickedup_orders = online_orders_base.filter(order_status='pickedup')
 
+    # 2. Counter Orders (for single list layout)
+    counter_orders_all = base_orders.filter(order_placed_by='counter').order_by('-created_at')
+
+    # --- Process items_list for all fetched orders ---
     for order in preparing_orders:
         order.items_list = order.items if isinstance(order.items, list) else json.loads(order.items)
     for order in ready_orders:
         order.items_list = order.items if isinstance(order.items, list) else json.loads(order.items)
     for order in pickedup_orders:
         order.items_list = order.items if isinstance(order.items, list) else json.loads(order.items)
+    for order in counter_orders_all:
+        order.items_list = order.items if isinstance(order.items, list) else json.loads(order.items)
+
 
     context = {
+        # Online (Customer) Orders
         'preparing_orders': preparing_orders,
         'ready_orders': ready_orders,
         'pickedup_orders': pickedup_orders,
+        
+        # Counter Orders
+        'counter_orders_all': counter_orders_all,
+
+        # Filters and Page Metadata
         'date_display_str': date_filter.replace('_', ' ').title(),
         'selected_filter': date_filter,
-        'source_filter': source_filter,
+        # 'source_filter': source_filter, # Removed
         'start_date_val': start_date_str if date_filter == 'custom' else '',
         'end_date_val': end_date_str if date_filter == 'custom' else '',
         'active_page': 'order_management',
