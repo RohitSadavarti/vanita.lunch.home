@@ -1,3 +1,4 @@
+
 {% extends 'OrderMaster/base.html' %}
 {% load static %}
 
@@ -33,7 +34,6 @@
         max-height: 70vh;
         overflow-y: auto;
         padding: 1rem;
-        /* Add min-height to ensure drop target always exists */
         min-height: 100px;
     }
     
@@ -440,7 +440,7 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     async function handleOrderStatusUpdate(orderId, newStatus, buttonElement) {
         buttonElement.disabled = true;
-        buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Updatting';
+        buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Updating';
 
         const card = buttonElement.closest('.card'); // Get card early
 
@@ -474,7 +474,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                         
                         // 1. Update data-attributes for timer
-                        card.dataset.readyAt = data.ready_time;
+                        if (data.ready_time) {
+                            card.dataset.readyAt = data.ready_time;
+                        }
                         delete card.dataset.createdAt;
                         
                         // 2. Update timer text
@@ -700,4 +702,5 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 {% endblock %}
+
 
