@@ -221,6 +221,14 @@ async function handleOrderSubmit() {
     const submitBtn = document.getElementById('payNowBtn');
     submitBtn.querySelector('span').textContent = 'Placing...';
     submitBtn.disabled = true;
+
+    // --- CRITICAL FIX: Check cart before proceeding ---
+    if (cart.length === 0) {
+        showToast('Your cart is empty. Please add items first.', 'error');
+        submitBtn.querySelector('span').textContent = 'Place Order (Cash)';
+        submitBtn.disabled = false;
+        return;
+    }
     
     const customerName = document.getElementById('customerNameCart').value.trim();
     const customerMobile = document.getElementById('customerMobileCart').value.trim();
@@ -233,11 +241,15 @@ async function handleOrderSubmit() {
         return;
     }
 
+    // --- FIXED: Match the field names expected by Flask backend ---
     const orderData = {
-        name: customerName,
-        mobile: customerMobile,
-        address: customerAddress,
-        cart_items: cart.map(item => ({ id: item.id, quantity: item.quantity })),
+        customer_name: customerName,     // Changed from 'name'
+        customer_mobile: customerMobile, // Changed from 'mobile'
+        customer_address: customerAddress, // Changed from 'address'
+        items: cart.map(item => ({       // Changed from 'cart_items'
+            id: item.id, 
+            quantity: item.quantity
+        }))
     };
 
     try {
@@ -260,7 +272,6 @@ async function handleOrderSubmit() {
         submitBtn.disabled = false;
     }
 }
-
 // Helper functions
 function clearCart() {
     cart = [];
@@ -293,3 +304,4 @@ function showToast(message, type = 'success') {
         toastEl.classList.add('hidden');
     }, 3000);
 }
+
