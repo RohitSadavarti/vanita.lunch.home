@@ -36,7 +36,7 @@
     }
     @media (max-width: 991.98px) {
         .order-list-container {
-            max-height: none; /* Allow natural height on mobile */
+            max-height: none;
             overflow-y: visible;
         }
     }
@@ -58,14 +58,16 @@
         white-space: nowrap;
     }
 
-    /* --- NEW BADGE STYLES --- */
+    /* --- FIXED BADGE STYLES --- */
     .order-source-badge {
         position: absolute;
-        top: 8px; /* Adjusted position */
-        right: 8px; /* Adjusted position */
-        font-size: 0.75rem;
+        top: 0.5rem;
+        right: 0.5rem;
+        font-size: 0.7rem;
         padding: 0.25rem 0.5rem;
         border-radius: 12px;
+        z-index: 1;
+        white-space: nowrap;
     }
     .badge-customer {
         background-color: #3b82f6;
@@ -74,11 +76,6 @@
     .badge-counter {
         background-color: #10b981;
         color: white;
-    }
-
-    /* NEW: Ensure buttons inside the new d-flex container behave */
-    .card-body .d-flex .btn {
-        /* Optional: Add styles if needed, e.g., min-width */
     }
 
     /* Tab styling */
@@ -100,15 +97,71 @@
     
     /* Counter order status badge */
     .status-badge {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 600;
         padding: 0.3em 0.6em;
         border-radius: 0.25rem;
+        white-space: nowrap;
     }
     .status-open { background-color: #ffc107; color: #000; }
     .status-ready { background-color: #198754; color: #fff; }
     .status-pickedup { background-color: #6c757d; color: #fff; }
 
+    /* COUNTER ORDER CARD IMPROVEMENTS */
+    .counter-order-list .card {
+        transition: all 0.2s ease;
+    }
+
+    .counter-order-list .card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .counter-order-list .card-title {
+        word-wrap: break-word;
+        max-width: 100%;
+    }
+
+    .counter-order-list ul.list-unstyled li {
+        padding: 0.25rem 0;
+    }
+
+    /* Mobile responsive fixes for counter orders */
+    @media (max-width: 576px) {
+        .counter-order-list .card-body {
+            padding: 1rem 0.75rem;
+            padding-top: 2.5rem !important;
+        }
+        
+        .order-source-badge {
+            font-size: 0.65rem;
+            padding: 0.2rem 0.4rem;
+        }
+        
+        .status-badge {
+            font-size: 0.7rem;
+            padding: 0.25em 0.5em;
+        }
+        
+        .counter-order-list .d-flex.justify-content-between.align-items-start {
+            flex-direction: column;
+            align-items: flex-start !important;
+        }
+        
+        .counter-order-list .text-end {
+            text-align: left !important;
+            margin-top: 0.5rem;
+            width: 100%;
+        }
+    }
+
+    /* Tablet responsive */
+    @media (min-width: 577px) and (max-width: 991.98px) {
+        .counter-order-list .card-body {
+            padding: 1.25rem;
+            padding-top: 2.75rem !important;
+        }
+    }
 </style>
 
 <div class="container-fluid">
@@ -159,9 +212,11 @@
 
     <div class="tab-content" id="orderTabsContent">
         
+        <!-- ONLINE ORDERS TAB -->
         <div class="tab-pane fade show active" id="online-orders" role="tabpanel" aria-labelledby="online-tab">
             <div class="row align-items-start">
                 
+                <!-- Preparing Column -->
                 <div class="col-lg-4 mb-4">
                     <div class="card shadow-sm">
                         <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
@@ -178,9 +233,11 @@
                                         <span class="order-source-badge badge-customer">
                                             <i class="fas fa-user me-1"></i> Customer
                                         </span>
-                                        <div class="mb-2"> <h6 class="card-title fw-bold mb-1">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                        <div class="mb-2">
+                                            <h6 class="card-title fw-bold mb-1">#{{ order.order_id }} - {{ order.customer_name }}</h6>
                                             <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
-                                            <ul class="list-unstyled mb-2 ps-3" style="font-size: 0.8rem;"> {% for item in order.items_list %}
+                                            <ul class="list-unstyled mb-2 ps-3" style="font-size: 0.8rem;">
+                                                {% for item in order.items_list %}
                                                     <li>{{ item.quantity }} x {{ item.name }}</li>
                                                 {% empty %}
                                                     <li><small class="text-danger">No items found</small></li>
@@ -206,6 +263,7 @@
                     </div>
                 </div>
 
+                <!-- Ready Column -->
                 <div class="col-lg-4 mb-4">
                     <div class="card shadow-sm">
                         <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
@@ -222,7 +280,8 @@
                                         <span class="order-source-badge badge-customer">
                                             <i class="fas fa-user me-1"></i> Customer
                                         </span>
-                                        <div class="mb-2"> <h6 class="card-title fw-bold mb-1">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                        <div class="mb-2">
+                                            <h6 class="card-title fw-bold mb-1">#{{ order.order_id }} - {{ order.customer_name }}</h6>
                                             <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
                                             <ul class="list-unstyled mb-2 ps-3" style="font-size: 0.8rem;">
                                                 {% for item in order.items_list %}
@@ -235,7 +294,8 @@
                                             <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
                                             <p class="card-text mb-0 timer">Ready for: <span class="fw-bold">00:00:00</span></p>
                                         </div>
-                                        <div class="d-flex justify-content-end gap-2 mt-2"> <button class="btn btn-sm btn-primary mark-pickedup-btn flex-grow-1 flex-md-grow-0">Picked Up</button>
+                                        <div class="d-flex justify-content-end gap-2 mt-2">
+                                            <button class="btn btn-sm btn-primary mark-pickedup-btn flex-grow-1 flex-md-grow-0">Picked Up</button>
                                             <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-info text-white flex-grow-1 flex-md-grow-0">
                                                 <i class="fas fa-file-invoice"></i> Invoice
                                             </a>
@@ -250,6 +310,7 @@
                     </div>
                 </div>
 
+                <!-- Picked Up Column -->
                 <div class="col-lg-4 mb-4">
                     <div class="card shadow-sm">
                         <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
@@ -266,14 +327,16 @@
                                         <span class="order-source-badge badge-customer">
                                             <i class="fas fa-user me-1"></i> Customer
                                         </span>
-                                        <div class="mb-2"> <h6 class="card-title fw-bold text-muted mb-1">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                        <div class="mb-2">
+                                            <h6 class="card-title fw-bold text-muted mb-1">#{{ order.order_id }} - {{ order.customer_name }}</h6>
                                             <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
                                             <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
                                             {% if order.pickup_time %}
                                                 <p class="card-text mb-0"><small class="text-muted">Completed: {{ order.pickup_time|date:"d M, h:i A" }}</small></p>
                                             {% endif %}
                                         </div>
-                                        <div class="d-flex justify-content-end gap-2 mt-2"> <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-outline-secondary flex-grow-1 flex-md-grow-0">
+                                        <div class="d-flex justify-content-end gap-2 mt-2">
+                                            <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-outline-secondary flex-grow-1 flex-md-grow-0">
                                                 <i class="fas fa-file-invoice"></i> Invoice
                                             </a>
                                         </div>
@@ -289,6 +352,7 @@
             </div>
         </div>
 
+        <!-- COUNTER ORDERS TAB - FIXED -->
         <div class="tab-pane fade" id="counter-orders" role="tabpanel" aria-labelledby="counter-tab">
             <div class="row">
                 <div class="col-12">
@@ -299,17 +363,17 @@
                         <div class="card-body counter-order-list">
                             {% for order in counter_orders_all %}
                             <div class="card mb-3" data-order-id="{{ order.id }}">
-                                <div class="card-body position-relative">
+                                <div class="card-body" style="position: relative; padding-top: 2.5rem;">
                                     <span class="order-source-badge badge-counter">
                                         <i class="fas fa-cash-register me-1"></i> Counter
                                     </span>
                                     
                                     <div class="d-flex justify-content-between align-items-start">
-                                        <div>
+                                        <div style="flex: 1; padding-right: 6rem;">
                                             <h6 class="card-title fw-bold mb-1">#{{ order.order_id }} - {{ order.customer_name }}</h6>
                                             <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
                                         </div>
-                                        <div class="text-end">
+                                        <div class="text-end" style="min-width: 100px;">
                                             <span class="status-badge status-{{ order.order_status }}">
                                                 {% if order.order_status == 'open' %}
                                                     Preparing
@@ -334,8 +398,8 @@
                                         {% endfor %}
                                     </ul>
                                     
-                                    <div class="d-flex justify-content-between align-items-center mt-2">
-                                        <div>
+                                    <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap">
+                                        <div class="mb-2 mb-sm-0">
                                             <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
                                             <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
                                         </div>
@@ -356,7 +420,8 @@
             </div>
         </div>
 
-    </div> </div>
+    </div>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -367,14 +432,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (activeTab === 'counter') {
             const tabButton = document.getElementById('counter-tab');
             if (tabButton) {
-                // Use Bootstrap's built-in method to show the tab
                 const tab = new bootstrap.Tab(tabButton);
                 tab.show();
             }
         }
     };
     activateTabFromURL();
-
 
     // --- COLLAPSE ICON TOGGLER ---
     document.querySelectorAll('.card-header-action').forEach(function(element) {
