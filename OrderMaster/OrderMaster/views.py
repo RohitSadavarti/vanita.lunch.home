@@ -599,7 +599,10 @@ def api_place_order(request):
             payment_method=data.get('payment_method', 'COD'),
             payment_id=data.get('payment_id', None),
             order_status='open',
-            order_placed_by=data.get('order_placed_by', 'customer') # <--- THE FIX
+            
+            # --- THIS IS THE FIX ---
+            # We hard-code 'customer' because this API is only for customer orders.
+            order_placed_by='customer' 
         )
         
         logger.info(f"✅ Initial Order (PK: {new_order.pk}) created for {new_order.customer_name}.")
@@ -661,7 +664,7 @@ def api_place_order(request):
     except Exception as e:
         logger.error(f"❌ Unexpected error during place customer order: {e}", exc_info=True)
         return JsonResponse({'error': 'An unexpected server error occurred while placing the order.'}, status=500)
-        
+                
 @admin_required
 def analytics_view(request):
     """Renders the analytics page."""
