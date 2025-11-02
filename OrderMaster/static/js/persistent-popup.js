@@ -9,8 +9,11 @@
     // This function is called by firebase-init.js when a message is received
     window.handleNewOrderNotification = function(orderData) {
         
-        // MODIFICATION: Only add the order to the queue if it is placed by a 'customer'
-        if (orderData.order_placed_by && orderData.order_placed_by.toLowerCase() === 'customer') {
+        // MODIFICATION:
+        // Check for 'order_source' which is sent from views.py
+        // 'customer' orders will trigger the popup.
+        // 'counter' orders will be ignored by this popup.
+        if (orderData.order_source && orderData.order_source.toLowerCase() === 'customer') {
             // Add the new order to the queue
             pendingOrdersQueue.push(orderData);
             
@@ -37,11 +40,15 @@
         const modal = new bootstrap.Modal(modalElement);
 
         const detailsContainer = document.getElementById('newOrderDetails');
-        const items = JSON.parse(orderData.items);
+        // Check if items is already an object or a string
+        const items = (typeof orderData.items === 'string') ? JSON.parse(orderData.items) : orderData.items;
+        
         let itemsHtml = '<ul>';
-        items.forEach(item => {
-            itemsHtml += `<li>${item.quantity} x ${item.name}</li>`;
-        });
+        if (Array.isArray(items)) {
+            items.forEach(item => {
+                itemsHtml += `<li>${item.quantity} x ${item.name}</li>`;
+            });
+        }
         itemsHtml += '</ul>';
 
         detailsContainer.innerHTML = `
@@ -91,8 +98,11 @@
             alert('An error occurred. Please try again.');
         } finally {
             // Re-enable buttons in case of an error
-            document.getElementById('acceptOrderBtn').disabled = false;
-            document.getElementById('rejectOrderBtn').disabled = false;
+            // Need to check if modal is hidden, otherwise this can error
+            const acceptBtn = document.getElementById('acceptOrderBtn');
+            const rejectBtn = document.getElementById('rejectOrderBtn');
+            if (acceptBtn) acceptBtn.disabled = false;
+            if (rejectBtn) rejectBtn.disabled = false;
         }
     }
 
