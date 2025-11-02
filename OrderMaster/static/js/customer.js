@@ -135,7 +135,9 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const response = await fetch(API_URL);
             if (!response.ok) throw new Error('Network response was not ok');
-            menuItems = await response.json();
+            // FIX: The response is {'menu_items': [...]}, not just [...]
+            const data = await response.json();
+            menuItems = data.menu_items; // Get items from the wrapper
             renderMenu(menuItems);
         } catch (error) {
             console.error('Failed to fetch menu:', error);
@@ -147,8 +149,8 @@ document.addEventListener('DOMContentLoaded', function () {
     try {
         // Calculate totals
         const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const deliveryFee = subtotal >= 300 ? 0 : 40;
-        const totalPrice = subtotal + deliveryFee;
+        // Assuming no delivery fee for this portal, or adjust as needed
+        const totalPrice = subtotal;
 
         // Prepare order data with correct field names
         const orderData = {
@@ -162,13 +164,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 quantity: item.quantity
             })),
             total_price: totalPrice.toFixed(2),
-            payment_id: 'COD'
+            payment_method: 'COD', // Defaulting to COD as per form
+            payment_id: 'COD',
+            // --- MODIFICATION HERE ---
+            order_placed_by: 'customer' // Explicitly set who placed the order
         };
 
         const response = await fetch(PLACE_ORDER_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                // Note: CSRF token might be needed if your view isn't @csrf_exempt
+                // 'X-CSRFToken': getCookie('csrftoken') 
             },
             body: JSON.stringify(orderData)
         });
@@ -234,5 +241,3 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- INITIALIZATION ---
     fetchMenu();
 });
-
-
