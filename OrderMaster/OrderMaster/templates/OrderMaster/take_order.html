@@ -349,7 +349,7 @@
                 <button type="button" class="btn btn-primary" id="printInvoiceBtn">
                     <i class="fas fa-print"></i> Print Invoice
                 </button>
-                <button type="button" class="btn btn-secondary" id="newOrderBtn">
+                <button type="button" class="btn btn-secondary" id="newOrderBtn" data-bs-dismiss="modal">
                     <i class="fas fa-plus"></i> New Order
                 </button>
             </div>
@@ -410,6 +410,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const categoryFilter = document.getElementById('categoryFilter');
     const successModalEl = document.getElementById('successModal');
     const successModal = successModalEl ? new bootstrap.Modal(successModalEl) : null;
+
+    // --- NEW: Listen for the modal to hide, then redirect ---
+    if (successModalEl) {
+        successModalEl.addEventListener('hidden.bs.modal', function () {
+            // When the modal is hidden (by any means), redirect to the counter tab.
+            window.location.href = '/orders/?active_tab=counter';
+        });
+    }
+
 
     // Event Listeners using Delegation
     if (menuItemsGrid) {
@@ -489,14 +498,16 @@ document.addEventListener('DOMContentLoaded', function() {
     if (printInvoiceBtn) {
         printInvoiceBtn.addEventListener('click', function() {
             if (currentOrderId) {
+                // Open invoice in a new tab
                 window.open(`/invoice/${currentOrderId}/`, '_blank');
             }
         });
     }
 
     if (newOrderBtn) {
+        // The "New Order" button now simply closes the modal.
+        // The 'hidden.bs.modal' event listener will handle the redirect.
         newOrderBtn.addEventListener('click', function() {
-            currentOrderId = null;
             if (successModal) {
                 successModal.hide();
             }
@@ -736,17 +747,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await response.json();
 
             if (response.ok && result.success) {
-                // --- MODIFIED REDIRECT ---
-                // Redirect to the order page and auto-open the counter tab
-                window.location.href = '/orders/?active_tab=counter';
                 
-                /*
-                // Old modal logic (disabled)
-                currentOrderId = result.order_pk;
+                // --- MODIFIED: Re-enabled modal logic ---
+                currentOrderId = result.order_pk; // Use the PK for the invoice URL
                 const successOrderIdEl = document.getElementById('successOrderId');
                 const successOrderTotalEl = document.getElementById('successOrderTotal');
                 
-                if (successOrderIdEl) successOrderIdEl.textContent = result.order_id;
+                if (successOrderIdEl) successOrderIdEl.textContent = result.order_id; // Display the friendly ID
                 if (successOrderTotalEl) successOrderTotalEl.textContent = result.total.toFixed(2);
 
                 if (successModal) {
@@ -756,7 +763,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (isMobile) {
                     closeMobileCartFunc();
                 }
-                */
+                
             } else {
                 alert(result.error || `Failed to create order. Status: ${response.status}`);
                 console.error('Order creation failed:', result);
