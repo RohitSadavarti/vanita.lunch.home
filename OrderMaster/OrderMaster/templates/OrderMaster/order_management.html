@@ -40,6 +40,13 @@
             overflow-y: visible;
         }
     }
+    
+    /* Single-column layout for counter orders */
+    .counter-order-list {
+        max-height: 75vh;
+        overflow-y: auto;
+        padding: 0.5rem;
+    }
 
     /* Invoice button styling */
     .invoice-btn {
@@ -69,20 +76,38 @@
         color: white;
     }
 
-    /* --- REMOVED OLD .order-actions STYLE --- */
-    /*
-    .order-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        align-items: stretch;
-    }
-    */
-
     /* NEW: Ensure buttons inside the new d-flex container behave */
     .card-body .d-flex .btn {
         /* Optional: Add styles if needed, e.g., min-width */
     }
+
+    /* Tab styling */
+    .nav-tabs .nav-link {
+        font-size: 1.1rem;
+        font-weight: 500;
+    }
+    .nav-tabs .nav-link.active {
+        background-color: #f8f9fa;
+        border-bottom-color: #f8f9fa;
+    }
+    .tab-content {
+        border: 1px solid #dee2e6;
+        border-top: 0;
+        padding: 1.5rem;
+        background-color: #f8f9fa;
+        border-radius: 0 0 0.25rem 0.25rem;
+    }
+    
+    /* Counter order status badge */
+    .status-badge {
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 0.3em 0.6em;
+        border-radius: 0.25rem;
+    }
+    .status-open { background-color: #ffc107; color: #000; }
+    .status-ready { background-color: #198754; color: #fff; }
+    .status-pickedup { background-color: #6c757d; color: #fff; }
 
 </style>
 
@@ -99,52 +124,18 @@
                     <i class="fas fa-calendar me-1"></i> {{ date_display_str }}
                 </button>
                 <ul class="dropdown-menu" aria-labelledby="dateFilterDropdown">
-                    <li><a class="dropdown-item" href="?date_filter=today&source_filter={{ source_filter }}">Today</a></li>
-                    <li><a class="dropdown-item" href="?date_filter=yesterday&source_filter={{ source_filter }}">Yesterday</a></li>
-                    <li><a class="dropdown-item" href="?date_filter=this_week&source_filter={{ source_filter }}">This Week</a></li>
-                    <li><a class="dropdown-item" href="?date_filter=this_month&source_filter={{ source_filter }}">This Month</a></li>
+                    <li><a class="dropdown-item" href="?date_filter=today">Today</a></li>
+                    <li><a class="dropdown-item" href="?date_filter=yesterday">Yesterday</a></li>
+                    <li><a class="dropdown-item" href="?date_filter=this_week">This Week</a></li>
+                    <li><a class="dropdown-item" href="?date_filter=this_month">This Month</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="#" id="customDateBtn">Custom Range</a></li>
-                </ul>
-            </div>
-
-            <div class="dropdown">
-                <button class="btn btn-outline-primary dropdown-toggle btn-sm" type="button" id="sourceFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-filter me-1"></i>
-                    {% if source_filter == 'customer' %}
-                        Customer Orders
-                    {% elif source_filter == 'counter' %}
-                        Counter Orders
-                    {% else %}
-                        All Orders
-                    {% endif %}
-                </button>
-                <ul class="dropdown-menu" aria-labelledby="sourceFilterDropdown">
-                    <li>
-                        <a class="dropdown-item {% if source_filter == 'all' or not source_filter %}active{% endif %}"
-                           href="?date_filter={{ selected_filter }}&source_filter=all{% if selected_filter == 'custom' %}&start_date={{ start_date_val }}&end_date={{ end_date_val }}{% endif %}">
-                            <i class="fas fa-list me-2"></i> All Orders
-                        </a>
-                    </li>
-                    <li>
-                        <a class="dropdown-item {% if source_filter == 'customer' %}active{% endif %}"
-                           href="?date_filter={{ selected_filter }}&source_filter=customer{% if selected_filter == 'custom' %}&start_date={{ start_date_val }}&end_date={{ end_date_val }}{% endif %}">
-                            <i class="fas fa-user me-2"></i> Customer Orders
-                        </a>
-                    </li>
-                    <li>
-                        <a class="dropdown-item {% if source_filter == 'counter' %}active{% endif %}"
-                           href="?date_filter={{ selected_filter }}&source_filter=counter{% if selected_filter == 'custom' %}&start_date={{ start_date_val }}&end_date={{ end_date_val }}{% endif %}">
-                            <i class="fas fa-cash-register me-2"></i> Counter Orders
-                        </a>
-                    </li>
                 </ul>
             </div>
 
             <div id="customDateRange" class="d-none align-items-center">
                 <form class="d-flex flex-column flex-sm-row align-items-sm-center" method="get">
                     <input type="hidden" name="date_filter" value="custom">
-                    <input type="hidden" name="source_filter" value="{{ source_filter|default:'all' }}">
                     <input type="date" class="form-control form-control-sm me-sm-2 mb-2 mb-sm-0" name="start_date" value="{{ start_date_val }}">
                     <input type="date" class="form-control form-control-sm me-sm-2 mb-2 mb-sm-0" name="end_date" value="{{ end_date_val }}">
                     <button type="submit" class="btn btn-primary btn-sm">Apply</button>
@@ -152,157 +143,247 @@
             </div>
         </div>
     </div>
-    <div class="row align-items-start">
-        <div class="col-lg-4 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-utensils me-2"></i>Preparing ({{ preparing_orders|length }})</h5>
-                    <a class="card-header-action" data-bs-toggle="collapse" href="#preparingCollapse" role="button" aria-expanded="true" aria-controls="preparingCollapse">
-                        <span class="chevron">-</span>
-                    </a>
-                </div>
-                <div class="collapse show" id="preparingCollapse">
-                    <div class="card-body order-list-container">
-                        {% for order in preparing_orders %}
-                        <div class="card" data-order-id="{{ order.id }}" data-created-at="{{ order.created_at.isoformat }}">
-                            <div class="card-body position-relative pt-4"> <span class="order-source-badge badge-{{ order.order_placed_by|default:'customer' }}">
-                                    {% if order.order_placed_by == 'counter' %}
-                                        <i class="fas fa-cash-register me-1"></i> Counter
-                                    {% else %}
-                                        <i class="fas fa-user me-1"></i> Customer
-                                    {% endif %}
-                                </span>
 
-                                <div class="mb-2"> <h6 class="card-title fw-bold mb-1">#{{ order.order_id }} - {{ order.customer_name }}</h6>
-                                    <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
-                                    <ul class="list-unstyled mb-2 ps-3" style="font-size: 0.8rem;"> {% for item in order.items_list %}
+    <ul class="nav nav-tabs" id="orderTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="online-tab" data-bs-toggle="tab" data-bs-target="#online-orders" type="button" role="tab" aria-controls="online-orders" aria-selected="true">
+                <i class="fas fa-user me-2"></i> Online Orders
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="counter-tab" data-bs-toggle="tab" data-bs-target="#counter-orders" type="button" role="tab" aria-controls="counter-orders" aria-selected="false">
+                <i class="fas fa-cash-register me-2"></i> Counter Orders
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="orderTabsContent">
+        
+        <div class="tab-pane fade show active" id="online-orders" role="tabpanel" aria-labelledby="online-tab">
+            <div class="row align-items-start">
+                
+                <div class="col-lg-4 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-utensils me-2"></i>Preparing ({{ preparing_orders|length }})</h5>
+                            <a class="card-header-action" data-bs-toggle="collapse" href="#preparingCollapse" role="button" aria-expanded="true" aria-controls="preparingCollapse">
+                                <span class="chevron">-</span>
+                            </a>
+                        </div>
+                        <div class="collapse show" id="preparingCollapse">
+                            <div class="card-body order-list-container">
+                                {% for order in preparing_orders %}
+                                <div class="card" data-order-id="{{ order.id }}" data-created-at="{{ order.created_at.isoformat }}">
+                                    <div class="card-body position-relative pt-4"> 
+                                        <span class="order-source-badge badge-customer">
+                                            <i class="fas fa-user me-1"></i> Customer
+                                        </span>
+                                        <div class="mb-2"> <h6 class="card-title fw-bold mb-1">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                            <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
+                                            <ul class="list-unstyled mb-2 ps-3" style="font-size: 0.8rem;"> {% for item in order.items_list %}
+                                                    <li>{{ item.quantity }} x {{ item.name }}</li>
+                                                {% empty %}
+                                                    <li><small class="text-danger">No items found</small></li>
+                                                {% endfor %}
+                                            </ul>
+                                            <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                                            <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
+                                            <p class="card-text mb-0 timer">Preparing for: <span class="fw-bold">00:00:00</span></p>
+                                        </div>
+                                        <div class="d-flex justify-content-end gap-2 mt-2">
+                                            <button class="btn btn-sm btn-success mark-ready-btn flex-grow-1 flex-md-grow-0">Mark Ready</button>
+                                            <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-info text-white flex-grow-1 flex-md-grow-0">
+                                                <i class="fas fa-file-invoice"></i> Invoice
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <p class="text-center text-muted p-4">No online orders are currently being prepared.</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-shopping-bag me-2"></i>Ready ({{ ready_orders|length }})</h5>
+                            <a class="card-header-action" data-bs-toggle="collapse" href="#readyCollapse" role="button" aria-expanded="true" aria-controls="readyCollapse">
+                                <span class="chevron">-</span>
+                            </a>
+                        </div>
+                        <div class="collapse show" id="readyCollapse">
+                            <div class="card-body order-list-container">
+                                {% for order in ready_orders %}
+                                <div class="card" data-order-id="{{ order.id }}" data-ready-at="{{ order.ready_time.isoformat }}">
+                                    <div class="card-body position-relative pt-4">
+                                        <span class="order-source-badge badge-customer">
+                                            <i class="fas fa-user me-1"></i> Customer
+                                        </span>
+                                        <div class="mb-2"> <h6 class="card-title fw-bold mb-1">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                            <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
+                                            <ul class="list-unstyled mb-2 ps-3" style="font-size: 0.8rem;">
+                                                {% for item in order.items_list %}
+                                                    <li>{{ item.quantity }} x {{ item.name }}</li>
+                                                {% empty %}
+                                                    <li><small class="text-danger">No items found</small></li>
+                                                {% endfor %}
+                                            </ul>
+                                            <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                                            <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
+                                            <p class="card-text mb-0 timer">Ready for: <span class="fw-bold">00:00:00</span></p>
+                                        </div>
+                                        <div class="d-flex justify-content-end gap-2 mt-2"> <button class="btn btn-sm btn-primary mark-pickedup-btn flex-grow-1 flex-md-grow-0">Picked Up</button>
+                                            <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-info text-white flex-grow-1 flex-md-grow-0">
+                                                <i class="fas fa-file-invoice"></i> Invoice
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <p class="text-center text-muted p-4">No online orders are ready for pickup.</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-check-circle me-2"></i>Picked Up ({{ pickedup_orders|length }})</h5>
+                            <a class="card-header-action" data-bs-toggle="collapse" href="#pickedUpCollapse" role="button" aria-expanded="true" aria-controls="pickedUpCollapse">
+                                <span class="chevron">-</span>
+                            </a>
+                        </div>
+                        <div class="collapse show" id="pickedUpCollapse">
+                            <div class="card-body order-list-container">
+                                {% for order in pickedup_orders %}
+                                <div class="card bg-light" data-order-id="{{ order.id }}">
+                                    <div class="card-body position-relative pt-4">
+                                        <span class="order-source-badge badge-customer">
+                                            <i class="fas fa-user me-1"></i> Customer
+                                        </span>
+                                        <div class="mb-2"> <h6 class="card-title fw-bold text-muted mb-1">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                            <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
+                                            <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                                            {% if order.pickup_time %}
+                                                <p class="card-text mb-0"><small class="text-muted">Completed: {{ order.pickup_time|date:"d M, h:i A" }}</small></p>
+                                            {% endif %}
+                                        </div>
+                                        <div class="d-flex justify-content-end gap-2 mt-2"> <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-outline-secondary flex-grow-1 flex-md-grow-0">
+                                                <i class="fas fa-file-invoice"></i> Invoice
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <p class="text-center text-muted p-4">No online orders completed in this period.</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="counter-orders" role="tabpanel" aria-labelledby="counter-tab">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-cash-register me-2"></i>All Counter Orders ({{ counter_orders_all|length }})</h5>
+                        </div>
+                        <div class="card-body counter-order-list">
+                            {% for order in counter_orders_all %}
+                            <div class="card mb-3" data-order-id="{{ order.id }}">
+                                <div class="card-body position-relative">
+                                    <span class="order-source-badge badge-counter">
+                                        <i class="fas fa-cash-register me-1"></i> Counter
+                                    </span>
+                                    
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="card-title fw-bold mb-1">#{{ order.order_id }} - {{ order.customer_name }}</h6>
+                                            <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="status-badge status-{{ order.order_status }}">
+                                                {% if order.order_status == 'open' %}
+                                                    Preparing
+                                                {% elif order.order_status == 'ready' %}
+                                                    Ready
+                                                {% elif order.order_status == 'pickedup' %}
+                                                    Picked Up
+                                                {% else %}
+                                                    {{ order.order_status|capfirst }}
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <hr class="my-2">
+                                    
+                                    <ul class="list-unstyled mb-2" style="font-size: 0.85rem;">
+                                        {% for item in order.items_list %}
                                             <li>{{ item.quantity }} x {{ item.name }}</li>
                                         {% empty %}
                                             <li><small class="text-danger">No items found</small></li>
                                         {% endfor %}
                                     </ul>
-                                    <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
-                                    <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
-                                    <p class="card-text mb-0 timer">Preparing for: <span class="fw-bold">00:00:00</span></p>
+                                    
+                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                        <div>
+                                            <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
+                                            <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
+                                        </div>
+                                        <div class="d-flex justify-content-end gap-2">
+                                            <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-info text-white">
+                                                <i class="fas fa-file-invoice"></i> Invoice
+                                            </a>
+                                        </div>
+                                    </div>
                                 </div>
+                            </div>
+                            {% empty %}
+                            <p class="text-center text-muted p-4">No counter orders found for this period.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                                <div class="d-flex justify-content-end gap-2 mt-2">
-                                     <button class="btn btn-sm btn-success mark-ready-btn flex-grow-1 flex-md-grow-0">Mark Ready</button>
-                                     <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-info text-white flex-grow-1 flex-md-grow-0">
-                                         <i class="fas fa-file-invoice"></i> Invoice
-                                     </a>
-                                </div>
-                            </div>
-                        </div>
-                        {% empty %}
-                        <p class="text-center text-muted p-4">No orders are currently being prepared.</p>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-4 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                     <h5 class="mb-0"><i class="fas fa-shopping-bag me-2"></i>Ready ({{ ready_orders|length }})</h5>
-                     <a class="card-header-action" data-bs-toggle="collapse" href="#readyCollapse" role="button" aria-expanded="true" aria-controls="readyCollapse">
-                         <span class="chevron">-</span>
-                     </a>
-                </div>
-                <div class="collapse show" id="readyCollapse">
-                    <div class="card-body order-list-container">
-                        {% for order in ready_orders %}
-                        <div class="card" data-order-id="{{ order.id }}" data-ready-at="{{ order.ready_time.isoformat }}">
-                            <div class="card-body position-relative pt-4">
-                                 <span class="order-source-badge badge-{{ order.order_placed_by|default:'customer' }}">
-                                     {% if order.order_placed_by == 'counter' %}
-                                        <i class="fas fa-cash-register me-1"></i> Counter
-                                     {% else %}
-                                        <i class="fas fa-user me-1"></i> Customer
-                                     {% endif %}
-                                 </span>
-                                 <div class="mb-2"> <h6 class="card-title fw-bold mb-1">#{{ order.order_id }} - {{ order.customer_name }}</h6>
-                                     <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
-                                     <ul class="list-unstyled mb-2 ps-3" style="font-size: 0.8rem;">
-                                         {% for item in order.items_list %}
-                                            <li>{{ item.quantity }} x {{ item.name }}</li>
-                                         {% empty %}
-                                            <li><small class="text-danger">No items found</small></li>
-                                         {% endfor %}
-                                     </ul>
-                                     <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
-                                     <p class="card-text mb-0"><small class="text-muted">Payment: {{ order.payment_method }}</small></p>
-                                     <p class="card-text mb-0 timer">Ready for: <span class="fw-bold">00:00:00</span></p>
-                                 </div>
-                                 <div class="d-flex justify-content-end gap-2 mt-2"> <button class="btn btn-sm btn-primary mark-pickedup-btn flex-grow-1 flex-md-grow-0">Picked Up</button>
-                                      <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-info text-white flex-grow-1 flex-md-grow-0">
-                                          <i class="fas fa-file-invoice"></i> Invoice
-                                      </a>
-                                 </div>
-                            </div>
-                        </div>
-                        {% empty %}
-                        <p class="text-center text-muted p-4">No orders are ready for pickup.</p>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-4 mb-4">
-            <div class="card shadow-sm">
-                 <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                     <h5 class="mb-0"><i class="fas fa-check-circle me-2"></i>Picked Up ({{ pickedup_orders|length }})</h5>
-                     <a class="card-header-action" data-bs-toggle="collapse" href="#pickedUpCollapse" role="button" aria-expanded="true" aria-controls="pickedUpCollapse">
-                         <span class="chevron">-</span>
-                     </a>
-                 </div>
-                 <div class="collapse show" id="pickedUpCollapse">
-                     <div class="card-body order-list-container">
-                         {% for order in pickedup_orders %}
-                         <div class="card bg-light" data-order-id="{{ order.id }}">
-                            <div class="card-body position-relative pt-4">
-                                 <span class="order-source-badge badge-{{ order.order_placed_by|default:'customer' }}">
-                                     {% if order.order_placed_by == 'counter' %}
-                                        <i class="fas fa-cash-register me-1"></i> Counter
-                                     {% else %}
-                                        <i class="fas fa-user me-1"></i> Customer
-                                     {% endif %}
-                                 </span>
-                                 <div class="mb-2"> <h6 class="card-title fw-bold text-muted mb-1">#{{ order.order_id }} - {{ order.customer_name }}</h6>
-                                     <p class="mb-1"><small class="text-muted">Mobile: {{ order.customer_mobile }}</small></p>
-                                     <p class="card-text mb-0"><strong>Total: ₹{{ order.total_price }}</strong></p>
-                                     {% if order.pickup_time %}
-                                         <p class="card-text mb-0"><small class="text-muted">Completed: {{ order.pickup_time|date:"d M, h:i A" }}</small></p>
-                                     {% endif %}
-                                 </div>
-                                 <div class="d-flex justify-content-end gap-2 mt-2"> <a href="{% url 'generate_invoice' order.id %}" target="_blank" class="invoice-btn btn btn-sm btn-outline-secondary flex-grow-1 flex-md-grow-0">
-                                          <i class="fas fa-file-invoice"></i> Invoice
-                                      </a>
-                                 </div>
-                            </div>
-                         </div>
-                         {% empty %}
-                         <p class="text-center text-muted p-4">No orders completed in this period.</p>
-                         {% endfor %}
-                     </div>
-                 </div>
-            </div>
-        </div>
-        </div>
-    </div>
-</main> <script>
+    </div> </div>
+
+<script>
 document.addEventListener('DOMContentLoaded', function () {
+    // --- ACTIVATE TAB FROM URL ---
+    const activateTabFromURL = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeTab = urlParams.get('active_tab');
+        if (activeTab === 'counter') {
+            const tabButton = document.getElementById('counter-tab');
+            if (tabButton) {
+                // Use Bootstrap's built-in method to show the tab
+                const tab = new bootstrap.Tab(tabButton);
+                tab.show();
+            }
+        }
+    };
+    activateTabFromURL();
+
+
     // --- COLLAPSE ICON TOGGLER ---
     document.querySelectorAll('.card-header-action').forEach(function(element) {
         const collapseTarget = document.querySelector(element.getAttribute('href'));
         if (collapseTarget) {
             const chevron = element.querySelector('.chevron');
-
-            // Initial state check
             if (!collapseTarget.classList.contains('show')) {
                 chevron.style.transform = 'rotate(-90deg)';
             }
-
             element.addEventListener('click', function(e) {
                 e.preventDefault();
                 const isOpening = !collapseTarget.classList.contains('show');
@@ -328,7 +409,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return cookieValue;
     };
 
-    // --- ORDER STATUS UPDATE ---
+    // --- ORDER STATUS UPDATE (FOR ONLINE ORDERS) ---
     const handleStatusUpdate = async (button, newStatus) => {
         const orderCard = button.closest('.card[data-order-id]');
         if (!orderCard) {
@@ -343,38 +424,34 @@ document.addEventListener('DOMContentLoaded', function () {
              return;
         }
 
-        button.disabled = true; // Prevent double clicks
+        button.disabled = true; 
         button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Updating...';
 
-
         try {
-            // Ensure the API path is correct
             const response = await fetch('/api/update-order-status/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken')
                 },
-                body: JSON.stringify({ id: orderId, status: newStatus }) // 'id' should match backend expectation (pk)
+                body: JSON.stringify({ id: orderId, status: newStatus }) 
             });
 
             if (response.ok) {
                 orderCard.style.transition = 'opacity 0.5s ease, transform 0.3s ease';
                 orderCard.style.opacity = '0';
                 orderCard.style.transform = 'scale(0.95)';
-                setTimeout(() => { window.location.reload(); }, 300); // Faster reload
+                setTimeout(() => { window.location.reload(); }, 300); 
             } else {
                  const errorData = await response.json().catch(() => ({ error: 'Unknown error updating status.' }));
                  alert(`Error updating status: ${errorData.error}`);
                  console.error('Failed response:', response.status, errorData);
-                 // Re-enable button on failure
                  button.disabled = false;
                  button.textContent = newStatus === 'ready' ? 'Mark Ready' : 'Picked Up';
             }
         } catch (error) {
             console.error('Failed to update order status:', error);
             alert('A network error occurred. Please check the console.');
-             // Re-enable button on network error
              button.disabled = false;
              button.textContent = newStatus === 'ready' ? 'Mark Ready' : 'Picked Up';
         }
@@ -388,20 +465,19 @@ document.addEventListener('DOMContentLoaded', function () {
         button.addEventListener('click', (e) => handleStatusUpdate(e.target, 'pickedup'));
     });
 
-    // --- TIMER FUNCTIONALITY ---
+    // --- TIMER FUNCTIONALITY (FOR ONLINE ORDERS) ---
     const updateTimers = () => {
         const setTimer = (card, startTime) => {
             const now = new Date();
-            const start = new Date(startTime); // Ensure startTime is a Date object
-             if (isNaN(start)) { // Check if startTime is valid
+            const start = new Date(startTime); 
+             if (isNaN(start)) { 
                  console.warn("Invalid start time for timer:", startTime);
                  return;
              }
             const diff = now - start;
-             if (diff < 0) return; // Don't show timer for future times (unlikely here)
+             if (diff < 0) return; 
 
             const totalMinutes = Math.floor(diff / (1000 * 60));
-
             const seconds = Math.floor((diff / 1000) % 60);
             const minutes = Math.floor((diff / (1000 * 60)) % 60);
             const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -409,7 +485,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const timerSpan = card.querySelector('.timer span');
             if (timerSpan) {
                 timerSpan.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-
                 timerSpan.classList.remove('timer-green', 'timer-amber', 'timer-red');
                 if (totalMinutes < 15) {
                     timerSpan.classList.add('timer-green');
@@ -421,18 +496,14 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         };
 
-        // Timer for 'Preparing' orders (based on creation time)
         document.querySelectorAll('#preparingCollapse .card[data-created-at]').forEach(card => {
             setTimer(card, card.dataset.createdAt);
         });
 
-        // Timer for 'Ready' orders (based on ready time)
         document.querySelectorAll('#readyCollapse .card[data-ready-at]').forEach(card => {
-             // Ensure ready_time exists and is valid before setting timer
              if (card.dataset.readyAt && !isNaN(new Date(card.dataset.readyAt))) {
                 setTimer(card, card.dataset.readyAt);
              } else {
-                 // Optionally hide or show a placeholder if ready time is missing/invalid
                  const timerP = card.querySelector('.timer');
                  if(timerP) timerP.style.display = 'none';
              }
@@ -440,7 +511,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     setInterval(updateTimers, 1000);
-    updateTimers(); // Initial call
+    updateTimers();
 
     // --- DATE FILTER ---
     const customDateBtn = document.getElementById('customDateBtn');
@@ -450,13 +521,11 @@ document.addEventListener('DOMContentLoaded', function () {
         customDateBtn.addEventListener('click', (e) => {
             e.preventDefault();
             customDateRangeDiv.classList.toggle('d-none');
-            customDateRangeDiv.classList.toggle('d-flex'); // Use d-flex to align items
-            // Hide dropdown if custom range is shown
+            customDateRangeDiv.classList.toggle('d-flex');
             var dateDropdown = bootstrap.Dropdown.getInstance(document.getElementById('dateFilterDropdown'));
             if (dateDropdown) dateDropdown.hide();
         });
 
-        // If the page was loaded with a custom filter, show the date inputs
         if ("{{ selected_filter }}" === "custom") {
              customDateRangeDiv.classList.remove('d-none');
              customDateRangeDiv.classList.add('d-flex');
