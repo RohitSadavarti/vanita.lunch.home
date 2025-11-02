@@ -33,7 +33,15 @@
         max-height: 70vh;
         overflow-y: auto;
         padding: 1rem;
+        /* Add min-height to ensure drop target always exists */
+        min-height: 100px;
     }
+    
+    /* Card transition */
+    .order-list-container .card {
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
     @media (max-width: 991.98px) {
         .order-list-container {
             max-height: none;
@@ -254,7 +262,7 @@
                                     </div>
                                 </div>
                                 {% empty %}
-                                <p class="text-center text-muted p-4">No online orders are currently being prepared.</p>
+                                <p class="text-center text-muted p-4 no-orders-msg">No online orders are currently being prepared.</p>
                                 {% endfor %}
                             </div>
                         </div>
@@ -300,7 +308,7 @@
                                     </div>
                                 </div>
                                 {% empty %}
-                                <p class="text-center text-muted p-4">No online orders are ready for pickup.</p>
+                                <p class="text-center text-muted p-4 no-orders-msg">No online orders are ready for pickup.</p>
                                 {% endfor %}
                             </div>
                         </div>
@@ -339,7 +347,7 @@
                                     </div>
                                 </div>
                                 {% empty %}
-                                <p class="text-center text-muted p-4">No online orders completed in this period.</p>
+                                <p class="text-center text-muted p-4 no-orders-msg">No online orders completed in this period.</p>
                                 {% endfor %}
                             </div>
                         </div>
@@ -432,7 +440,9 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     async function handleOrderStatusUpdate(orderId, newStatus, buttonElement) {
         buttonElement.disabled = true;
-        buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+        buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ...';
+
+        const card = buttonElement.closest('.card'); // Get card early
 
         try {
             const response = await fetch('/api/update-order-status/', {
@@ -450,13 +460,88 @@ document.addEventListener('DOMContentLoaded', function () {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                // Success: remove the card from the UI
-                const card = buttonElement.closest('.card');
-                card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                // --- SUCCESS: Fade out card for transition ---
                 card.style.opacity = '0';
                 card.style.transform = 'scale(0.95)';
-                setTimeout(() => card.remove(), 500);
-                // TODO: Update the count in the card header
+
+                setTimeout(() => {
+                    if (newStatus === 'ready') {
+                        // --- Move to Ready Column ---
+                        const readyColumn = document.querySelector('#readyCollapse .order-list-container');
+                        if (!readyColumn) {
+                            console.error("Could not find Ready column container!");
+                            return;
+                        }
+                        
+                        // 1. Update data-attributes for timer
+                        card.dataset.readyAt = data.ready_time;
+                        delete card.dataset.createdAt;
+                        
+                        // 2. Update timer text
+                        card.querySelector('.timer').innerHTML = 'Ready for: <span class="fw-bold timer-green">00:00:00</span>';
+                        
+                        // 3. Change button
+                        buttonElement.textContent = 'Picked Up';
+                        buttonElement.classList.remove('btn-success', 'mark-ready-btn');
+                        buttonElement.classList.add('btn-primary', 'mark-pickedup-btn');
+                        buttonElement.disabled = false; // Re-enable
+
+                        // 4. Move card (prepend to show at top)
+                        readyColumn.prepend(card);
+
+                    } else if (newStatus === 'pickedup') {
+                        // --- Move to Picked Up Column ---
+                        const pickedUpColumn = document.querySelector('#pickedUpCollapse .order-list-container');
+                        if (!pickedUpColumn) {
+                            console.error("Could not find Picked Up column container!");
+                            return;
+                        }
+                        
+                        // 1. Remove timer data-attribute
+                        delete card.dataset.readyAt;
+                        
+                        // 2. Remove timer element
+                        card.querySelector('.timer')?.remove();
+                        
+                        // 3. Remove the button
+                        buttonElement.remove();
+                        
+                        // 4. Tweak card styles
+                        card.classList.add('bg-light');
+                        card.querySelector('.card-title').classList.add('text-muted');
+                        
+                        // 5. Tweak invoice button
+                        const invoiceBtn = card.querySelector('.invoice-btn');
+                        if (invoiceBtn) {
+                            invoiceBtn.classList.remove('btn-info', 'text-white');
+                            invoiceBtn.classList.add('btn-outline-secondary');
+                        }
+                        
+                        // 6. Add 'Completed' time
+                        const paymentP = card.querySelector('p small.text-muted')?.closest('p');
+                        if (paymentP && data.pickup_time) {
+                            const completedP = document.createElement('p');
+                            completedP.classList.add('card-text', 'mb-0');
+                            const pickupDate = new Date(data.pickup_time);
+                            const dateString = pickupDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                            const timeString = pickupDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                            completedP.innerHTML = `<small class="text-muted">Completed: ${dateString}, ${timeString}</small>`;
+                            paymentP.parentNode.insertBefore(completedP, paymentP.nextSibling);
+                        }
+
+                        // 7. Move card (prepend to show at top)
+                        pickedUpColumn.prepend(card);
+                    }
+                    
+                    // Fade card back in
+                    card.style.opacity = '1';
+                    card.style.transform = 'scale(1)';
+                    
+                    // Update column counts
+                    updateColumnCounts();
+
+                }, 300); // Wait for fade-out transition
+
             } else {
                 // Handle server-side error
                 console.error('Failed to update order:', data.error);
@@ -478,7 +563,7 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {HTMLElement} span - The <span> element to update.
      * @param {Date} startTime - The start time (Date object).
      */
-    function updateTimer(span, startTime) {
+    function updateTimerSpan(span, startTime) {
         const now = new Date();
         const diffMs = now - startTime;
         const totalSeconds = Math.floor(diffMs / 1000);
@@ -503,61 +588,92 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
-     * Initializes all timers on the page.
+     * Global timer function. Runs every second to update all active timers.
      */
-    function initializeAllTimers() {
-        // --- Preparing Timers ---
+    function updateAllTimers() {
+        // Preparing timers
         document.querySelectorAll('#preparingCollapse .card[data-created-at]').forEach(card => {
             const startTime = new Date(card.dataset.createdAt);
             const timerSpan = card.querySelector('.timer span');
-            if (!timerSpan) return;
-
-            updateTimer(timerSpan, startTime); // Call immediately
-            setInterval(() => updateTimer(timerSpan, startTime), 1000); // Then set interval
+            if (timerSpan) updateTimerSpan(timerSpan, startTime);
         });
-
-        // --- Ready Timers ---
+        // Ready timers
         document.querySelectorAll('#readyCollapse .card[data-ready-at]').forEach(card => {
             const startTime = new Date(card.dataset.readyAt);
             const timerSpan = card.querySelector('.timer span');
-            if (!timerSpan) return;
+            if (timerSpan) updateTimerSpan(timerSpan, startTime);
+        });
+    }
 
-            updateTimer(timerSpan, startTime); // Call immediately
-            setInterval(() => updateTimer(timerSpan, startTime), 1000); // Then set interval
+    /**
+     * Updates the counts in the column headers.
+     */
+    function updateColumnCounts() {
+        const columns = [
+            { id: 'preparingCollapse', h5: 'Preparing', icon: 'fa-utensils' },
+            { id: 'readyCollapse', h5: 'Ready', icon: 'fa-shopping-bag' },
+            { id: 'pickedUpCollapse', h5: 'Picked Up', icon: 'fa-check-circle' }
+        ];
+        
+        const pTag = `<p class="text-center text-muted p-4 no-orders-msg">`;
+
+        columns.forEach(col => {
+            try {
+                const container = document.getElementById(col.id);
+                if (!container) return;
+                
+                const count = container.querySelectorAll('.card').length;
+                const headerH5 = container.previousElementSibling.querySelector('h5');
+                const listContainer = container.querySelector('.order-list-container');
+                const noOrdersMsg = listContainer.querySelector('.no-orders-msg');
+
+                if (headerH5) {
+                    headerH5.innerHTML = `<i class="fas ${col.icon} me-2"></i>${col.h5} (${count})`;
+                }
+                
+                // Show/hide the "no orders" message
+                if (count > 0 && noOrdersMsg) {
+                    noOrdersMsg.remove();
+                } else if (count === 0 && !noOrdersMsg) {
+                    let msg = '';
+                    if (col.id === 'preparingCollapse') msg = 'No online orders are currently being prepared.';
+                    else if (col.id === 'readyCollapse') msg = 'No online orders are ready for pickup.';
+                    else if (col.id === 'pickedUpCollapse') msg = 'No online orders completed in this period.';
+                    
+                    listContainer.innerHTML = `${pTag}${msg}</p>`;
+                }
+
+            } catch (e) {
+                console.warn(`Could not update count for ${col.id}`, e);
+            }
         });
     }
 
     // --- MAIN EXECUTION ---
 
-    // 1. Initialize Timers
-    initializeAllTimers();
+    // 1. Start Global Timer
+    setInterval(updateAllTimers, 1000);
+    updateAllTimers(); // Run immediately
 
-    // 2. Add Event Listeners for Buttons
-    
-    // Mark Ready Buttons
-    document.querySelectorAll('.mark-ready-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const card = this.closest('.card');
+    // 2. Add Event Listeners (using delegation on the document)
+    document.addEventListener('click', function(e) {
+        // Mark Ready Button
+        if (e.target.classList.contains('mark-ready-btn')) {
+            const card = e.target.closest('.card');
             const orderId = card.dataset.orderId;
-            if (orderId) {
-                handleOrderStatusUpdate(orderId, 'ready', this);
-            } else {
-                console.error('No order ID found on card.');
+            if (orderId && !e.target.disabled) {
+                handleOrderStatusUpdate(orderId, 'ready', e.target);
             }
-        });
-    });
+        }
 
-    // Mark Picked Up Buttons
-    document.querySelectorAll('.mark-pickedup-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const card = this.closest('.card');
+        // Mark Picked Up Button
+        if (e.target.classList.contains('mark-pickedup-btn')) {
+            const card = e.target.closest('.card');
             const orderId = card.dataset.orderId;
-            if (orderId) {
-                handleOrderStatusUpdate(orderId, 'pickedup', this);
-            } else {
-                console.error('No order ID found on card.');
+            if (orderId && !e.target.disabled) {
+                handleOrderStatusUpdate(orderId, 'pickedup', e.target);
             }
-        });
+        }
     });
 
     // 3. Custom Date Range Toggle
@@ -577,6 +693,9 @@ document.addEventListener('DOMContentLoaded', function () {
         customDateRange.classList.remove('d-none');
         customDateRange.classList.add('d-flex');
     }
+
+    // 4. Initial column count update
+    updateColumnCounts();
 
 });
 </script>
