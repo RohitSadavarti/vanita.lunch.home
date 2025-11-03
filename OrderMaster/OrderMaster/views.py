@@ -1025,3 +1025,56 @@ def generate_invoice_view(request, order_id):
     }
     
     return render(request, 'OrderMaster/invoice.html', context)
+
+@csrf_exempt
+@require_http_methods(['GET'])
+def api_online_orders(request):
+    """API endpoint specifically for fetching online orders (placed by customers)"""
+    try:
+        # Get date filtering parameters
+        date_filter = request.GET.get('date_filter', 'today')
+        start_date_str = request.GET.get('start_date')
+        end_date_str = request.GET.get('end_date')
+        
+        # Apply date filtering logic (same as ordermanagementview)
+        now = timezone.now()
+        if date_filter == 'today':
+            start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+        # ... other date filter logic
+        
+        # CRITICAL: Filter only customer orders
+        online_orders = Order.objects.filter(
+            createdat__range=(start_date, end_date),
+            orderplacedby='customer'  # This is the key filter!
+        ).order_by('-createdat')
+        
+        # Serialize orders data
+        orders_data = []
+        for order in online_orders:
+            items_list = order.items if isinstance(order.items, list) else json.loads(order.items)
+            orders_data.append({
+                'id': order.id,
+                'orderid': order.orderid,
+                'customername': order.customername,
+                'customermobile': order.customermobile,
+                'items': items_list,
+                'totalprice': float(order.totalprice),
+                'orderstatus': order.orderstatus,
+                'status': order.status,
+                'createdat': order.createdat.isoformat(),
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'orders': orders_data,
+            'count': len(orders_data)
+        })
+        
+    except Exception as e:
+        logger.error(f'Error in api_online_orders: {e}', exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': 'Server error occurred while fetching online orders.'
+        }, status=500)
+
