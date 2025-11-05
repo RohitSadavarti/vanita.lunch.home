@@ -734,20 +734,21 @@ def get_pending_orders(request):
     except Exception as e:
         logger.error(f"Error fetching pending orders: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+# Add this to OrderMaster/OrderMaster/views.py
+
 @csrf_exempt
 @require_http_methods(["GET"])
 def get_all_orders_api(request):
     """
-    API endpoint to fetch ALL orders for a specific date.
-    Used by Flutter app's counter_order_screen.
+    API endpoint to fetch ALL orders for Flutter app.
+    Returns orders with proper formatting for mobile app.
     """
     try:
-        # Get date from query parameters
+        # Get date from query parameters (optional)
         date_str = request.GET.get('date')
         
         if date_str:
             try:
-                # Parse the date string (format: YYYY-MM-DD)
                 target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
                 logger.info(f"📅 Fetching orders for date: {target_date}")
             except ValueError as e:
@@ -775,23 +776,28 @@ def get_all_orders_api(request):
         
         logger.info(f"✅ Found {orders.count()} orders for {target_date}")
         
-        # Serialize orders
+        # Serialize orders for Flutter app
         orders_data = []
         for order in orders:
             try:
                 # Parse items if it's a JSON string
                 items_list = order.items if isinstance(order.items, list) else json.loads(order.items)
                 
+                # Format order data for Flutter
                 orders_data.append({
                     'id': order.id,
-                    'order_id': order.order_id,
+                    'order_id': order.order_id if order.order_id else str(order.id),
                     'customer_name': order.customer_name,
                     'customer_mobile': order.customer_mobile,
                     'items': items_list,
                     'total_price': float(order.total_price),
                     'status': order.status,
-                    'order_placed_by': order.order_placed_by,  # Important for filtering
+                    'order_status': order.order_status,  # 'open', 'ready', 'pickedup'
+                    'order_placed_by': order.order_placed_by,  # 'customer' or 'counter'
+                    'payment_method': order.payment_method,
                     'created_at': order.created_at.isoformat(),
+                    'ready_time': order.ready_time.isoformat() if order.ready_time else None,
+                    'pickup_time': order.pickup_time.isoformat() if order.pickup_time else None,
                 })
             except Exception as e:
                 logger.error(f"❌ Error serializing order {order.id}: {e}")
@@ -811,8 +817,6 @@ def get_all_orders_api(request):
             'error': 'Server error occurred while fetching orders.'
         }, status=500)
         
-# In OrderMaster/views.py - Replace the handle_order_action function
-
 @csrf_exempt
 @admin_required
 @require_POST
