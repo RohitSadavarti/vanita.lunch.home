@@ -734,7 +734,8 @@ def get_pending_orders(request):
     except Exception as e:
         logger.error(f"Error fetching pending orders: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-# Add this to OrderMaster/OrderMaster/views.py
+
+
 
 @csrf_exempt
 @require_http_methods(["GET"])
@@ -742,8 +743,11 @@ def get_all_orders_api(request):
     """
     API endpoint to fetch ALL orders for Flutter app.
     Returns orders with proper formatting for mobile app.
+    FIXED: Proper error handling and response format.
     """
     try:
+        logger.info("📡 API /api/all-orders/ called")
+        
         # Get date from query parameters (optional)
         date_str = request.GET.get('date')
         
@@ -780,8 +784,18 @@ def get_all_orders_api(request):
         orders_data = []
         for order in orders:
             try:
-                # Parse items if it's a JSON string
-                items_list = order.items if isinstance(order.items, list) else json.loads(order.items)
+                # CRITICAL FIX: Safely parse items
+                if isinstance(order.items, str):
+                    try:
+                        items_list = json.loads(order.items)
+                    except json.JSONDecodeError as je:
+                        logger.error(f"❌ JSON decode error for order {order.id}: {je}")
+                        items_list = []
+                elif isinstance(order.items, list):
+                    items_list = order.items
+                else:
+                    logger.warning(f"⚠️ Unexpected items type for order {order.id}: {type(order.items)}")
+                    items_list = []
                 
                 # Format order data for Flutter
                 orders_data.append({
@@ -800,21 +814,24 @@ def get_all_orders_api(request):
                     'pickup_time': order.pickup_time.isoformat() if order.pickup_time else None,
                 })
             except Exception as e:
-                logger.error(f"❌ Error serializing order {order.id}: {e}")
+                logger.error(f"❌ Error serializing order {order.id}: {e}", exc_info=True)
                 continue
+        
+        logger.info(f"✅ Successfully serialized {len(orders_data)} orders")
         
         return JsonResponse({
             'success': True,
             'orders': orders_data,
             'date': target_date.isoformat(),
             'count': len(orders_data)
-        })
+        }, safe=False)  # IMPORTANT: safe=False to allow list serialization
         
     except Exception as e:
         logger.error(f"❌ Error in get_all_orders_api: {e}", exc_info=True)
         return JsonResponse({
             'success': False,
-            'error': 'Server error occurred while fetching orders.'
+            'error': 'Server error occurred while fetching orders.',
+            'details': str(e)
         }, status=500)
         
 @csrf_exempt
