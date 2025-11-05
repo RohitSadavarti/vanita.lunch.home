@@ -1,10 +1,11 @@
-# OrderMaster/OrderMaster/urls.py
+# OrderMaster/urls.py - UPDATED WITH CSRF FIX
 
 import sys
 import os
 from django.urls import path, include, re_path
 from django.http import HttpResponse
 from django.template.loader import render_to_string
+from django.middleware.csrf import get_token
 
 # --- URGENT FIX for DEPLOYMENT ---
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -25,12 +26,31 @@ def firebase_messaging_sw(request):
         print(f"FATAL: Could not render service worker. Error: {e}")
         return HttpResponse(status=500)
 
+
+# --- NEW: Root path handler for Flutter CSRF token fetch ---
+def root_view(request):
+    """
+    Serves the login page or redirects based on auth status.
+    This endpoint is used by Flutter app to fetch CSRF token.
+    """
+    # Ensure CSRF token is set in cookies
+    get_token(request)
+    
+    if request.session.get('is_authenticated'):
+        return views.dashboard_view(request)
+    else:
+        return views.login_view(request)
+
+
 urlpatterns = [
+    # --- FIX: Root path must be first ---
+    path('', root_view, name='root'),  # This replaces the old login path
+    
     # Firebase Service Worker URL
     path('firebase-messaging-sw.js', firebase_messaging_sw, name='firebase-messaging-sw'),
 
     # Admin URLs
-    path('', views.login_view, name='login'),
+    path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
     path('orders/', views.order_management_view, name='order_management'),
@@ -54,8 +74,6 @@ urlpatterns = [
     path('api/place-order/', views.api_place_order, name='api_place_order'),
     path('api/create-manual-order/', views.create_manual_order, name='create_manual_order'),
     path('api/pending-orders/', views.get_pending_orders, name='get_pending_orders'),
-    
-    # *** THIS IS THE MISSING ENDPOINT CAUSING YOUR 404 ERROR ***
     path('api/all-orders/', views.get_all_orders_api, name='get_all_orders_api'),
     
     # Order Management APIs
