@@ -760,7 +760,6 @@ def get_pending_orders(request):
         logger.error(f"Error fetching pending orders for Flutter: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
-
 @csrf_exempt
 @require_http_methods(["GET"])
 def get_all_orders_api(request):
@@ -862,46 +861,33 @@ def get_all_orders_api(request):
 @admin_required
 @require_POST
 def handle_order_action(request):
-    """Handle acceptance or rejection of pending customer orders"""
+    """
+    Handles 'accept' or 'reject' actions for new orders.
+    """
     try:
         data = json.loads(request.body)
-        order_id = data.get('order_id')  # This is the database PK (id)
+        order_id = data.get('order_id')  # This is the database ID (pk)
         action = data.get('action')
-
-        if not order_id or not action:
-            return JsonResponse({'success': False, 'error': 'Missing order_id or action'}, status=400)
 
         order = get_object_or_404(Order, id=order_id)
 
         if action == 'accept':
             order.status = 'Confirmed'
-            order.order_status = 'open'  # Move to "Preparing" column
-            message = f'Order #{order.order_id} accepted and moved to preparation.'
-            logger.info(f"✅ Order {order.order_id} accepted by admin")
-            
+            order.order_status = 'open'  # Move to preparing
+            message = f'Order #{order.order_id} accepted successfully.'
         elif action == 'reject':
             order.status = 'Rejected'
             order.order_status = 'cancelled'
-            message = f'Order #{order.order_id} has been rejected.'
-            logger.info(f"❌ Order {order.order_id} rejected by admin")
-            
+            message = f'Order #{order.order_id} rejected.'
         else:
-            return JsonResponse({'success': False, 'error': 'Invalid action. Must be "accept" or "reject"'}, status=400)
+            return JsonResponse({'success': False, 'error': 'Invalid action'}, status=400)
 
         order.save()
-
-        return JsonResponse({
-            'success': True,
-            'message': message,
-            'order_id': order.order_id,
-            'action': action
-        })
-
+        return JsonResponse({'success': True, 'message': message})
     except Order.DoesNotExist:
-        logger.error(f"Order with ID {order_id} not found")
         return JsonResponse({'success': False, 'error': 'Order not found'}, status=404)
     except Exception as e:
-        logger.error(f"Error handling order action: {e}", exc_info=True)
+        logger.error(f"Error in handle_order_action: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
         
 @admin_required
@@ -1123,3 +1109,20 @@ def api_online_orders(request):
             'error': 'Server error occurred while fetching online orders.'
         }, status=500)
 
+
+@admin_required
+def edit_menu_item_view(request, item_id):
+    """Handles editing an existing menu item via web form."""
+    item = get_object_or_404(MenuItem, id=item_id)
+    if request.method == 'POST':
+        form = MenuItemForm(request.POST, request.FILES, instance=item)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Menu item updated successfully!')
+            return redirect('menu_management')
+        else:
+            messages.error(request, 'Error updating item.')
+    else:
+        form = MenuItemForm(instance=item)
+    
+    return render(request, 'OrderMaster/edit_menu_item.html', {'form': form, 'item': item})
