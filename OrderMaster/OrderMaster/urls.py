@@ -73,7 +73,7 @@ urlpatterns = [
     # Order APIs
     path('api/place-order/', views.api_place_order, name='api_place_order'),
     path('api/create-manual-order/', views.create_manual_order, name='create_manual_order'),
-    path('api/pending-orders/', views.get_pending_orders, name='get_pending_orders'),
+    path('api/get-pending-orders/', views.get_pending_orders, name='get_pending_orders'),
     path('api/all-orders/', views.get_all_orders_api, name='get_all_orders_api'),
     
     # Order Management APIs
@@ -90,3 +90,4 @@ urlpatterns = [
     # Customer-facing URL
     path('customer-order/', views.customer_order_view, name='customer_home'),
 ]
+
