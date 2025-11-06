@@ -202,130 +202,142 @@ from django.db.models.functions import TruncHour, TruncDay
 from django.db.models import Count
 
 def analytics_api_view(request):
-    # Get filters from the request
-    date_filter = request.GET.get('date_filter', 'this_month')
-    payment_filter = request.GET.get('payment_filter', 'Total')
-    start_date_str = request.GET.get('start_date')
-    end_date_str = request.GET.get('end_date')
+    """API endpoint for analytics data with proper error handling."""
+    try:
+        # Get filters from the request
+        date_filter = request.GET.get('date_filter', 'this_month')
+        payment_filter = request.GET.get('payment_filter', 'Total')
+        start_date_str = request.GET.get('start_date')
+        end_date_str = request.GET.get('end_date')
 
-    now = timezone.now()
-    if date_filter == 'today':
-        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
-    elif date_filter == 'this_week':
-        start_date = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
-        end_date = now
-    elif date_filter == 'this_month':
-        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        end_date = now
-    elif date_filter == 'custom' and start_date_str and end_date_str:
-        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
-        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
-    else:
-        start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        end_date = now
+        print(f"[v0] Analytics API called with filters: date={date_filter}, payment={payment_filter}")
 
-    base_completed_orders = Order.objects.filter(order_status='pickedup', created_at__range=(start_date, end_date))
-    filtered_orders = base_completed_orders
-    if payment_filter != 'Total':
-        filtered_orders = base_completed_orders.filter(payment_method=payment_filter)
+        now = timezone.now()
+        if date_filter == 'today':
+            start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+        elif date_filter == 'this_week':
+            start_date = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+            end_date = now
+        elif date_filter == 'this_month':
+            start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            end_date = now
+        elif date_filter == 'custom' and start_date_str and end_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
+        else:
+            start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            end_date = now
 
-    total_revenue = filtered_orders.aggregate(total=Sum('total_price'))['total'] or 0
-    total_orders_count = filtered_orders.count()
-    average_order_value = total_revenue / total_orders_count if total_orders_count > 0 else 0
+        base_completed_orders = Order.objects.filter(order_status='pickedup', created_at__range=(start_date, end_date))
+        filtered_orders = base_completed_orders
+        if payment_filter != 'Total':
+            filtered_orders = base_completed_orders.filter(payment_method=payment_filter)
 
-    item_counter = Counter()
-    for order in filtered_orders:
-        items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
-        if isinstance(items_list, list):
-            for item in items_list:
-                item_counter[item.get('name', 'Unknown')] += item.get('quantity', 0)
-    most_common_items = item_counter.most_common(5)
-    top_5_names = [item[0] for item in most_common_items]
+        total_revenue = filtered_orders.aggregate(total=Sum('total_price'))['total'] or 0
+        total_orders_count = filtered_orders.count()
+        average_order_value = total_revenue / total_orders_count if total_orders_count > 0 else 0
 
-    payment_distribution = filtered_orders.values('payment_method').annotate(total=Sum('total_price')).order_by('-total')
-    order_status_distribution = base_completed_orders.values('status').annotate(count=Count('id')).order_by('-count')
-    orders_by_hour = filtered_orders.annotate(hour=TruncHour('created_at')).values('hour').annotate(count=Count('id')).order_by('hour')
-    
-    day_wise_revenue = filtered_orders.annotate(day=TruncDay('created_at')).values('day').annotate(
-        revenue=Sum('total_price'),
-        orders=Count('id')
-    ).order_by('day')
-
-    day_wise_menu_query = filtered_orders.annotate(day=TruncDay('created_at')).values('day').order_by('day').distinct()
-    day_labels = [d['day'].strftime('%d %b') for d in day_wise_menu_query]
-    
-    datasets = {name: [0] * len(day_labels) for name in top_5_names}
-    for i, day_label in enumerate(day_labels):
-        day_date = datetime.strptime(day_label + f' {start_date.year}', '%d %b %Y').date()
-        orders_on_day = filtered_orders.filter(created_at__date=day_date)
-        daily_item_counter = Counter()
-        for order in orders_on_day:
+        item_counter = Counter()
+        for order in filtered_orders:
             items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
             if isinstance(items_list, list):
                 for item in items_list:
-                    if item.get('name') in top_5_names:
-                        daily_item_counter[item.get('name')] += item.get('quantity', 0)
-        for name in top_5_names:
-            datasets[name][i] = daily_item_counter[name]
+                    item_counter[item.get('name', 'Unknown')] += item.get('quantity', 0)
+        most_common_items = item_counter.most_common(5)
+        top_5_names = [item[0] for item in most_common_items]
 
-    day_wise_menu_datasets = []
-    colors = ['#1e40af', '#059669', '#d97706', '#9333ea', '#64748b']
-    for i, name in enumerate(top_5_names):
-        day_wise_menu_datasets.append({
-            'label': name,
-            'data': datasets[name],
-            'backgroundColor': colors[i % len(colors)]
-        })
-
-    table_orders = filtered_orders.order_by('-created_at')[:100]
-    table_data = []
-    for order in table_orders:
-        items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
-        items_text = ", ".join([f"{item['quantity']}x {item['name']}" for item in items_list]) if isinstance(items_list, list) else ""
-        table_data.append({
-            'created_at': order.created_at.isoformat(),
-            'order_id': order.order_id,
-            'items_text': items_text,
-            'total_price': float(order.total_price),
-            'payment_method': order.payment_method,
-            'order_status': order.status,
-        })
+        payment_distribution = filtered_orders.values('payment_method').annotate(total=Sum('total_price')).order_by('-total')
+        order_status_distribution = base_completed_orders.values('status').annotate(count=Count('id')).order_by('-count')
+        orders_by_hour = filtered_orders.annotate(hour=TruncHour('created_at')).values('hour').annotate(count=Count('id')).order_by('hour')
         
-    data = {
-        'key_metrics': {
-            'total_revenue': f'{total_revenue:,.2f}',
-            'total_orders': total_orders_count,
-            'average_order_value': f'{average_order_value:,.2f}',
-        },
-        'most_ordered_items': {
-            'labels': [item[0] for item in most_common_items],
-            'data': [item[1] for item in most_common_items],
-        },
-        'payment_method_distribution': {
-            'labels': [item['payment_method'] for item in payment_distribution],
-            'data': [float(item['total']) for item in payment_distribution],
-        },
-        'order_status_distribution': {
-            'labels': [item['status'] for item in order_status_distribution],
-            'data': [item['count'] for item in order_status_distribution],
-        },
-        'orders_by_hour': {
-            'labels': [h['hour'].strftime('%I %p').lstrip('0') for h in orders_by_hour],
-            'data': [h['count'] for h in orders_by_hour],
-        },
-        'day_wise_revenue': {
-            'labels': [d['day'].strftime('%d %b') for d in day_wise_revenue],
-            'revenue_data': [float(d['revenue']) for d in day_wise_revenue],
-            'orders_data': [d['orders'] for d in day_wise_revenue],
-        },
-        'day_wise_menu': {
-            'labels': day_labels,
-            'datasets': day_wise_menu_datasets,
-        },
-        'table_data': table_data,
-    }
-    return JsonResponse(data)
+        day_wise_revenue = filtered_orders.annotate(day=TruncDay('created_at')).values('day').annotate(
+            revenue=Sum('total_price'),
+            orders=Count('id')
+        ).order_by('day')
+
+        day_wise_menu_query = filtered_orders.annotate(day=TruncDay('created_at')).values('day').order_by('day').distinct()
+        day_labels = [d['day'].strftime('%d %b') for d in day_wise_menu_query]
+        
+        datasets = {name: [0] * len(day_labels) for name in top_5_names}
+        for i, day_label in enumerate(day_labels):
+            day_date = datetime.strptime(day_label + f' {start_date.year}', '%d %b %Y').date()
+            orders_on_day = filtered_orders.filter(created_at__date=day_date)
+            daily_item_counter = Counter()
+            for order in orders_on_day:
+                items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
+                if isinstance(items_list, list):
+                    for item in items_list:
+                        if item.get('name') in top_5_names:
+                            daily_item_counter[item.get('name')] += item.get('quantity', 0)
+            for name in top_5_names:
+                datasets[name][i] = daily_item_counter[name]
+
+        day_wise_menu_datasets = []
+        colors = ['#1e40af', '#059669', '#d97706', '#9333ea', '#64748b']
+        for i, name in enumerate(top_5_names):
+            day_wise_menu_datasets.append({
+                'label': name,
+                'data': datasets[name],
+                'backgroundColor': colors[i % len(colors)]
+            })
+
+        table_orders = filtered_orders.order_by('-created_at')[:100]
+        table_data = []
+        for order in table_orders:
+            items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
+            items_text = ", ".join([f"{item['quantity']}x {item['name']}" for item in items_list]) if isinstance(items_list, list) else ""
+            table_data.append({
+                'created_at': order.created_at.isoformat(),
+                'order_id': order.order_id,
+                'items_text': items_text,
+                'total_price': float(order.total_price),  # Ensure float type
+                'payment_method': order.payment_method,
+                'order_status': order.status,
+            })
+            
+        data = {
+            'key_metrics': {
+                'total_revenue': float(total_revenue),  # Return as float, not string
+                'total_orders': total_orders_count,
+                'average_order_value': float(average_order_value),  # Return as float
+            },
+            'most_ordered_items': {
+                'labels': [item[0] for item in most_common_items],
+                'data': [item[1] for item in most_common_items],
+            },
+            'payment_method_distribution': {
+                'labels': [item['payment_method'] for item in payment_distribution],
+                'data': [float(item['total']) for item in payment_distribution],  # Ensure float
+            },
+            'order_status_distribution': {
+                'labels': [item['status'] for item in order_status_distribution],
+                'data': [item['count'] for item in order_status_distribution],
+            },
+            'orders_by_hour': {
+                'labels': [h['hour'].strftime('%I %p').lstrip('0') if h['hour'] else 'N/A' for h in orders_by_hour],
+                'data': [h['count'] for h in orders_by_hour],
+            },
+            'day_wise_revenue': {
+                'labels': [d['day'].strftime('%d %b') for d in day_wise_revenue],
+                'revenue_data': [float(d['revenue']) for d in day_wise_revenue],
+                'orders_data': [d['orders'] for d in day_wise_revenue],
+            },
+            'day_wise_menu': {
+                'labels': day_labels,
+                'datasets': day_wise_menu_datasets,
+            },
+            'table_data': table_data,
+        }
+        logger.info(f"[v0] Analytics data prepared successfully")
+        return JsonResponse(data)
+        
+    except Exception as e:
+        logger.error(f"[v0] Error in analytics_api_view: {e}", exc_info=True)
+        return JsonResponse({
+            'error': 'Server error occurred while fetching analytics data.',
+            'details': str(e)
+        }, status=500)
     
 @admin_required
 def order_management_view(request):
@@ -762,14 +774,12 @@ def get_pending_orders(request):
         
 @csrf_exempt
 @require_http_methods(["GET"])
-def get_all_orders_api(request):
+def getAllOrders(request):
     """
-    API endpoint to fetch ALL orders for Flutter app.
-    Returns orders with proper formatting for mobile app.
-    FIXED: Proper error handling and response format.
+    Fetch all orders for Flutter app with proper JSON response.
     """
     try:
-        logger.info("📡 API /api/all-orders/ called")
+        logger.info("[v0] getAllOrders API called")
         
         # Get date from query parameters (optional)
         date_str = request.GET.get('date')
@@ -777,17 +787,14 @@ def get_all_orders_api(request):
         if date_str:
             try:
                 target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-                logger.info(f"📅 Fetching orders for date: {target_date}")
-            except ValueError as e:
-                logger.error(f"❌ Invalid date format: {date_str}")
+            except ValueError:
+                logger.error(f"[v0] Invalid date format: {date_str}")
                 return JsonResponse({
                     'success': False,
                     'error': 'Invalid date format. Use YYYY-MM-DD'
                 }, status=400)
         else:
-            # Default to today's date
             target_date = timezone.now().date()
-            logger.info(f"📅 No date provided, using today: {target_date}")
         
         # Query orders for the target date
         start_datetime = timezone.make_aware(
@@ -801,23 +808,23 @@ def get_all_orders_api(request):
             created_at__range=(start_datetime, end_datetime)
         ).order_by('-created_at')
         
-        logger.info(f"✅ Found {orders.count()} orders for {target_date}")
+        logger.info(f"[v0] Found {orders.count()} orders for {target_date}")
         
         # Serialize orders for Flutter app
         orders_data = []
         for order in orders:
             try:
-                # CRITICAL FIX: Safely parse items
+                # Safely parse items
                 if isinstance(order.items, str):
                     try:
                         items_list = json.loads(order.items)
-                    except json.JSONDecodeError as je:
-                        logger.error(f"❌ JSON decode error for order {order.id}: {je}")
+                    except json.JSONDecodeError:
+                        logger.error(f"[v0] JSON decode error for order {order.id}")
                         items_list = []
                 elif isinstance(order.items, list):
                     items_list = order.items
                 else:
-                    logger.warning(f"⚠️ Unexpected items type for order {order.id}: {type(order.items)}")
+                    logger.warning(f"[v0] Unexpected items type for order {order.id}")
                     items_list = []
                 
                 # Format order data for Flutter
@@ -827,30 +834,30 @@ def get_all_orders_api(request):
                     'customer_name': order.customer_name,
                     'customer_mobile': order.customer_mobile,
                     'items': items_list,
-                    'total_price': float(order.total_price),
+                    'total_price': float(order.total_price),  # Ensure float
                     'status': order.status,
-                    'order_status': order.order_status,  # 'open', 'ready', 'pickedup'
-                    'order_placed_by': order.order_placed_by,  # 'customer' or 'counter'
+                    'order_status': order.order_status,
+                    'order_placed_by': order.order_placed_by,
                     'payment_method': order.payment_method,
                     'created_at': order.created_at.isoformat(),
                     'ready_time': order.ready_time.isoformat() if order.ready_time else None,
                     'pickup_time': order.pickup_time.isoformat() if order.pickup_time else None,
                 })
             except Exception as e:
-                logger.error(f"❌ Error serializing order {order.id}: {e}", exc_info=True)
+                logger.error(f"[v0] Error serializing order {order.id}: {e}", exc_info=True)
                 continue
         
-        logger.info(f"✅ Successfully serialized {len(orders_data)} orders")
+        logger.info(f"[v0] Successfully serialized {len(orders_data)} orders")
         
         return JsonResponse({
             'success': True,
             'orders': orders_data,
             'date': target_date.isoformat(),
             'count': len(orders_data)
-        }, safe=False)  # IMPORTANT: safe=False to allow list serialization
+        }, safe=False)
         
     except Exception as e:
-        logger.error(f"❌ Error in get_all_orders_api: {e}", exc_info=True)
+        logger.error(f"[v0] Error in getAllOrders: {e}", exc_info=True)
         return JsonResponse({
             'success': False,
             'error': 'Server error occurred while fetching orders.',
@@ -1076,9 +1083,9 @@ def api_online_orders(request):
         
         # CRITICAL: Filter only customer orders
         online_orders = Order.objects.filter(
-            createdat__range=(start_date, end_date),
-            orderplacedby='customer'  # This is the key filter!
-        ).order_by('-createdat')
+            created_at__range=(start_date, end_date),
+            order_placed_by='customer'  # This is the key filter!
+        ).order_by('-created_at')
         
         # Serialize orders data
         orders_data = []
@@ -1086,14 +1093,14 @@ def api_online_orders(request):
             items_list = order.items if isinstance(order.items, list) else json.loads(order.items)
             orders_data.append({
                 'id': order.id,
-                'orderid': order.orderid,
-                'customername': order.customername,
-                'customermobile': order.customermobile,
+                'orderid': order.order_id,
+                'customername': order.customer_name,
+                'customermobile': order.customer_mobile,
                 'items': items_list,
-                'totalprice': float(order.totalprice),
-                'orderstatus': order.orderstatus,
+                'totalprice': float(order.total_price),
+                'orderstatus': order.order_status,
                 'status': order.status,
-                'createdat': order.createdat.isoformat(),
+                'createdat': order.created_at.isoformat(),
             })
         
         return JsonResponse({
@@ -1145,7 +1152,46 @@ def invoice_view(request, order_id):
 def analytics_data_api(request):
     """API view for analytics data."""
     try:
-        # ... (rest of your function code is fine) ...
+        # Get filters from the request
+        date_filter = request.GET.get('date_filter', 'this_month')
+        start_date_str = request.GET.get('start_date')
+        end_date_str = request.GET.get('end_date')
+
+        now = timezone.now()
+        if date_filter == 'today':
+            start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+        elif date_filter == 'this_week':
+            start_date = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+            end_date = now
+        elif date_filter == 'this_month':
+            start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            end_date = now
+        elif date_filter == 'custom' and start_date_str and end_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
+        else:
+            start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            end_date = now
+
+        # Filter for completed orders within the date range
+        completed_orders = Order.objects.filter(order_status='pickedup', created_at__range=(start_date, end_date))
+
+        total_revenue = completed_orders.aggregate(total=Sum('total_price'))['total'] or 0
+        total_orders = Order.objects.count() # Total orders placed, not just completed
+        completed_orders_count = completed_orders.count()
+
+        # Extract all items from completed orders
+        all_items = []
+        for order in completed_orders:
+            try:
+                items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
+                if isinstance(items_list, list):
+                    for item in items_list:
+                        all_items.append(item.get('name', 'Unknown'))
+            except json.JSONDecodeError:
+                logger.warning(f"Could not decode items for order {order.id}")
+                continue
                 
         item_counts = Counter(all_items).most_common(5)
 
@@ -1161,3 +1207,4 @@ def analytics_data_api(request):
         logger.error(f"Analytics data API error: {e}")
         # FIX IS HERE: It should be status=500
         return JsonResponse({'error': 'Failed to fetch analytics data'}, status=500)
+ analytics data'}, status=500)
