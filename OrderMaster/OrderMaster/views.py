@@ -1139,38 +1139,13 @@ def invoice_view(request, order_id):
         return redirect('dashboard')
 
 
+...
 @admin_required
 @require_GET
 def analytics_data_api(request):
     """API view for analytics data."""
     try:
-        end_date = timezone.now()
-        start_date_str = request.GET.get('start_date', (end_date - timedelta(days=30)).strftime('%Y-%m-%d'))
-        end_date_str = request.GET.get('end_date', end_date.strftime('%Y-%m-%d'))
-
-        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(tzinfo=timezone.utc)
-        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
-
-        orders = Order.objects.filter(created_at__range=(start_date, end_date))
-        
-        total_revenue = orders.filter(order_status__in=['pickedup', 'completed']).aggregate(Sum('total_price'))['total_price__sum'] or 0
-        total_orders = orders.count()
-        completed_orders_count = orders.filter(order_status__in=['pickedup', 'completed']).count()
-        
-        all_items = []
-        completed_orders_items = orders.filter(order_status__in=['pickedup', 'completed']).values_list('items', flat=True)
-        
-        for items_json_str in completed_orders_items:
-            try:
-                items_list = json.loads(items_json_str)
-                if isinstance(items_list, list):
-                    for item in items_list:
-                        all_items.extend([item.get('name')] * item.get('quantity', 0))
-                elif isinstance(items_list, dict):
-                     for name, qty in items_list.items():
-                         all_items.extend([name] * qty)
-            except (json.JSONDecodeError, TypeError):
-                continue
+        # ... (rest of your function code is fine) ...
                 
         item_counts = Counter(all_items).most_common(5)
 
@@ -1184,25 +1159,5 @@ def analytics_data_api(request):
         return JsonResponse(data)
     except Exception as e:
         logger.error(f"Analytics data API error: {e}")
-        return JsonResponse({'error': 'Failed to fetch analytics data'}, status=5Two-Column Layout:
-```html
-<div class="row">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-warning">
-                <h5 class="mb-0">Preparing Orders (<span id="preparing-count">0</span>)</h5>
-            </div>
-            <div class="card-body" id="preparing-orders-list">
-                </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0">Ready Orders (<span id="ready-count">0</span>)</h5>
-            </div>
-            <div class="card-body" id="ready-orders-list">
-                </div>
-        </div>
-    </div>
-</div>
+        # FIX IS HERE: It should be status=500
+        return JsonResponse({'error': 'Failed to fetch analytics data'}, status=500)
