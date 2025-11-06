@@ -709,32 +709,56 @@ def get_orders_api(request):
         logger.error(f"API get_orders error: {e}")
         return JsonResponse({'error': 'Server error occurred.'}, status=500)
 
+@csrf_exempt
 @admin_required
+@require_GET  # Make sure this view only responds to GET
 def get_pending_orders(request):
-    """API endpoint to fetch pending orders that need admin action."""
+    """
+    Returns a list of all active orders, separated for the Flutter app.
+    This version sends 'total_price' as a float (number).
+    """
     try:
-        pending_orders = Order.objects.filter(
-            status='Pending'
+        active_orders = Order.objects.filter(
+            order_status__in=['open', 'ready']
         ).order_by('created_at')
 
-        orders_data = []
-        for order in pending_orders:
-            items_list = order.items if isinstance(order.items, list) else json.loads(order.items)
-            orders_data.append({
+        online_orders_data = []
+        counter_orders_data = []
+
+        for order in active_orders:
+            try:
+                items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
+            except json.JSONDecodeError:
+                items_list = [] # Handle malformed JSON
+
+            order_data = {
                 'id': order.id,
                 'order_id': order.order_id,
                 'customer_name': order.customer_name,
                 'customer_mobile': order.customer_mobile,
                 'items': items_list,
-                'total_price': float(order.total_price),
-                'created_at': order.created_at.strftime('%b %d, %Y, %I:%M %p')
-            })
+                'total_price': float(order.total_price), # <-- FIX IS HERE: Send as float
+                'order_status': order.order_status,
+                'status': order.status,
+                'order_placed_by': order.order_placed_by,
+                'created_at': order.created_at.isoformat(),
+                'ready_time': order.ready_time.isoformat() if order.ready_time else None,
+                'pickup_time': order.pickup_time.isoformat() if order.pickup_time else None,
+            }
+            
+            if order.order_placed_by == 'counter':
+                counter_orders_data.append(order_data)
+            else:
+                online_orders_data.append(order_data)
 
-        return JsonResponse({'success': True, 'orders': orders_data})
+        return JsonResponse({
+            'online_orders': online_orders_data,
+            'counter_orders': counter_orders_data
+        })
+    
     except Exception as e:
-        logger.error(f"Error fetching pending orders: {e}")
+        logger.error(f"Error fetching pending orders for Flutter: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
 
 
 @csrf_exempt
