@@ -5,7 +5,7 @@ from django.contrib import messages
 # Import ensure_csrf_cookie
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
-from django.views.decorators.http import require_POST, require_http_methods
+from django.views.decorators.http import require_POST, require_GET, require_http_methods
 from django.utils import timezone
 # Import models from .models
 # --- FIX: Removed 'Customer' which does not exist in models.py ---
