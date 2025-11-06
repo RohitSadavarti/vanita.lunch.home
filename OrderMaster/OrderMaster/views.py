@@ -759,7 +759,7 @@ def get_pending_orders(request):
     except Exception as e:
         logger.error(f"Error fetching pending orders for Flutter: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
+        
 @csrf_exempt
 @require_http_methods(["GET"])
 def get_all_orders_api(request):
