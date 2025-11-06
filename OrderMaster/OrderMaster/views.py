@@ -772,43 +772,79 @@ def get_pending_orders(request):
         logger.error(f"Error fetching pending orders for Flutter: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
         
+# --- START: Merged updates for getAllOrders ---
 @csrf_exempt
 @require_http_methods(['GET'])
 def getAllOrders(request):
     """
     Fetch all orders for Flutter app with proper JSON response.
+    Added proper date filter handling to accept 'this_month', 'today', 'this_week' strings
     """
     try:
         logger.info("[v0] getAllOrders API called")
         
-        # Get date from query parameters (optional)
-        date_str = request.GET.get('date')
+        date_filter = request.GET.get('date_filter') or request.GET.get('date') or 'this_month'
+        start_date_str = request.GET.get('start_date')
+        end_date_str = request.GET.get('end_date')
         
-        if date_str:
-            try:
-                target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-            except ValueError:
-                logger.error(f"[v0] Invalid date format: {date_str}")
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Invalid date format. Use YYYY-MM-DD'
-                }, status=400)
-        else:
-            target_date = timezone.now().date()
+        logger.info(f"[v0] Date filter received: {date_filter}")
         
-        # Query orders for the target date
-        start_datetime = timezone.make_aware(
-            datetime.combine(target_date, datetime.min.time())
-        )
-        end_datetime = timezone.make_aware(
-            datetime.combine(target_date, datetime.max.time())
-        )
+        now = timezone.now()
         
+        try:
+            if date_filter == 'today':
+                start_datetime = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                end_datetime = start_datetime.replace(hour=23, minute=59, second=59, microsecond=999999)
+            elif date_filter == 'this_week':
+                start_datetime = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+                end_datetime = now
+            elif date_filter == 'this_month':
+                start_datetime = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                end_datetime = now
+            elif date_filter == 'custom' and start_date_str and end_date_str:
+                try:
+                    start_datetime = timezone.make_aware(
+                        datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
+                    )
+                    end_datetime = timezone.make_aware(
+                        datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
+                    )
+                except ValueError as ve:
+                    logger.error(f"[v0] Invalid custom date format: {ve}")
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Invalid custom date format. Use YYYY-MM-DD'
+                    }, status=400)
+            elif date_filter and date_filter not in ['today', 'this_week', 'this_month', 'custom']:
+                try:
+                    target_date = datetime.strptime(date_filter, '%Y-%m-%d').date()
+                    start_datetime = timezone.make_aware(
+                        datetime.combine(target_date, datetime.min.time())
+                    )
+                    end_datetime = timezone.make_aware(
+                        datetime.combine(target_date, datetime.max.time())
+                    )
+                    logger.info(f"[v0] Parsed date string: {target_date}")
+                except ValueError:
+                    logger.warning(f"[v0] Invalid date format: {date_filter}, defaulting to this_month")
+                    start_datetime = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                    end_datetime = now
+            else:
+                # Default to this_month
+                start_datetime = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                end_datetime = now
+        
+        except Exception as date_error:
+            logger.error(f"[v0] Date parsing error: {date_error}", exc_info=True)
+            start_datetime = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            end_datetime = now
+        
+        # Query orders for the date range
         orders = Order.objects.filter(
             created_at__range=(start_datetime, end_datetime)
         ).order_by('-created_at')
         
-        logger.info(f"[v0] Found {orders.count()} orders for {target_date}")
+        logger.info(f"[v0] Found {orders.count()} orders between {start_datetime} and {end_datetime}")
         
         # Serialize orders for Flutter app
         orders_data = []
@@ -852,8 +888,8 @@ def getAllOrders(request):
         return JsonResponse({
             'success': True,
             'orders': orders_data,
-            'date': target_date.isoformat(),
-            'count': len(orders_data)
+            'count': len(orders_data),
+            'date_filter': date_filter
         }, safe=False)
         
     except Exception as e:
@@ -863,6 +899,7 @@ def getAllOrders(request):
             'error': 'Server error occurred while fetching orders.',
             'details': str(e)
         }, status=500)
+# --- END: Merged updates for getAllOrders ---
         
 @csrf_exempt
 @admin_required
