@@ -1,7 +1,27 @@
 # OrderMaster/OrderMaster/urls.py
-from django.urls import path
+import sys
+import os
+from django.urls import path, include, re_path
+from django.http import HttpResponse
+from django.template.loader import render_to_string
 from . import views
 
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+from OrderMaster import views
+from OrderMaster.scripts.analytics_views import urlpatterns as analytics_urlpatterns
+
+def firebase_messaging_sw(request):
+    try:
+        return HttpResponse(
+            render_to_string('firebase-messaging-sw.js'),
+            content_type='application/javascript'
+        )
+    except Exception as e:
+        print(f"FATAL: Could not render service worker. Error: {e}")
+        return HttpResponse(status=500)
+        
 urlpatterns = [
     # Admin Auth URLs
     path('', views.login_view, name='login'),
@@ -18,6 +38,10 @@ urlpatterns = [
     path('settings/', views.settings_view, name='settings'),
     path('take-order/', views.take_order_view, name='take_order'),
     path('invoice/<int:order_id>/', views.invoice_view, name='invoice_view'),
+    path('api/analytics/', views.analytics_api_view, name='api_analytics'),
+    path('api/all-orders/', views.get_all_orders_api, name='api_all_orders'),
+    path('api/create-manual-order/', views.create_manual_order, name='api_create_manual_order'),
+    
 
     # Customer Page
     path('customer/', views.customer_order_view, name='customer_order'),
@@ -36,4 +60,5 @@ urlpatterns = [
     path('api/analytics-data/', views.analytics_data_api, name='analytics_data_api'),
     path('api/subscribe-topic/', views.subscribe_to_topic, name='subscribe_to_topic'),
 ]
+
 
