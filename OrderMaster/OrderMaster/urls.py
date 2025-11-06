@@ -39,7 +39,7 @@ urlpatterns = [
     path('take-order/', views.take_order_view, name='take_order'),
     path('invoice/<int:order_id>/', views.invoice_view, name='invoice_view'),
     path('api/analytics/', views.analytics_api_view, name='api_analytics'),
-    path('api/all-orders/', views.get_all_orders_api, name='api_all_orders'),
+    path('api/all-orders/', views.getAllOrders, name='api_all_orders'),
     path('api/create-manual-order/', views.create_manual_order, name='api_create_manual_order'),
     
 
@@ -50,8 +50,8 @@ urlpatterns = [
     path('firebase-messaging-sw.js', views.firebase_messaging_sw, name='firebase-messaging-sw'),
 
     # --- APIs for both Web & Flutter ---
-    path('api/get-orders/', views.get_orders_api, name='get_orders_api'), # For Web Kanban
-    path('api/get-pending-orders/', views.get_pending_orders, name='get_pending_orders'), # For Flutter App
+    path('api/get-orders/', views.get_orders_api, name='get_orders_api'),
+    path('api/get-pending-orders/', views.get_pending_orders, name='get_pending_orders'),
     path('api/update-order-status/', views.update_order_status, name='update_order_status'),
     path('api/handle-order-action/', views.handle_order_action, name='handle_order_action'),
     path('api/menu-items/', views.api_menu_items, name='api_menu_items'),
@@ -60,5 +60,3 @@ urlpatterns = [
     path('api/analytics-data/', views.analytics_data_api, name='analytics_data_api'),
     path('api/subscribe-topic/', views.subscribe_to_topic, name='subscribe_to_topic'),
 ]
-
-
