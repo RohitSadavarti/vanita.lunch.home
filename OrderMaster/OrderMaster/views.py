@@ -1126,3 +1126,14 @@ def edit_menu_item_view(request, item_id):
         form = MenuItemForm(instance=item)
     
     return render(request, 'OrderMaster/edit_menu_item.html', {'form': form, 'item': item})
+
+@admin_required
+def invoice_view(request, order_id):
+    """Renders a printable invoice for an order."""
+    try:
+        order = get_object_or_404(Order, id=order_id)
+        context = {'order': order}
+        return render(request, 'OrderMaster/invoice.html', context)
+    except Http404:
+        messages.error(request, "Order not found.")
+        return redirect('dashboard')
