@@ -36,3 +36,4 @@ urlpatterns = [
     path('api/analytics-data/', views.analytics_data_api, name='analytics_data_api'),
     path('api/subscribe-topic/', views.subscribe_to_topic, name='subscribe_to_topic'),
 ]
+
