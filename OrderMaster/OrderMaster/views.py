@@ -773,7 +773,7 @@ def get_pending_orders(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
         
 @csrf_exempt
-@require_http_methods(["GET"])
+@require_http_methods(['GET'])
 def getAllOrders(request):
     """
     Fetch all orders for Flutter app with proper JSON response.
@@ -1079,7 +1079,22 @@ def api_online_orders(request):
         if date_filter == 'today':
             start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
             end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
-        # ... other date filter logic
+        elif date_filter == 'yesterday': # Added for completeness based on order_management_view
+            start_date = (now - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+            end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+        elif date_filter == 'this_week':
+            start_date = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+            end_date = now
+        elif date_filter == 'this_month':
+            start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            end_date = now
+        elif date_filter == 'custom' and start_date_str and end_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
+        else: # Default to today if no filter or invalid custom range
+            start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+            date_filter = 'today'
         
         # CRITICAL: Filter only customer orders
         online_orders = Order.objects.filter(
@@ -1090,7 +1105,12 @@ def api_online_orders(request):
         # Serialize orders data
         orders_data = []
         for order in online_orders:
-            items_list = order.items if isinstance(order.items, list) else json.loads(order.items)
+            try:
+                items_list = json.loads(order.items) if isinstance(order.items, str) else order.items
+            except json.JSONDecodeError:
+                logger.warning(f"Could not decode items for online order {order.id}")
+                items_list = [] # Handle malformed JSON
+
             orders_data.append({
                 'id': order.id,
                 'orderid': order.order_id,
@@ -1146,7 +1166,6 @@ def invoice_view(request, order_id):
         return redirect('dashboard')
 
 
-...
 @admin_required
 @require_GET
 def analytics_data_api(request):
@@ -1207,4 +1226,3 @@ def analytics_data_api(request):
         logger.error(f"Analytics data API error: {e}")
         # FIX IS HERE: It should be status=500
         return JsonResponse({'error': 'Failed to fetch analytics data'}, status=500)
- analytics data'}, status=500)
