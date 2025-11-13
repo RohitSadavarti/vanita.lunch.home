@@ -1282,6 +1282,3 @@ def analytics_data_api(request):
         logger.error(f"Analytics data API error: {e}")
         # FIX IS HERE: It should be status=500
         return JsonResponse({'error': 'Failed to fetch analytics data'}, status=500)
-: {e}")
-        # FIX IS HERE: It should be status=500
-        return JsonResponse({'error': 'Failed to fetch analytics data'}, status=500)
