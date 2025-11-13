@@ -204,11 +204,11 @@ document.addEventListener('DOMContentLoaded', function() {
         button.addEventListener('click', async function() {
             const itemId = this.dataset.itemId;
             // Set form action URL dynamically for the specific item
-            editForm.action = `/api/menu-item/${itemId}/`;
+            editForm.action = `/api/menu-items/${itemId}/`;
 
             try {
                 // Fetch details for the specific item
-                const response = await fetch(`/api/menu-item/${itemId}/`);
+                const response = await fetch(`/api/menu-items/${itemId}/`);
                 if (!response.ok) {
                     throw new Error(`Failed to fetch item details (Status: ${response.status})`);
                 }
@@ -324,3 +324,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+
