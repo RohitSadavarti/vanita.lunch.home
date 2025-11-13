@@ -475,65 +475,66 @@ def delete_menu_item_view(request, item_id):
 @admin_required
 def api_menu_item_detail(request, item_id):
     """
-    Handle GET and PUT/POST requests for menu item updates.
-    Now properly handles JSON requests from Flutter app.
+    Handle both JSON (Flutter) and form-data (web) requests for menu item updates.
+    GET: Returns item details in JSON
+    POST: Updates item - accepts both JSON and form-data
     """
-    try:
-        item = get_object_or_404(MenuItem, id=item_id)
+    item = get_object_or_404(MenuItem, id=item_id)
 
-        if request.method == 'GET':
-            data = {
-                'id': item.id,
-                'item_name': item.item_name,
-                'description': item.description or '',
-                'price': float(item.price),
-                'category': item.category,
-                'veg_nonveg': item.veg_nonveg or '',
-                'meal_type': item.meal_type or '',
-                'availability_time': item.availability_time or '',
-                'image_url': item.image_url or ''
-            }
-            return JsonResponse(data)
+    if request.method == 'GET':
+        data = {
+            'id': item.id,
+            'item_name': item.item_name,
+            'description': item.description,
+            'price': str(item.price),
+            'category': item.category,
+            'veg_nonveg': item.veg_nonveg,
+            'meal_type': item.meal_type,
+            'availability_time': item.availability_time,
+            'image_url': item.image_url if item.image_url else ''
+        }
+        return JsonResponse(data)
 
-        elif request.method in ['POST', 'PUT']:
-            try:
-                # Try to parse JSON from request body
-                data = json.loads(request.body)
-                logger.info(f"[v0] Updating menu item {item_id} with data: {data}")
-            except json.JSONDecodeError:
-                logger.warning(f"[v0] Invalid JSON in menu update request for item {item_id}")
-                return JsonResponse({'success': False, 'error': 'Invalid JSON format'}, status=400)
-
-            item.item_name = data.get('item_name', item.item_name)
-            item.description = data.get('description', item.description)
-            item.price = float(data.get('price', item.price))
-            item.category = data.get('category', item.category)
-            item.veg_nonveg = data.get('veg_nonveg', item.veg_nonveg)
-            item.meal_type = data.get('meal_type', item.meal_type)
-            item.availability_time = data.get('availability_time', item.availability_time)
-            item.image_url = data.get('image_url', item.image_url)
-            
-            try:
+    if request.method == 'POST':
+        try:
+            if request.content_type and 'application/json' in request.content_type:
+                # JSON request from Flutter
+                try:
+                    data = json.loads(request.body)
+                    logger.info(f"[v0] Updating menu item ID: {item_id}")
+                    logger.info(f"[v0] JSON data received: {data}")
+                except json.JSONDecodeError:
+                    logger.error(f"[v0] Invalid JSON in menu update request for item {item_id}")
+                    return JsonResponse({'success': False, 'error': 'Invalid JSON format'}, status=400)
+                
+                # Update item fields from JSON
+                item.item_name = data.get('item_name', item.item_name)
+                item.description = data.get('description', item.description)
+                item.price = data.get('price', item.price)
+                item.category = data.get('category', item.category)
+                item.veg_nonveg = data.get('veg_nonveg', item.veg_nonveg)
+                item.meal_type = data.get('meal_type', item.meal_type)
+                item.availability_time = data.get('availability_time', item.availability_time)
+                item.image_url = data.get('image_url', item.image_url)
+                
                 item.save()
-                logger.info(f"[v0] Successfully updated menu item {item_id}")
-                return JsonResponse({
-                    'success': True, 
-                    'message': 'Item updated successfully!',
-                    'id': item.id,
-                    'item_name': item.item_name
-                })
-            except Exception as save_error:
-                logger.error(f"[v0] Error saving menu item {item_id}: {save_error}")
-                return JsonResponse({
-                    'success': False, 
-                    'error': f'Failed to save item: {str(save_error)}'
-                }, status=500)
+                logger.info(f"[v0] Menu item {item_id} updated successfully via JSON")
+                return JsonResponse({'success': True, 'message': 'Item updated successfully!'})
+            else:
+                # Form-data request from web
+                form = MenuItemForm(request.POST, instance=item)
+                if form.is_valid():
+                    form.save()
+                    logger.info(f"[v0] Menu item {item_id} updated successfully via form")
+                    return JsonResponse({'success': True, 'message': 'Item updated successfully!'})
+                else:
+                    logger.error(f"[v0] Form validation errors: {form.errors}")
+                    return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+        except Exception as e:
+            logger.error(f"[v0] Error updating menu item {item_id}: {e}", exc_info=True)
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
-        return JsonResponse({'error': 'Invalid request method'}, status=405)
-        
-    except Exception as e:
-        logger.error(f"[v0] Error in api_menu_item_detail: {e}", exc_info=True)
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 
 # ============================================================================
@@ -668,7 +669,7 @@ def api_place_order(request):
                     logger.info(f"✅ Assigned custom Order ID {new_order.order_id} to PK {new_order.pk}.")
                     break
         except Exception as e_genid:
-            logger.error(f"❌ Failed to generate order_id for PK {new_order.pk}: {e_genid}", exc_info=True)
+            logger.error(f"❌ Failed to generate and save custom order_id for PK {new_order.pk}: {e_genid}", exc_info=True)
             return JsonResponse({'error': 'Failed to finalize order ID.'}, status=500)
         
         generated_order_id = new_order.order_id
@@ -1071,7 +1072,7 @@ def create_manual_order(request):
                     logger.info(f"✅ Assigned custom Order ID {new_order.order_id} to PK {new_order.pk}.")
                     break
         except Exception as e_genid:
-            logger.error(f"❌ Failed to generate and save custom order_id for PK {new_ower.pk}: {e_genid}", exc_info=True)
+            logger.error(f"❌ Failed to generate and save custom order_id for PK {new_order.pk}: {e_genid}", exc_info=True)
             return JsonResponse({'error': 'Failed to finalize order ID.'}, status=500)
 
         generated_order_id = new_order.order_id
@@ -1297,4 +1298,6 @@ def analytics_data_api(request):
     except Exception as e:
         logger.error(f"Analytics data API error: {e}")
         # FIX IS HERE: It should be status=500
+        return JsonResponse({'error': 'Failed to fetch analytics data'}, status=500)
+# FIX IS HERE: It should be status=500
         return JsonResponse({'error': 'Failed to fetch analytics data'}, status=500)
