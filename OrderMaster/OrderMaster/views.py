@@ -474,31 +474,66 @@ def delete_menu_item_view(request, item_id):
 @csrf_exempt
 @admin_required
 def api_menu_item_detail(request, item_id):
-    item = get_object_or_404(MenuItem, id=item_id)
+    """
+    Handle GET and PUT/POST requests for menu item updates.
+    Now properly handles JSON requests from Flutter app.
+    """
+    try:
+        item = get_object_or_404(MenuItem, id=item_id)
 
-    if request.method == 'GET':
-        data = {
-            'id': item.id,
-            'item_name': item.item_name,
-            'description': item.description,
-            'price': str(item.price),
-            'category': item.category,
-            'veg_nonveg': item.veg_nonveg,
-            'meal_type': item.meal_type,
-            'availability_time': item.availability_time,
-            'image_url': item.image_url if item.image_url else ''
-        }
-        return JsonResponse(data)
+        if request.method == 'GET':
+            data = {
+                'id': item.id,
+                'item_name': item.item_name,
+                'description': item.description or '',
+                'price': float(item.price),
+                'category': item.category,
+                'veg_nonveg': item.veg_nonveg or '',
+                'meal_type': item.meal_type or '',
+                'availability_time': item.availability_time or '',
+                'image_url': item.image_url or ''
+            }
+            return JsonResponse(data)
 
-    if request.method == 'POST':
-        form = MenuItemForm(request.POST, instance=item)
-        if form.is_valid():
-            form.save()
-            return JsonResponse({'success': True, 'message': 'Item updated successfully!'})
-        else:
-            return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+        elif request.method in ['POST', 'PUT']:
+            try:
+                # Try to parse JSON from request body
+                data = json.loads(request.body)
+                logger.info(f"[v0] Updating menu item {item_id} with data: {data}")
+            except json.JSONDecodeError:
+                logger.warning(f"[v0] Invalid JSON in menu update request for item {item_id}")
+                return JsonResponse({'success': False, 'error': 'Invalid JSON format'}, status=400)
 
-    return JsonResponse({'error': 'Invalid request method'}, status=405)
+            item.item_name = data.get('item_name', item.item_name)
+            item.description = data.get('description', item.description)
+            item.price = float(data.get('price', item.price))
+            item.category = data.get('category', item.category)
+            item.veg_nonveg = data.get('veg_nonveg', item.veg_nonveg)
+            item.meal_type = data.get('meal_type', item.meal_type)
+            item.availability_time = data.get('availability_time', item.availability_time)
+            item.image_url = data.get('image_url', item.image_url)
+            
+            try:
+                item.save()
+                logger.info(f"[v0] Successfully updated menu item {item_id}")
+                return JsonResponse({
+                    'success': True, 
+                    'message': 'Item updated successfully!',
+                    'id': item.id,
+                    'item_name': item.item_name
+                })
+            except Exception as save_error:
+                logger.error(f"[v0] Error saving menu item {item_id}: {save_error}")
+                return JsonResponse({
+                    'success': False, 
+                    'error': f'Failed to save item: {str(save_error)}'
+                }, status=500)
+
+        return JsonResponse({'error': 'Invalid request method'}, status=405)
+        
+    except Exception as e:
+        logger.error(f"[v0] Error in api_menu_item_detail: {e}", exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 # ============================================================================
