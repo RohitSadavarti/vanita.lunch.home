@@ -213,10 +213,11 @@ def analytics_api_view(request):
         print(f"[v0] Analytics API called with filters: date={date_filter}, payment={payment_filter}, startDate={start_date_str}, endDate={end_date_str}")
 
         now = timezone.now()
-        
         if date_filter == 'today':
-            start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
-            end_date = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+            today_start = timezone.make_aware(datetime.combine(now.date(), datetime.min.time()))
+            today_end = timezone.make_aware(datetime.combine(now.date(), datetime.max.time()))
+            start_date = today_start
+            end_date = today_end
         elif date_filter == 'this_week':
             start_date = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
             end_date = now.replace(hour=23, minute=59, second=59, microsecond=999999)
@@ -244,6 +245,8 @@ def analytics_api_view(request):
             start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             end_date = now.replace(hour=23, minute=59, second=59, microsecond=999999)
 
+        print(f"[v0] Date range: {start_date} to {end_date}")
+
         counter_orders = Order.objects.filter(
             order_placed_by='counter',
             created_at__range=(start_date, end_date)
@@ -254,6 +257,8 @@ def analytics_api_view(request):
             order_status='pickedup',
             created_at__range=(start_date, end_date)
         )
+        
+        print(f"[v0] Counter orders found: {counter_orders.count()}, Customer orders found: {customer_orders.count()}")
         
         # Combine both orders for analytics
         base_completed_orders = counter_orders | customer_orders
@@ -960,31 +965,33 @@ def getAllOrders(request):
         
         try:
             if date_filter == 'today':
-                start_datetime = now.replace(hour=0, minute=0, second=0, microsecond=0)
-                end_datetime = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+                today_start = timezone.make_aware(datetime.combine(now.date(), datetime.min.time()))
+                today_end = timezone.make_aware(datetime.combine(now.date(), datetime.max.time()))
+                start_date = today_start
+                end_date = today_end
             elif date_filter == 'this_week':
-                start_datetime = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
-                end_datetime = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+                start_date = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+                end_date = now.replace(hour=23, minute=59, second=59, microsecond=999999)
             elif date_filter == 'this_month':
-                start_datetime = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                end_datetime = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+                start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                end_date = now.replace(hour=23, minute=59, second=59, microsecond=999999)
             elif date_filter == 'this_year':
-                start_datetime = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-                end_datetime = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+                start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+                end_date = now.replace(hour=23, minute=59, second=59, microsecond=999999)
             elif date_filter == 'custom' and start_date_str and end_date_str:
                 try:
                     # Convert string dates to datetime objects
-                    start_datetime = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
-                    start_datetime = timezone.make_aware(start_datetime) if timezone.is_naive(start_datetime) else start_datetime
+                    start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
+                    start_date = timezone.make_aware(start_date) if timezone.is_naive(start_date) else start_date
                     
-                    end_datetime = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
-                    end_datetime = timezone.make_aware(end_datetime) if timezone.is_naive(end_datetime) else end_datetime
+                    end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
+                    end_date = timezone.make_aware(end_date) if timezone.is_naive(end_date) else end_date
                     
-                    print(f"[v0] Custom date range: {start_datetime} to {end_datetime}")
+                    print(f"[v0] Custom date range: {start_date} to {end_date}")
                 except ValueError as ve:
                     print(f"[v0] Invalid date format: {ve}, defaulting to this_month")
-                    start_datetime = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                    end_datetime = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+                    start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                    end_date = now.replace(hour=23, minute=59, second=59, microsecond=999999)
             elif date_filter and date_filter not in ['today', 'this_week', 'this_month', 'this_year', 'custom']:
                 try:
                     target_date = datetime.strptime(date_filter, '%Y-%m-%d').date()
@@ -1385,17 +1392,19 @@ def analytics_data_api(request):
 
         now = timezone.now()
         if date_filter == 'today':
-            start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
-            end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+            today_start = timezone.make_aware(datetime.combine(now.date(), datetime.min.time()))
+            today_end = timezone.make_aware(datetime.combine(now.date(), datetime.max.time()))
+            start_date = today_start
+            end_date = today_end
         elif date_filter == 'this_week':
             start_date = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
-            end_date = now
+            end_date = now.replace(hour=23, minute=59, second=59, microsecond=999999)
         elif date_filter == 'this_month':
             start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            end_date = now
+            end_date = now.replace(hour=23, minute=59, second=59, microsecond=999999)
         elif date_filter == 'this_year':
             start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-            end_date = now
+            end_date = now.replace(hour=23, minute=59, second=59, microsecond=999999)
         elif date_filter == 'custom' and start_date_str and end_date_str:
             try:
                 # Convert string dates to datetime objects
