@@ -471,9 +471,13 @@ def delete_menu_item_view(request, item_id):
     messages.success(request, 'Menu item deleted successfully!')
     return redirect('menu_management')
 
-@csrf_exempt
-@admin_required
+@csrf_exempt  # ← ADD THIS
+@require_http_methods(['GET', 'PUT', 'POST', 'DELETE'])  # ← ADD THIS
 def api_menu_item_detail(request, item_id):
+    """
+    API endpoint for menu item details.
+    Handles GET, PUT, POST, and DELETE requests.
+    """
     item = get_object_or_404(MenuItem, id=item_id)
 
     if request.method == 'GET':
@@ -491,19 +495,31 @@ def api_menu_item_detail(request, item_id):
         return JsonResponse(data)
 
     if request.method in ['POST', 'PUT']:
-        # Handle both form data and JSON
-        if request.content_type == 'application/json':
-            try:
+        # Parse request body
+        try:
+            if request.content_type and 'application/json' in request.content_type:
                 data = json.loads(request.body)
-            except json.JSONDecodeError:
-                return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
-        else:
-            data = request.POST.dict()
+            elif request.content_type and 'application/x-www-form-urlencoded' in request.content_type:
+                # Handle form-urlencoded data from Flutter
+                data = {}
+                for key, value in request.POST.items():
+                    data[key] = value
+            else:
+                data = request.POST.dict()
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
         
         # Update the menu item
         item.item_name = data.get('item_name', item.item_name)
         item.description = data.get('description', item.description)
-        item.price = data.get('price', item.price)
+        
+        # Handle price conversion
+        try:
+            price_value = data.get('price', item.price)
+            item.price = float(price_value) if price_value else item.price
+        except (ValueError, TypeError):
+            return JsonResponse({'success': False, 'error': 'Invalid price format'}, status=400)
+        
         item.category = data.get('category', item.category)
         item.veg_nonveg = data.get('veg_nonveg', item.veg_nonveg)
         item.meal_type = data.get('meal_type', item.meal_type)
@@ -512,13 +528,26 @@ def api_menu_item_detail(request, item_id):
         
         try:
             item.save()
-            return JsonResponse({'success': True, 'message': 'Item updated successfully!', 'id': item.id})
+            logger.info(f"[v0] Successfully updated menu item {item_id}")
+            return JsonResponse({
+                'success': True, 
+                'message': 'Item updated successfully!', 
+                'id': item.id
+            })
         except Exception as e:
-            logger.error(f"Error updating menu item {item_id}: {e}")
+            logger.error(f"[v0] Error updating menu item {item_id}: {e}")
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+    if request.method == 'DELETE':
+        try:
+            item.delete()
+            logger.info(f"[v0] Successfully deleted menu item {item_id}")
+            return JsonResponse({'success': True, 'message': 'Item deleted successfully!'})
+        except Exception as e:
+            logger.error(f"[v0] Error deleting menu item {item_id}: {e}")
             return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
     return JsonResponse({'error': 'Invalid request method'}, status=405)
-
 
 # ============================================================================
 # CRITICAL FIX: This is the endpoint your Flutter app is calling
