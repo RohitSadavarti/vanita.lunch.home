@@ -210,7 +210,7 @@ def analytics_api_view(request):
         start_date_str = request.GET.get('start_date')
         end_date_str = request.GET.get('end_date')
 
-        print(f"[v0] Analytics API called with filters: date={date_filter}, payment={payment_filter}")
+        print(f"[v0] Analytics API called with filters: date={date_filter}, payment={payment_filter}, startDate={start_date_str}, endDate={end_date_str}")
 
         now = timezone.now()
         if date_filter == 'today':
@@ -222,17 +222,36 @@ def analytics_api_view(request):
         elif date_filter == 'this_month':
             start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             end_date = now
+        elif date_filter == 'this_year':
+            start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            end_date = now
         elif date_filter == 'custom' and start_date_str and end_date_str:
-            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
-            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
+            try:
+                # Convert string dates to datetime objects
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
+                start_date = timezone.make_aware(start_date) if timezone.is_naive(start_date) else start_date
+                
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
+                end_date = timezone.make_aware(end_date) if timezone.is_naive(end_date) else end_date
+                
+                print(f"[v0] Custom date range: {start_date} to {end_date}")
+            except ValueError as ve:
+                print(f"[v0] Invalid date format: {ve}, defaulting to this_month")
+                start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                end_date = now
         else:
             start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             end_date = now
 
         base_completed_orders = Order.objects.filter(order_status='pickedup', created_at__range=(start_date, end_date))
+        
         filtered_orders = base_completed_orders
-        if payment_filter != 'Total':
-            filtered_orders = base_completed_orders.filter(payment_method=payment_filter)
+        if payment_filter and payment_filter != 'Total':
+            # Use iexact for case-insensitive filtering
+            filtered_orders = base_completed_orders.filter(payment_method__iexact=payment_filter)
+            print(f"[v0] Filtered orders by payment method '{payment_filter}': {filtered_orders.count()} orders")
+        else:
+            print(f"[v0] No payment filter applied, showing all payment methods: {filtered_orders.count()} orders")
 
         total_revenue = filtered_orders.aggregate(total=Sum('total_price'))['total'] or 0
         total_orders_count = filtered_orders.count()
@@ -936,21 +955,24 @@ def getAllOrders(request):
             elif date_filter == 'this_month':
                 start_datetime = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
                 end_datetime = now
+            elif date_filter == 'this_year':
+                start_datetime = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+                end_datetime = now
             elif date_filter == 'custom' and start_date_str and end_date_str:
                 try:
-                    start_datetime = timezone.make_aware(
-                        datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
-                    )
-                    end_datetime = timezone.make_aware(
-                        datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
-                    )
+                    # Convert string dates to datetime objects
+                    start_datetime = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
+                    start_datetime = timezone.make_aware(start_datetime) if timezone.is_naive(start_datetime) else start_datetime
+                    
+                    end_datetime = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
+                    end_datetime = timezone.make_aware(end_datetime) if timezone.is_naive(end_datetime) else end_datetime
+                    
+                    print(f"[v0] Custom date range: {start_datetime} to {end_datetime}")
                 except ValueError as ve:
-                    logger.error(f"[v0] Invalid custom date format: {ve}")
-                    return JsonResponse({
-                        'success': False,
-                        'error': 'Invalid custom date format. Use YYYY-MM-DD'
-                    }, status=400)
-            elif date_filter and date_filter not in ['today', 'this_week', 'this_month', 'custom']:
+                    print(f"[v0] Invalid date format: {ve}, defaulting to this_month")
+                    start_datetime = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                    end_datetime = now
+            elif date_filter and date_filter not in ['today', 'this_week', 'this_month', 'this_year', 'custom']:
                 try:
                     target_date = datetime.strptime(date_filter, '%Y-%m-%d').date()
                     start_datetime = timezone.make_aware(
@@ -1358,9 +1380,23 @@ def analytics_data_api(request):
         elif date_filter == 'this_month':
             start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             end_date = now
+        elif date_filter == 'this_year':
+            start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            end_date = now
         elif date_filter == 'custom' and start_date_str and end_date_str:
-            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
-            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
+            try:
+                # Convert string dates to datetime objects
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, microsecond=0)
+                start_date = timezone.make_aware(start_date) if timezone.is_naive(start_date) else start_date
+                
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, microsecond=999999)
+                end_date = timezone.make_aware(end_date) if timezone.is_naive(end_date) else end_date
+                
+                print(f"[v0] Custom date range: {start_date} to {end_date}")
+            except ValueError as ve:
+                print(f"[v0] Invalid date format: {ve}, defaulting to this_month")
+                start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                end_date = now
         else:
             start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             end_date = now
