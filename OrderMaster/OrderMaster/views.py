@@ -244,7 +244,19 @@ def analytics_api_view(request):
             start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             end_date = now.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-        base_completed_orders = Order.objects.filter(order_status='pickedup', created_at__range=(start_date, end_date))
+        counter_orders = Order.objects.filter(
+            order_placed_by='counter',
+            created_at__range=(start_date, end_date)
+        )
+        
+        customer_orders = Order.objects.filter(
+            order_placed_by='customer',
+            order_status='pickedup',
+            created_at__range=(start_date, end_date)
+        )
+        
+        # Combine both orders for analytics
+        base_completed_orders = counter_orders | customer_orders
         
         filtered_orders = base_completed_orders
         if payment_filter and payment_filter != 'Total':
