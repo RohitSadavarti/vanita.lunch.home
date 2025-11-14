@@ -213,18 +213,19 @@ def analytics_api_view(request):
         print(f"[v0] Analytics API called with filters: date={date_filter}, payment={payment_filter}, startDate={start_date_str}, endDate={end_date_str}")
 
         now = timezone.now()
+        
         if date_filter == 'today':
             start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
-            end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+            end_date = now.replace(hour=23, minute=59, second=59, microsecond=999999)
         elif date_filter == 'this_week':
             start_date = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
-            end_date = now
+            end_date = now.replace(hour=23, minute=59, second=59, microsecond=999999)
         elif date_filter == 'this_month':
             start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            end_date = now
+            end_date = now.replace(hour=23, minute=59, second=59, microsecond=999999)
         elif date_filter == 'this_year':
             start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-            end_date = now
+            end_date = now.replace(hour=23, minute=59, second=59, microsecond=999999)
         elif date_filter == 'custom' and start_date_str and end_date_str:
             try:
                 # Convert string dates to datetime objects
@@ -238,10 +239,10 @@ def analytics_api_view(request):
             except ValueError as ve:
                 print(f"[v0] Invalid date format: {ve}, defaulting to this_month")
                 start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                end_date = now
+                end_date = now.replace(hour=23, minute=59, second=59, microsecond=999999)
         else:
             start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            end_date = now
+            end_date = now.replace(hour=23, minute=59, second=59, microsecond=999999)
 
         base_completed_orders = Order.objects.filter(order_status='pickedup', created_at__range=(start_date, end_date))
         
@@ -948,16 +949,16 @@ def getAllOrders(request):
         try:
             if date_filter == 'today':
                 start_datetime = now.replace(hour=0, minute=0, second=0, microsecond=0)
-                end_datetime = start_datetime.replace(hour=23, minute=59, second=59, microsecond=999999)
+                end_datetime = now.replace(hour=23, minute=59, second=59, microsecond=999999)
             elif date_filter == 'this_week':
                 start_datetime = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
-                end_datetime = now
+                end_datetime = now.replace(hour=23, minute=59, second=59, microsecond=999999)
             elif date_filter == 'this_month':
                 start_datetime = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                end_datetime = now
+                end_datetime = now.replace(hour=23, minute=59, second=59, microsecond=999999)
             elif date_filter == 'this_year':
                 start_datetime = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-                end_datetime = now
+                end_datetime = now.replace(hour=23, minute=59, second=59, microsecond=999999)
             elif date_filter == 'custom' and start_date_str and end_date_str:
                 try:
                     # Convert string dates to datetime objects
@@ -971,7 +972,7 @@ def getAllOrders(request):
                 except ValueError as ve:
                     print(f"[v0] Invalid date format: {ve}, defaulting to this_month")
                     start_datetime = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                    end_datetime = now
+                    end_datetime = now.replace(hour=23, minute=59, second=59, microsecond=999999)
             elif date_filter and date_filter not in ['today', 'this_week', 'this_month', 'this_year', 'custom']:
                 try:
                     target_date = datetime.strptime(date_filter, '%Y-%m-%d').date()
@@ -985,16 +986,16 @@ def getAllOrders(request):
                 except ValueError:
                     logger.warning(f"[v0] Invalid date format: {date_filter}, defaulting to this_month")
                     start_datetime = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                    end_datetime = now
+                    end_datetime = now.replace(hour=23, minute=59, second=59, microsecond=999999)
             else:
                 # Default to this_month
                 start_datetime = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                end_datetime = now
+                end_datetime = now.replace(hour=23, minute=59, second=59, microsecond=999999)
         
         except Exception as date_error:
             logger.error(f"[v0] Date parsing error: {date_error}", exc_info=True)
             start_datetime = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            end_datetime = now
+            end_datetime = now.replace(hour=23, minute=59, second=59, microsecond=999999)
         
         # Query orders for the date range
         orders = Order.objects.filter(
@@ -1193,7 +1194,7 @@ def create_manual_order(request):
                     logger.info(f"✅ Assigned custom Order ID {new_order.order_id} to PK {new_order.pk}.")
                     break
         except Exception as e_genid:
-            logger.error(f"❌ Failed to generate and save custom order_id for PK {new_ower.pk}: {e_genid}", exc_info=True)
+            logger.error(f"❌ Failed to generate and save custom order_id for PK {new_order.pk}: {e_genid}", exc_info=True)
             return JsonResponse({'error': 'Failed to finalize order ID.'}, status=500)
 
         generated_order_id = new_order.order_id
