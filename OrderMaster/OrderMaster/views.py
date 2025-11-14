@@ -552,50 +552,137 @@ def api_menu_item_detail(request, item_id):
 # ============================================================================
 # CRITICAL FIX: This is the endpoint your Flutter app is calling
 # ============================================================================
+@csrf_exempt  # ← ADD THIS
+@require_http_methods(['GET', 'POST'])  # ← ADD THIS
 def api_menu_items(request):
     """
-    Returns menu items in the format that Flutter app expects.
-    IMPORTANT: Returns array directly with 'menu_items' wrapper.
+    API endpoint for menu items.
+    GET: Returns all menu items
+    POST: Creates a new menu item
     """
-    try:
-        logger.info("📡 API /api/menu-items/ called")
-        
-        # Get all menu items from database
-        menu_items = MenuItem.objects.all().order_by('category', 'item_name')
-        
-        logger.info(f"✅ Found {menu_items.count()} menu items in database")
-        
-        # Convert to list of dictionaries
-        items_list = []
-        for item in menu_items:
-            items_list.append({
-                'id': item.id,
-                'item_name': item.item_name,
-                'description': item.description or '',
-                'price': float(item.price),
-                'category': item.category,
-                'veg_nonveg': item.veg_nonveg,
-                'meal_type': item.meal_type,
-                'availability_time': item.availability_time or '',
-                'image_url': item.image_url or ''
-            })
-        
-        # Return in the format Flutter expects: {'menu_items': [...]}
-        response_data = {'menu_items': items_list}
-        
-        logger.info(f"✅ Returning {len(items_list)} items in response")
-        return JsonResponse(response_data, safe=False)
-        
-    except Exception as e:
-        logger.error(f"❌ Error in api_menu_items: {e}", exc_info=True)
-        return JsonResponse({
-            'error': 'Server error occurred while fetching menu items.',
-            'details': str(e)
-        }, status=500)
-
-
-# In OrderMaster/views.py - Replace the api_place_order function
-
+    
+    # GET request - fetch all menu items
+    if request.method == 'GET':
+        try:
+            logger.info("📡 API /api/menu-items/ GET called")
+            
+            # Get all menu items from database
+            menu_items = MenuItem.objects.all().order_by('category', 'item_name')
+            
+            logger.info(f"✅ Found {menu_items.count()} menu items in database")
+            
+            # Convert to list of dictionaries
+            items_list = []
+            for item in menu_items:
+                items_list.append({
+                    'id': item.id,
+                    'item_name': item.item_name,
+                    'description': item.description or '',
+                    'price': float(item.price),
+                    'category': item.category,
+                    'veg_nonveg': item.veg_nonveg,
+                    'meal_type': item.meal_type,
+                    'availability_time': item.availability_time or '',
+                    'image_url': item.image_url or ''
+                })
+            
+            # Return in the format Flutter expects: {'menu_items': [...]}
+            response_data = {'menu_items': items_list}
+            
+            logger.info(f"✅ Returning {len(items_list)} items in response")
+            return JsonResponse(response_data, safe=False)
+            
+        except Exception as e:
+            logger.error(f"❌ Error in api_menu_items GET: {e}", exc_info=True)
+            return JsonResponse({
+                'error': 'Server error occurred while fetching menu items.',
+                'details': str(e)
+            }, status=500)
+    
+    # POST request - create new menu item
+    elif request.method == 'POST':
+        try:
+            # Check authentication
+            if not request.session.get('is_authenticated'):
+                logger.warning("[v0] Unauthorized add menu item attempt")
+                return JsonResponse({'error': 'Authentication required'}, status=401)
+            
+            logger.info("📡 API /api/menu-items/ POST called")
+            
+            # Parse request body
+            try:
+                if request.content_type and 'application/json' in request.content_type:
+                    data = json.loads(request.body)
+                elif request.content_type and 'application/x-www-form-urlencoded' in request.content_type:
+                    data = {}
+                    for key, value in request.POST.items():
+                        data[key] = value
+                else:
+                    data = request.POST.dict()
+            except json.JSONDecodeError:
+                return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+            
+            logger.info(f"[v0] Add menu data received: {data}")
+            
+            # Validate required fields
+            required_fields = ['item_name', 'price', 'category']
+            for field in required_fields:
+                if not data.get(field):
+                    return JsonResponse({
+                        'success': False, 
+                        'error': f'Missing required field: {field}'
+                    }, status=400)
+            
+            # Convert price to float
+            try:
+                price = float(data.get('price'))
+            except (ValueError, TypeError):
+                return JsonResponse({
+                    'success': False, 
+                    'error': 'Invalid price format'
+                }, status=400)
+            
+            # Create new menu item
+            new_item = MenuItem.objects.create(
+                item_name=data.get('item_name'),
+                description=data.get('description', ''),
+                price=price,
+                category=data.get('category'),
+                veg_nonveg=data.get('veg_nonveg', 'Veg'),
+                meal_type=data.get('meal_type', 'All Day'),
+                availability_time=data.get('availability_time', ''),
+                image_url=data.get('image_url', '')
+            )
+            
+            logger.info(f"[v0] Successfully created menu item: {new_item.item_name} (ID: {new_item.id})")
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Menu item added successfully!',
+                'id': new_item.id,
+                'item': {
+                    'id': new_item.id,
+                    'item_name': new_item.item_name,
+                    'description': new_item.description,
+                    'price': float(new_item.price),
+                    'category': new_item.category,
+                    'veg_nonveg': new_item.veg_nonveg,
+                    'meal_type': new_item.meal_type,
+                    'availability_time': new_item.availability_time,
+                    'image_url': new_item.image_url
+                }
+            }, status=201)
+            
+        except Exception as e:
+            logger.error(f"[v0] Error adding menu item: {e}", exc_info=True)
+            return JsonResponse({
+                'success': False,
+                'error': 'Server error occurred while adding menu item.',
+                'details': str(e)
+            }, status=500)
+    
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_place_order(request):
