@@ -790,7 +790,7 @@ def api_place_order(request):
             payment_method=data.get('payment_method', 'COD'),
             payment_id=data.get('payment_id', None),
             order_status='Confirmed',  # ← Also set to pending
-            order_placed_by='customer'
+            order_placed_by='counter'
         )
         
         logger.info(f"✅ Initial Order (PK: {new_order.pk}) created for {new_order.customer_name}.")
