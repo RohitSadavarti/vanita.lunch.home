@@ -230,6 +230,7 @@ def analytics_api_view(request):
             end_date = now
 
         base_completed_orders = Order.objects.filter(order_status='pickedup', created_at__range=(start_date, end_date))
+        
         filtered_orders = base_completed_orders
         if payment_filter != 'Total':
             filtered_orders = base_completed_orders.filter(payment_method=payment_filter)
@@ -684,7 +685,7 @@ def api_menu_items(request):
     return JsonResponse({'error': 'Method not allowed'}, status=405)
     
 @csrf_exempt
-@require_http_methods(["POST"])
+@require_http_methods(['GET', 'POST'])
 def api_place_order(request):
     """
     Handles POST requests to place a new order from the customer app/web.
@@ -749,11 +750,11 @@ def api_place_order(request):
             subtotal=calculated_subtotal,
             discount=Decimal('0.00'),
             total_price=final_total_client,
-            status='Confirmed',  # ← This is the key change
+            status='Pending',  # ← This is the key change
             payment_method=data.get('payment_method', 'COD'),
             payment_id=data.get('payment_id', None),
-            order_status='open',  # ← Also set to pending
-            order_placed_by='counter'
+            order_status='pending',  # ← Also set to pending
+            order_placed_by='customer'
         )
         
         logger.info(f"✅ Initial Order (PK: {new_order.pk}) created for {new_order.customer_name}.")
