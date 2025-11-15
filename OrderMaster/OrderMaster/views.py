@@ -786,10 +786,10 @@ def api_place_order(request):
             subtotal=calculated_subtotal,
             discount=Decimal('0.00'),
             total_price=final_total_client,
-            status='Pending',  # ← This is the key change
+            status='Confirmed',  # ← This is the key change
             payment_method=data.get('payment_method', 'COD'),
             payment_id=data.get('payment_id', None),
-            order_status='pending',  # ← Also set to pending
+            order_status='Confirmed',  # ← Also set to pending
             order_placed_by='customer'
         )
         
