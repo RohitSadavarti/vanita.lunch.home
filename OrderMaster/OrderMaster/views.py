@@ -229,7 +229,10 @@ def analytics_api_view(request):
             start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             end_date = now
 
-        base_completed_orders = Order.objects.filter(order_status='pickedup', created_at__range=(start_date, end_date))
+        base_completed_orders = Order.objects.filter(
+            order_status='pickedup',
+            created_at__range=(start_date, end_date)
+        )
         
         filtered_orders = base_completed_orders
         if payment_filter != 'Total':
@@ -292,16 +295,17 @@ def analytics_api_view(request):
                 'created_at': order.created_at.isoformat(),
                 'order_id': order.order_id,
                 'items_text': items_text,
-                'total_price': float(order.total_price),  # Ensure float type
+                'total_price': float(order.total_price),
                 'payment_method': order.payment_method,
                 'order_status': order.status,
+                'order_placed_by': order.order_placed_by,  # Include order source in analytics
             })
             
         data = {
             'key_metrics': {
-                'total_revenue': float(total_revenue),  # Return as float, not string
+                'total_revenue': float(total_revenue),
                 'total_orders': total_orders_count,
-                'average_order_value': float(average_order_value),  # Return as float
+                'average_order_value': float(average_order_value),
             },
             'most_ordered_items': {
                 'labels': [item[0] for item in most_common_items],
@@ -309,7 +313,7 @@ def analytics_api_view(request):
             },
             'payment_method_distribution': {
                 'labels': [item['payment_method'] for item in payment_distribution],
-                'data': [float(item['total']) for item in payment_distribution],  # Ensure float
+                'data': [float(item['total']) for item in payment_distribution],
             },
             'order_status_distribution': {
                 'labels': [item['status'] for item in order_status_distribution],
@@ -751,8 +755,6 @@ def api_place_order(request):
             discount=Decimal('0.00'),
             total_price=final_total_client,
             status='Pending',  # ← This is the key change
-            payment_method=data.get('payment_method', 'COD'),
-            payment_id=data.get('payment_id', None),
             order_status='pending',  # ← Also set to pending
             order_placed_by='customer'
         )
@@ -1396,4 +1398,6 @@ def analytics_data_api(request):
     except Exception as e:
         logger.error(f"Analytics data API error: {e}")
         # FIX IS HERE: It should be status=500
+        return JsonResponse({'error': 'Failed to fetch analytics data'}, status=500)
+00
         return JsonResponse({'error': 'Failed to fetch analytics data'}, status=500)
