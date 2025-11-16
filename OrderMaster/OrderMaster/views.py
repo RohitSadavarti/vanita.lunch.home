@@ -1060,7 +1060,7 @@ def handle_order_action(request):
         order = get_object_or_404(Order, id=order_id)
 
         if action == 'accept':
-            order.status = 'Confirmed'
+            order.status = 'confirmed'
             order.order_status = 'open'  # Move to preparing
             message = f'Order #{order.order_id} accepted successfully.'
         elif action == 'reject':
@@ -1164,7 +1164,7 @@ def create_manual_order(request):
             subtotal=subtotal,
             discount=Decimal('0.00'),
             total_price=subtotal,
-            status='Confirmed',
+            status='confirmed',
             payment_method=payment_method,
             payment_id=payment_method,
             order_status='open',
