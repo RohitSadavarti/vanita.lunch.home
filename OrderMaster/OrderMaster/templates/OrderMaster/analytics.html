@@ -147,7 +147,7 @@
             </div>
              <!-- Order Status Chart -->
             <div class="card">
-                <div class="card-header"><h4 class="card-title">Order Status</h4></div>
+                <div class="card-header"><h4 class="card-title">Order Source</h4></div>
                 <div class="card-body"><div class="chart-container"><canvas id="orderStatusChart"></canvas></div></div>
             </div>
             <!-- Recent Orders Table -->
@@ -226,7 +226,7 @@ document.addEventListener('DOMContentLoaded', function() {
             updatePaymentMethodChart(data.payment_method_distribution);
             updateOrdersByHourChart(data.orders_by_hour);
             updateDayWiseRevenueChart(data.day_wise_revenue);
-            updateOrderStatusChart(data.order_status_distribution);
+            updateOrderStatusChart(data.order_source_distribution);
             updateDayWiseMenuChart(data.day_wise_menu);
             updateOrdersTable(data.table_data);
 
@@ -413,5 +413,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+
 
 
