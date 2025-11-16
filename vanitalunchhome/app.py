@@ -127,6 +127,9 @@ def place_order():
         order_id = str(random.randint(10000000, 99999999))
         ist_tz = pytz.timezone('Asia/Kolkata')
         now_ist = datetime.now(ist_tz)
+        now_ist_str = now_ist.strftime('%Y-%m-%d %H:%M:%S.%f%z')
+        # Format with colon in timezone offset for PostgreSQL compatibility
+        now_ist_str = now_ist_str[:-2] + ':' + now_ist_str[-2:]
 
         # Insert order into database
         cur.execute("""
@@ -135,7 +138,7 @@ def place_order():
             RETURNING id
         """, (
             order_id, name, mobile, json.dumps(validated_items), subtotal, total_price, 
-            'confirmed', 'Cash', now_ist, now_ist, 'open', 'customer'
+            'confirmed', 'Cash', now_ist_str, now_ist_str, 'open', 'customer'
         ))
         
         new_order_db_id = cur.fetchone()[0]
@@ -192,6 +195,3 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
-
-
-
