@@ -125,6 +125,8 @@ def place_order():
         
         total_price = subtotal
         order_id = str(random.randint(10000000, 99999999))
+        ist_tz = pytz.timezone('Asia/Kolkata')
+        now_ist = datetime.now(ist_tz)
 
         # Insert order into database
         cur.execute("""
@@ -146,7 +148,8 @@ def place_order():
                     'id': str(new_order_db_id),
                     'order_id': order_id,
                     'customer_name': name,
-                    'customer_mobile': mobile,
+                    #'customer_mobile': mobile,
+                    'customer_phone': mobile,
                     'total_price': str(total_price),
                     'items': json.dumps(validated_items),
                     'order_source': 'customer'
@@ -189,4 +192,5 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
+
 
