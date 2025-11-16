@@ -76,10 +76,10 @@ def place_order():
         print("Received order data:", json.dumps(data, indent=2))
         
         # Get fields from request
-        name = data.get('customer_name', '').strip()
-        mobile = data.get('customer_mobile', '').strip()
-        address = data.get('customer_address', '').strip()
-        cart_items = data.get('items', [])
+        name = data.get('name', '').strip()
+        mobile = data.get('mobile', '').strip()
+        address = data.get('address', '').strip()
+        cart_items = data.get('cart_items', [])
         
         # More detailed validation with specific error messages
         if not name:
@@ -146,7 +146,7 @@ def place_order():
                     'id': str(new_order_db_id),
                     'order_id': order_id,
                     'customer_name': name,
-                    'customer_phone': mobile,
+                    'customer_mobile': mobile,
                     'total_price': str(total_price),
                     'items': json.dumps(validated_items),
                     'order_source': 'customer'
@@ -189,3 +189,4 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
+
