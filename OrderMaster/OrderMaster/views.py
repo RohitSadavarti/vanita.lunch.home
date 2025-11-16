@@ -198,7 +198,7 @@ def dashboard_view(request):
     }
     return render(request, 'OrderMaster/dashboard.html', context)
 
-from django.db.models.functions import TruncHour, TruncDay
+from django.db.models.functions import TruncHour, TruncDay, Lower
 from django.db.models import Count
 
 def analytics_api_view(request):
@@ -253,7 +253,13 @@ def analytics_api_view(request):
         most_common_items = item_counter.most_common(5)
         top_5_names = [item[0] for item in most_common_items]
 
-        payment_distribution = filtered_orders.values('payment_method').annotate(total=Sum('total_price')).order_by('-total')
+        payment_distribution = filtered_orders.annotate(
+            payment_method_lower=Lower('payment_method')
+        ).values(
+            'payment_method_lower'
+        ).annotate(
+            total=Sum('total_price')
+        ).order_by('-total')
         order_status_distribution = base_completed_orders.values('status').annotate(count=Count('id')).order_by('-count')
         orders_by_hour = filtered_orders.annotate(hour=TruncHour('created_at')).values('hour').annotate(count=Count('id')).order_by('hour')
         
@@ -314,7 +320,7 @@ def analytics_api_view(request):
                 'data': [item[1] for item in most_common_items],
             },
             'payment_method_distribution': {
-                'labels': [item['payment_method'] for item in payment_distribution],
+                'labels': [item['payment_method_lower'] for item in payment_distribution],
                 'data': [float(item['total']) for item in payment_distribution],
             },
             'order_status_distribution': {
