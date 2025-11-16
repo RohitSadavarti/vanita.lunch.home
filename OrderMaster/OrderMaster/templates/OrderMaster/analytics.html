@@ -219,7 +219,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Update UI elements
             document.getElementById('totalRevenue').textContent = '₹' + data.key_metrics.total_revenue;
             document.getElementById('totalOrders').textContent = data.key_metrics.total_orders;
-            document.getElementById('avgOrderValue').textContent = '₹' + data.key_metrics.average_order_value;
+            document.getElementById('avgOrderValue').textContent = '₹' + data.key_metrics.average_order_value.toFixed(2);
             
             // Update all charts and table
             updateMostOrderedChart(data.most_ordered_items);
@@ -413,4 +413,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+
 
