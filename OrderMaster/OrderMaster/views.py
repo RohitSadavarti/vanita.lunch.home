@@ -754,7 +754,12 @@ def api_place_order(request):
 
         final_total_client = Decimal(str(data['total_price']))
 
-        # Create order with 'Pending' status - REQUIRES ADMIN ACCEPTANCE
+        payment_method_raw = data.get('payment_method', '').lower()
+        if payment_method_raw == 'upi' or payment_method_raw == 'card':
+            final_payment_method = 'Online'
+        else:
+            final_payment_method = payment_method_raw.capitalize()
+            
         new_order = Order.objects.create(
             customer_name=data['customer_name'],
             customer_mobile=data['customer_mobile'],
@@ -762,9 +767,11 @@ def api_place_order(request):
             subtotal=calculated_subtotal,
             discount=Decimal('0.00'),
             total_price=final_total_client,
-            status='Pending',  # ← This is the key change
-            order_status='pending',  # ← Also set to pending
-            order_placed_by='customer'
+            status='Pending',
+            order_status='pending',
+            order_placed_by='customer',
+            payment_method=final_payment_method,
+            payment_id=data.get('payment_id')
         )
         
         logger.info(f"✅ Initial Order (PK: {new_order.pk}) created for {new_order.customer_name}.")
@@ -1110,7 +1117,11 @@ def create_manual_order(request):
         customer_name = data.get('customer_name')
         customer_mobile = data.get('customer_mobile')
         items_data = data.get('items')
-        payment_method = data.get('payment_method')
+        payment_method_raw = data.get('payment_method', '').lower()
+        if payment_method_raw == 'upi' or payment_method_raw == 'card':
+            final_payment_method = 'Online'
+            else:
+                final_payment_method = payment_method_raw.capitalize()
 
         if not all([customer_name, customer_mobile, items_data, payment_method]):
             logger.warning(f"⚠️ Manual order missing required fields. Received: Name={customer_name}, Mobile={customer_mobile}, Items={items_data is not None}, Payment={payment_method}")
@@ -1165,8 +1176,8 @@ def create_manual_order(request):
             discount=Decimal('0.00'),
             total_price=subtotal,
             status='confirmed',
-            payment_method=payment_method,
-            payment_id=payment_method,
+            payment_method=final_payment_method,
+            payment_id=final_payment_method,
             order_status='open',
             order_placed_by='counter'
         )
