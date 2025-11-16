@@ -84,7 +84,7 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Asia/Kolkata'
 USE_I18N = True
-USE_TZ = False  # Changed from True to False - stores times in Asia/Kolkata directly instead of UTC
+USE_TZ = True  # Changed from False to True - Django will handle UTC storage and IST display
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
