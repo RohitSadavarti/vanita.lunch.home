@@ -1123,7 +1123,7 @@ def create_manual_order(request):
         else:
             final_payment_method = payment_method_raw.capitalize()
 
-        if not all([customer_name, customer_mobile, items_data, payment_method]):
+        if not all([customer_name, customer_mobile, items_data, final_payment_method]):
             logger.warning(f"⚠️ Manual order missing required fields. Received: Name={customer_name}, Mobile={customer_mobile}, Items={items_data is not None}, Payment={payment_method}")
             return JsonResponse({'error': 'Missing required fields: customer_name, customer_mobile, items, payment_method.'}, status=400)
 
