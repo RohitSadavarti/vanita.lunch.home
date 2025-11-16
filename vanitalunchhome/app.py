@@ -134,7 +134,7 @@ def place_order():
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         """, (
-            order_id, name, mobile, json.dumps(validated_items), subtotal, total_price,s 
+            order_id, name, mobile, json.dumps(validated_items), subtotal, total_price,
             'confirmed', 'Cash', now_in_ist, now_in_ist, 'open', 'customer' # <-- FIX
         ))
         
@@ -191,6 +191,7 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
+
 
 
 
