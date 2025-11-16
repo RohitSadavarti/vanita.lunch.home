@@ -260,7 +260,7 @@ def analytics_api_view(request):
         ).annotate(
             total=Sum('total_price')
         ).order_by('-total')
-        order_status_distribution = base_completed_orders.values('status').annotate(count=Count('id')).order_by('-count')
+        order_source_distribution = base_completed_orders.values('order_placed_by').annotate(count=Count('id')).order_by('-count')
         orders_by_hour = filtered_orders.annotate(hour=TruncHour('created_at')).values('hour').annotate(count=Count('id')).order_by('hour')
         
         day_wise_revenue = filtered_orders.annotate(day=TruncDay('created_at')).values('day').annotate(
@@ -323,9 +323,9 @@ def analytics_api_view(request):
                 'labels': [item['payment_method_lower'] for item in payment_distribution],
                 'data': [float(item['total']) for item in payment_distribution],
             },
-            'order_status_distribution': {
-                'labels': [item['status'] for item in order_status_distribution],
-                'data': [item['count'] for item in order_status_distribution],
+            'order_source_distribution': {
+                'labels': [item['order_placed_by'] for item in order_source_distribution],
+                'data': [item['count'] for item in order_source_distribution],
             },
             'orders_by_hour': {
                 'labels': [h['hour'].strftime('%I %p').lstrip('0') if h['hour'] else 'N/A' for h in orders_by_hour],
