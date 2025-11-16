@@ -1,4 +1,3 @@
-import pytz
 import os
 import psycopg2
 from flask import Flask, jsonify, request, render_template
@@ -146,7 +145,6 @@ def place_order():
                     'id': str(new_order_db_id),
                     'order_id': order_id,
                     'customer_name': name,
-                    'customer_phone': mobile,
                     'total_price': str(total_price),
                     'items': json.dumps(validated_items),
                     'order_source': 'customer'
