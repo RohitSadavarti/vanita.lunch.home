@@ -1,3 +1,4 @@
+import pytz
 import os
 import psycopg2
 from flask import Flask, jsonify, request, render_template
@@ -145,6 +146,7 @@ def place_order():
                     'id': str(new_order_db_id),
                     'order_id': order_id,
                     'customer_name': name,
+                    'customer_phone': mobile,
                     'total_price': str(total_price),
                     'items': json.dumps(validated_items),
                     'order_source': 'customer'
@@ -187,4 +189,3 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
-
