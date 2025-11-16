@@ -7,9 +7,10 @@ import random
 import pytz
 
 def get_ist_now():
-    """Returns current time in IST (Asia/Kolkata) as naive datetime"""
+    """Returns current time in IST (Asia/Kolkata) as timezone-aware datetime"""
     ist_tz = pytz.timezone('Asia/Kolkata')
-    return datetime.now(ist_tz).replace(tzinfo=None)
+    ist_now = datetime.now(ist_tz)
+    return ist_now
 
 class MenuItem(models.Model):
     # ... All MenuItem fields ...
