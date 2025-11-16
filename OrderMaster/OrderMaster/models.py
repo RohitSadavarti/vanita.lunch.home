@@ -3,6 +3,12 @@ from django.db import models
 from django.utils import timezone
 import bcrypt
 import random
+import pytz
+
+def get_ist_now():
+    """Returns current time in IST (Asia/Kolkata) timezone"""
+    ist_tz = pytz.timezone('Asia/Kolkata')
+    return timezone.now().astimezone(ist_tz)
 
 class MenuItem(models.Model):
     # ... All MenuItem fields ...
@@ -14,7 +20,7 @@ class MenuItem(models.Model):
     meal_type = models.CharField(max_length=50)
     availability_time = models.CharField(max_length=100, blank=True, null=True)
     image_url = models.URLField(max_length=200, blank=True, null=True)
-    created_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(default=get_ist_now)
 
     def __str__(self):
         return self.item_name
@@ -39,8 +45,8 @@ class Order(models.Model):
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='Pending')
     payment_method = models.CharField(max_length=50)
     payment_id = models.CharField(max_length=100, blank=True, null=True)
-    created_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(default=get_ist_now)
+    updated_at = models.DateTimeField(default=get_ist_now)
     order_status = models.CharField(max_length=50, default='open')
     ready_time = models.DateTimeField(blank=True, null=True)
     pickup_time = models.DateTimeField(blank=True, null=True)
@@ -65,7 +71,7 @@ class VlhAdmin(models.Model):
     # ... VlhAdmin fields and methods ...
     mobile = models.CharField(max_length=10, unique=True)
     password_hash = models.TextField()
-    created_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(default=get_ist_now)
 
     class Meta:
         db_table = 'vlh_admin'
