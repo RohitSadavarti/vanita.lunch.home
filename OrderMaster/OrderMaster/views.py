@@ -238,7 +238,7 @@ def analytics_api_view(request):
         
         filtered_orders = base_completed_orders
         if payment_filter != 'Total':
-            filtered_orders = base_completed_orders.filter(payment_method=payment_filter)
+            filtered_orders = base_completed_orders.filter(payment_method__iexact=payment_filter)
 
         total_revenue = filtered_orders.aggregate(total=Sum('total_price'))['total'] or 0
         total_orders_count = filtered_orders.count()
