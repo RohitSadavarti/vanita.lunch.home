@@ -34,8 +34,14 @@ app = Flask(__name__)
 CORS(app, origins=['*'])
 
 def get_db_connection():
-    db_url = os.environ.get('DATABASE_URL')
-    onn = psycopg2.connect(db_url, sslmode='require')
+    conn = psycopg2.connect(
+        host=os.environ.get('DB_HOST'),
+        port=os.environ.get('DB_PORT'),
+        database=os.environ.get('DB_NAME'),
+        user=os.environ.get('DB_USER'),
+        password=os.environ.get('DB_PASSWORD'),
+        sslmode='require'
+    )
     return conn
 
 @app.route('/')
@@ -181,5 +187,4 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
-
 
