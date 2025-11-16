@@ -1120,8 +1120,8 @@ def create_manual_order(request):
         payment_method_raw = data.get('payment_method', '').lower()
         if payment_method_raw == 'upi' or payment_method_raw == 'card':
             final_payment_method = 'Online'
-            else:
-                final_payment_method = payment_method_raw.capitalize()
+        else:
+            final_payment_method = payment_method_raw.capitalize()
 
         if not all([customer_name, customer_mobile, items_data, payment_method]):
             logger.warning(f"⚠️ Manual order missing required fields. Received: Name={customer_name}, Mobile={customer_mobile}, Items={items_data is not None}, Payment={payment_method}")
