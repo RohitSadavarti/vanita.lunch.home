@@ -1,14 +1,15 @@
 # OrderMaster/models.py
 from django.db import models
 from django.utils import timezone
+from datetime import datetime
 import bcrypt
 import random
 import pytz
 
 def get_ist_now():
-    """Returns current time in IST (Asia/Kolkata) timezone"""
+    """Returns current time in IST (Asia/Kolkata) as naive datetime"""
     ist_tz = pytz.timezone('Asia/Kolkata')
-    return timezone.now().astimezone(ist_tz)
+    return datetime.now(ist_tz).replace(tzinfo=None)
 
 class MenuItem(models.Model):
     # ... All MenuItem fields ...
@@ -47,7 +48,11 @@ class Order(models.Model):
     payment_id = models.CharField(max_length=100, blank=True, null=True)
     created_at = models.DateTimeField(default=get_ist_now)
     updated_at = models.DateTimeField(default=get_ist_now)
-    order_status = models.CharField(max_length=50, default='open')
+    order_status = models.CharField(
+        max_length=50,
+        choices=[('open', 'Open'), ('closed', 'Closed')],
+        default='open'
+    )
     ready_time = models.DateTimeField(blank=True, null=True)
     pickup_time = models.DateTimeField(blank=True, null=True)
     order_placed_by = models.CharField(
