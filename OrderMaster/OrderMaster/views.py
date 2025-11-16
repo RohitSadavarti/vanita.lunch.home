@@ -759,6 +759,9 @@ def api_place_order(request):
             final_payment_method = 'Online'
         else:
             final_payment_method = payment_method_raw.capitalize()
+        
+        ist_tz = pytz.timezone('Asia/Kolkata')
+        now_ist = datetime.now(ist_tz).replace(tzinfo=None)
             
         new_order = Order.objects.create(
             customer_name=data['customer_name'],
@@ -771,7 +774,9 @@ def api_place_order(request):
             order_status='pending',
             order_placed_by='customer',
             payment_method=final_payment_method,
-            payment_id=data.get('payment_id')
+            payment_id=data.get('payment_id'),
+            created_at=now_ist,
+            updated_at=now_ist
         )
         
         logger.info(f"✅ Initial Order (PK: {new_order.pk}) created for {new_order.customer_name}.")
@@ -1168,6 +1173,9 @@ def create_manual_order(request):
             logger.warning("⚠️ Manual order failed: No valid items found after validation.")
             return JsonResponse({'error': 'No valid items provided.'}, status=400)
 
+        ist_tz = pytz.timezone('Asia/Kolkata')
+        now_ist = datetime.now(ist_tz).replace(tzinfo=None)
+
         new_order = Order.objects.create(
             customer_name=customer_name,
             customer_mobile=customer_mobile,
@@ -1179,7 +1187,9 @@ def create_manual_order(request):
             payment_method=final_payment_method,
             payment_id=final_payment_method,
             order_status='open',
-            order_placed_by='counter'
+            order_placed_by='counter',
+            created_at=now_ist,
+            updated_at=now_ist
         )
 
         try:
@@ -1191,7 +1201,7 @@ def create_manual_order(request):
                     logger.info(f"✅ Assigned custom Order ID {new_order.order_id} to PK {new_order.pk}.")
                     break
         except Exception as e_genid:
-            logger.error(f"❌ Failed to generate and save custom order_id for PK {new_ower.pk}: {e_genid}", exc_info=True)
+            logger.error(f"❌ Failed to generate and save custom order_id for PK {new_order.pk}: {e_genid}", exc_info=True)
             return JsonResponse({'error': 'Failed to finalize order ID.'}, status=500)
 
         generated_order_id = new_order.order_id
