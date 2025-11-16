@@ -13,7 +13,7 @@ from .models import MenuItem, Order, VlhAdmin, models
 from .forms import MenuItemForm
 from .decorators import admin_required
 from datetime import datetime, timedelta
-from django.db.models import Count, Sum
+from django.db.models import Count, Sum, Q
 from collections import Counter
 import os
 import io
@@ -229,10 +229,12 @@ def analytics_api_view(request):
             start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             end_date = now
 
+        counter_orders_q = Q(order_placed_by='counter')
+        customer_orders_q = Q(order_placed_by='customer', order_status='pickedup')
+        combined_q = counter_orders_q | customer_orders_q
         base_completed_orders = Order.objects.filter(
-            order_status='pickedup',
             created_at__range=(start_date, end_date)
-        )
+            ).filter(combined_q)
         
         filtered_orders = base_completed_orders
         if payment_filter != 'Total':
