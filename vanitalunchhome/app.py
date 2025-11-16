@@ -1,3 +1,4 @@
+import pytz
 import os
 import psycopg2
 from flask import Flask, jsonify, request, render_template
@@ -5,7 +6,6 @@ from flask_cors import CORS
 from datetime import datetime, timedelta
 import json
 import random
-import pytz
 
 # --- Firebase Imports ---
 import firebase_admin
@@ -127,15 +127,13 @@ def place_order():
         order_id = str(random.randint(10000000, 99999999))
 
         # Insert order into database
-        ist_timezone = pytz.timezone('Asia/Kolkata')
-        now_in_ist = datetime.now(ist_timezone)
         cur.execute("""
             INSERT INTO orders (order_id, customer_name, customer_mobile, items, subtotal, total_price, status, payment_method, created_at, updated_at, order_status, order_placed_by)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         """, (
-            order_id, name, mobile, json.dumps(validated_items), subtotal, total_price,
-            'confirmed', 'Cash', now_in_ist, now_in_ist, 'open', 'customer' # <-- FIX
+            order_id, name, mobile, json.dumps(validated_items), subtotal, total_price, 
+            'confirmed', 'Cash', datetime.now(), datetime.now(), 'open', 'customer'
         ))
         
         new_order_db_id = cur.fetchone()[0]
@@ -191,7 +189,4 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
-
-
-
 
