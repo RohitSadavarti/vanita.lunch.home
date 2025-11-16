@@ -127,9 +127,7 @@ def place_order():
         order_id = str(random.randint(10000000, 99999999))
         ist_tz = pytz.timezone('Asia/Kolkata')
         now_ist = datetime.now(ist_tz)
-        now_ist_str = now_ist.strftime('%Y-%m-%d %H:%M:%S.%f%z')
-        # Format with colon in timezone offset for PostgreSQL compatibility
-        now_ist_str = now_ist_str[:-2] + ':' + now_ist_str[-2:]
+        now_ist_str = now_ist.strftime('%Y-%m-%d %H:%M:%S.%f')
 
         # Insert order into database
         cur.execute("""
