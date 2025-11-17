@@ -1,4 +1,4 @@
-# OrderMaster/models.py
+# OrderMaster/OrderMaster/models.py
 from django.db import models
 from django.utils import timezone
 from datetime import datetime
@@ -7,13 +7,13 @@ import random
 import pytz
 
 def get_ist_now():
-    """Returns current time in IST (Asia/Kolkata) as timezone-aware datetime"""
+    """Returns current time in IST (Asia/Kolkata) as timezone-naive datetime"""
     ist_tz = pytz.timezone('Asia/Kolkata')
-    ist_now = datetime.now(ist_tz)
+    # Get IST time and remove timezone info (naive datetime)
+    ist_now = datetime.now(ist_tz).replace(tzinfo=None)
     return ist_now
 
 class MenuItem(models.Model):
-    # ... All MenuItem fields ...
     item_name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -37,7 +37,7 @@ class Order(models.Model):
         ('Ready', 'Ready'), ('Completed', 'Completed'), ('Rejected', 'Rejected'),
         ('Cancelled', 'Cancelled'),
     ]
-    order_id = models.CharField(max_length=50, unique=True, blank=True, null=True) # Needs unique=True, null=True
+    order_id = models.CharField(max_length=50, unique=True, blank=True, null=True)
     customer_name = models.CharField(max_length=200)
     customer_mobile = models.CharField(max_length=15)
     items = models.JSONField()
@@ -62,8 +62,6 @@ class Order(models.Model):
         default='customer'
     )
 
-    # NO CUSTOM SAVE METHOD HERE
-
     def __str__(self):
         display_id = self.order_id if self.order_id else f"(PK:{self.pk})"
         return f"Order {display_id} - {self.customer_name}"
@@ -74,7 +72,6 @@ class Order(models.Model):
 
 
 class VlhAdmin(models.Model):
-    # ... VlhAdmin fields and methods ...
     mobile = models.CharField(max_length=10, unique=True)
     password_hash = models.TextField()
     created_at = models.DateTimeField(default=get_ist_now)
