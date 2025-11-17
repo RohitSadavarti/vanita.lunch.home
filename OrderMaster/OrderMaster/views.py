@@ -390,7 +390,7 @@ def order_management_view(request):
     # --- NEW: Split queries by order_placed_by ---
 
     # 1. Online Orders (for 3-column layout)
-    online_orders_base = base_orders.filter(order_placed_by='customer')
+    online_orders_base = base_orders.filter(order_placed_by='customer').exclude(order_status__in=['cancelled', 'rejected'])
     preparing_orders = online_orders_base.filter(order_status='open')
     ready_orders = online_orders_base.filter(order_status='ready')
     pickedup_orders = online_orders_base.filter(order_status='pickedup')
@@ -430,7 +430,6 @@ def order_management_view(request):
 
 
 @csrf_exempt
-@admin_required
 @require_POST
 def update_order_status(request):
     try:
@@ -769,19 +768,19 @@ def api_place_order(request):
         now_ist = datetime.now(ist_tz).replace(tzinfo=None)
             
         new_order = Order.objects.create(
-            customer_name=customer_name,
-            customer_mobile=customer_mobile,
-            items=validated_items,
-            subtotal=subtotal,
+            customer_name=data.get('customer_name'),
+            customer_mobile=data.get('customer_mobile'),
+            items=validated_items_for_db,
+            subtotal=calculated_subtotal,
             discount=Decimal('0.00'),
-            total_price=subtotal,
-            status='confirmed',
+            total_price=calculated_subtotal, # Changed from final_total_client to calculated_subtotal
+            status='pending', # Changed from 'confirmed' to 'pending'
             payment_method=final_payment_method,
-            payment_id=final_payment_method,
-            order_status='open',
-            order_placed_by='counter',
-            created_at=now_ist_str,  # <-- ADD THIS LINE
-            updated_at=now_ist_str   # <-- ADD THIS LINE
+            payment_id=final_payment_method, # This might need clarification if payment_id is specific
+            order_status='pending', # Changed from 'open' to 'pending'
+            order_placed_by='customer', # Changed from 'counter' to 'customer'
+            created_at=now_ist,  # <-- ADD THIS LINE
+            updated_at=now_ist   # <-- ADD THIS LINE
         )
         
         logger.info(f"✅ Initial Order (PK: {new_order.pk}) created for {new_order.customer_name}.")
@@ -1434,3 +1433,4 @@ def analytics_data_api(request):
         logger.error(f"Analytics data API error: {e}")
         # FIX IS HERE: It should be status=500
         return JsonResponse({'error': 'Failed to fetch analytics data'}, status=500)
+ analytics data'}, status=500)
