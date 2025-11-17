@@ -769,19 +769,19 @@ def api_place_order(request):
         now_ist = datetime.now(ist_tz).replace(tzinfo=None)
             
         new_order = Order.objects.create(
-            customer_name=data['customer_name'],
-            customer_mobile=data['customer_mobile'],
-            items=validated_items_for_db,
-            subtotal=calculated_subtotal,
+            customer_name=customer_name,
+            customer_mobile=customer_mobile,
+            items=validated_items,
+            subtotal=subtotal,
             discount=Decimal('0.00'),
-            total_price=final_total_client,
-            status='Pending',
-            order_status='pending',
-            order_placed_by='customer',
+            total_price=subtotal,
+            status='confirmed',
             payment_method=final_payment_method,
-            payment_id=data.get('payment_id'),
-            created_at=ist_now,  # FIXED
-            updated_at=ist_now
+            payment_id=final_payment_method,
+            order_status='open',
+            order_placed_by='counter',
+            created_at=now_ist_str,  # <-- ADD THIS LINE
+            updated_at=now_ist_str   # <-- ADD THIS LINE
         )
         
         logger.info(f"✅ Initial Order (PK: {new_order.pk}) created for {new_order.customer_name}.")
@@ -1181,6 +1181,10 @@ def create_manual_order(request):
         ist_tz = pytz.timezone('Asia/Kolkata')
         now_ist = datetime.now(ist_tz).replace(tzinfo=None)
 
+        # Get current time in IST as a string
+        ist_tz = pytz.timezone('Asia/Kolkata')
+        now_ist = datetime.now(ist_tz)
+        now_ist_str = now_ist.strftime('%Y-%m-%d %H:%M:%S.%f')
         new_order = Order.objects.create(
             customer_name=customer_name,
             customer_mobile=customer_mobile,
