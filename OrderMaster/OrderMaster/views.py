@@ -1197,8 +1197,8 @@ def create_manual_order(request):
             payment_id=final_payment_method,
             order_status='open',
             order_placed_by='counter',
-            created_at=ist_now,  # FIXED
-            updated_at=ist_now
+            created_at=now_ist_str,  # <-- USE THE STRING
+            updated_at=now_ist_str
         )
 
         try:
