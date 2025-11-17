@@ -1179,12 +1179,9 @@ def create_manual_order(request):
             return JsonResponse({'error': 'No valid items provided.'}, status=400)
 
         ist_tz = pytz.timezone('Asia/Kolkata')
-        now_ist = datetime.now(ist_tz).replace(tzinfo=None)
-
-        # Get current time in IST as a string
-        ist_tz = pytz.timezone('Asia/Kolkata')
         now_ist = datetime.now(ist_tz)
         now_ist_str = now_ist.strftime('%Y-%m-%d %H:%M:%S.%f')
+        
         new_order = Order.objects.create(
             customer_name=customer_name,
             customer_mobile=customer_mobile,
