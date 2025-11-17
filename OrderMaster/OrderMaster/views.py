@@ -54,6 +54,11 @@ except Exception as e:
     print(f"ERROR: Failed to initialize Firebase Admin SDK: {e}")
 # ==============================================================================
 
+def get_ist_now_naive():
+    """Returns current time in IST as timezone-naive datetime"""
+    ist_tz = pytz.timezone('Asia/Kolkata')
+    return datetime.now(ist_tz).replace(tzinfo=None)
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def subscribe_to_topic(request):
@@ -212,7 +217,7 @@ def analytics_api_view(request):
 
         print(f"[v0] Analytics API called with filters: date={date_filter}, payment={payment_filter}")
 
-        now = timezone.now()
+        now = get_ist_now_naive()
         if date_filter == 'today':
             start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
             end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
@@ -359,7 +364,7 @@ def order_management_view(request):
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
 
-    now = timezone.now()
+    now = get_ist_now_naive()
     if date_filter == 'today':
         start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
@@ -442,10 +447,10 @@ def update_order_status(request):
         response_data = {'success': True}
         
         if new_status == 'ready':
-            order.ready_time = timezone.now()
+            order.ready_time = get_ist_now_naive()
             response_data['ready_time'] = order.ready_time.isoformat()
         elif new_status == 'pickedup':
-            order.pickup_time = timezone.now()
+            order.pickup_time = get_ist_now_naive()
             response_data['pickup_time'] = order.pickup_time.isoformat()
 
         order.save()
@@ -775,8 +780,8 @@ def api_place_order(request):
             order_placed_by='customer',
             payment_method=final_payment_method,
             payment_id=data.get('payment_id'),
-            created_at=now_ist,
-            updated_at=now_ist
+            created_at=ist_now,  # FIXED
+            updated_at=ist_now
         )
         
         logger.info(f"✅ Initial Order (PK: {new_order.pk}) created for {new_order.customer_name}.")
@@ -1188,8 +1193,8 @@ def create_manual_order(request):
             payment_id=final_payment_method,
             order_status='open',
             order_placed_by='counter',
-            created_at=now_ist,
-            updated_at=now_ist
+            created_at=ist_now,  # FIXED
+            updated_at=ist_now
         )
 
         try:
