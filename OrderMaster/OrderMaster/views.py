@@ -1061,6 +1061,8 @@ def getAllOrders(request):
         }, status=500)
 # --- END: Merged updates for getAllOrders ---
         
+# In: rohitsadavarti/vanita.lunch.home/.../OrderMaster/OrderMaster/views.py
+
 @csrf_exempt
 @admin_required
 @require_POST
@@ -1087,7 +1089,30 @@ def handle_order_action(request):
             return JsonResponse({'success': False, 'error': 'Invalid action'}, status=400)
 
         order.save()
+
+        # --- START OF NEW CODE ---
+        # Send an "update" notification to all other devices to close their popups
+        try:
+            message_data = {
+                'type': 'order_update',           # <-- NEW: Message Type
+                'order_pk': str(order.pk),        # <-- NEW: Use PK (which the app calls 'id')
+                'order_id': str(order.order_id),  # <-- NEW: Use Order ID
+                'new_status': order.order_status  # <-- NEW: Send new status
+            }
+            
+            update_message = messaging.Message(
+                data=message_data,
+                topic='new_orders' # Send to the same topic
+            )
+            messaging.send(update_message)
+            logger.info(f'✅ Successfully sent FCM update for order {order.pk}')
+        except Exception as e_fcm:
+            # Log the error, but don't fail the main request
+            logger.error(f"❌ Error sending FCM update for order {order.pk}: {e_fcm}", exc_info=True)
+        # --- END OF NEW CODE ---
+
         return JsonResponse({'success': True, 'message': message})
+    
     except Order.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Order not found'}, status=404)
     except Exception as e:
