@@ -140,7 +140,7 @@ def register_user():
         
         # Send Email
         # Uncomment the line below when you have set MAIL_USERNAME and MAIL_PASSWORD in Render env vars
-        # send_otp_email(email, otp) 
+        send_otp_email(email, otp) 
         
         # For testing, we verify immediately or print OTP to console
         print(f"DEBUG: OTP for {email} is {otp}")
@@ -325,3 +325,4 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
+
