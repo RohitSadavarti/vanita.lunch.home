@@ -1,27 +1,19 @@
-import os
-import json
-import random
-import datetime
-import smtplib
-import bcrypt  # Added for password hashing
 import pytz
+import os
 import psycopg2
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import bcrypt
+import smtplib
+import random
+import json
 from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 from datetime import datetime, timedelta
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # --- Firebase Imports ---
 import firebase_admin
 from firebase_admin import credentials, messaging
-
-# --- Email Configuration (Add these to your environment variables) ---
-# If you don't have these set yet, the code will default to None and email sending will fail safely.
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-SMTP_EMAIL = os.environ.get('rohit.o.cs23073@gmail.com') 
-SMTP_PASSWORD = os.environ.get('Clashe@7494')
 
 # --- Securely Initialize Firebase Admin SDK ---
 try:
@@ -33,17 +25,21 @@ try:
             firebase_admin.initialize_app(cred)
         print("Firebase Admin SDK initialized successfully.")
     else:
-        print("WARNING: FIREBASE_KEY not found. Notifications disabled.")
+        print("WARNING: FIREBASE_KEY variable not found. Notifications disabled.")
 except Exception as e:
-    print(f"Error initializing Firebase Admin SDK: {e}")
-    print("WARNING: Firebase could not be initialized.")
-
+    print(f"Error initializing Firebase: {e}")
+    print("WARNING: Firebase notifications disabled.")
 
 app = Flask(__name__)
 CORS(app, origins=['*'])
 
-# --- Helper Functions ---
+# --- Email Configuration (Get from Environment Variables) ---
+SMTP_EMAIL = os.environ.get('MAIL_USERNAME')
+SMTP_PASSWORD = os.environ.get('MAIL_PASSWORD')
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
 
+# --- Database Connection ---
 def get_db_connection():
     conn = psycopg2.connect(
         host=os.environ.get('DB_HOST'),
@@ -55,16 +51,18 @@ def get_db_connection():
     )
     return conn
 
+# --- Helper: Send OTP Email ---
 def send_otp_email(to_email, otp):
+    # If credentials are missing, print to console (prevents 500 error)
+    if not SMTP_EMAIL or not SMTP_PASSWORD:
+        print(f"DEBUG: Email credentials missing. OTP for {to_email} is {otp}")
+        return False
+        
     try:
-        if not SMTP_EMAIL or not SMTP_PASSWORD:
-            print("Email credentials missing in environment variables.")
-            return False
-
         msg = MIMEMultipart()
         msg['From'] = SMTP_EMAIL
         msg['To'] = to_email
-        msg['Subject'] = "Vanita Lunch Home - Verify your Email"
+        msg['Subject'] = "Vanita Lunch Home - Verify Your Email"
         
         body = f"Your Verification OTP is: {otp}"
         msg.attach(MIMEText(body, 'plain'))
@@ -72,82 +70,62 @@ def send_otp_email(to_email, otp):
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
         server.starttls()
         server.login(SMTP_EMAIL, SMTP_PASSWORD)
-        text = msg.as_string()
-        server.sendmail(SMTP_EMAIL, to_email, text)
+        server.sendmail(SMTP_EMAIL, to_email, msg.as_string())
         server.quit()
         return True
     except Exception as e:
-        print(f"Email error: {e}")
+        print(f"Failed to send email: {e}")
         return False
 
-# --- Routes ---
+# --- ROUTES ---
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/api/menu-items', methods=['GET'])
-def get_menu():
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT id, item_name, description, CAST(price AS FLOAT) as price, category, veg_nonveg, meal_type, availability_time, image_url FROM menu_items ORDER BY category, item_name")
-        menu_items = cur.fetchall()
-        column_names = [desc[0] for desc in cur.description]
-        menu_list = [dict(zip(column_names, item)) for item in menu_items]
-        cur.close()
-        conn.close()
-        return jsonify(menu_list)
-    except Exception as e:
-        print(f"Error in get_menu: {str(e)}")
-        return jsonify({'error': 'Failed to load menu'}), 500
-
+# 1. REGISTER USER (NEW)
 @app.route('/api/register', methods=['POST'])
 def register_user():
     conn = None
     try:
         data = request.get_json()
-        
-        # Extract data
         full_name = data.get('full_name')
         mobile = data.get('mobile')
-        email = data.get('email')
+        email = data.get('email', '').strip().lower() # Normalize email
         password = data.get('password')
         address = data.get('address')
         lat = data.get('latitude')
         lng = data.get('longitude')
 
-        # Hash password
+        # Hash Password
         hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         
-        # Generate OTP
+        # Generate 6-digit OTP
         otp = str(random.randint(100000, 999999))
         
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Insert User with OTP
-        # Ensure your table 'vlh_user' exists with these columns
+        # Insert User 
+        # (Note: Requires 'vlh_user' table to verify email/otp columns exist)
         cur.execute("""
             INSERT INTO vlh_user 
-            (full_name, mobile_number, email, password_hash, address_full, latitude, longitude, otp_code, otp_created_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+            (full_name, mobile_number, email, password_hash, address_full, latitude, longitude, otp_code, otp_created_at, email_verified)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW(), FALSE)
             RETURNING id
         """, (full_name, mobile, email, hashed_pw, address, lat, lng, otp))
         
         user_id = cur.fetchone()[0]
         conn.commit()
         
-        # Send Email
-        # Uncomment the line below when you have set MAIL_USERNAME and MAIL_PASSWORD in Render env vars
-        send_otp_email(email, otp) 
-        
-        # For testing, we verify immediately or print OTP to console
-        print(f"DEBUG: OTP for {email} is {otp}")
+        # Send OTP (Prints to console if email fails)
+        print(f"DEBUG: OTP for {email} is ===> {otp} <===") 
+        send_otp_email(email, otp)
 
-        return jsonify({'success': True, 'message': 'User registered. Please verify OTP.', 'userId': user_id})
+        return jsonify({'success': True, 'message': 'User registered. Verify OTP.', 'userId': user_id})
 
     except psycopg2.IntegrityError:
+        if conn: conn.rollback()
         return jsonify({'success': False, 'error': 'Mobile or Email already exists'}), 400
     except Exception as e:
         if conn: conn.rollback()
@@ -156,38 +134,53 @@ def register_user():
     finally:
         if conn: conn.close()
 
+# 2. VERIFY OTP (NEW - Fixed "Invalid OTP" issue)
 @app.route('/api/verify-otp', methods=['POST'])
 def verify_otp():
-    conn = get_db_connection()
-    cur = conn.cursor()
+    conn = None
     try:
         data = request.get_json()
-        email = data.get('email')
-        otp_input = data.get('otp')
+        email = data.get('email', '').strip().lower()
+        otp_input = str(data.get('otp', '')).strip() # FORCE STRING & STRIP SPACES
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
         
         cur.execute("SELECT otp_code FROM vlh_user WHERE email = %s", (email,))
         result = cur.fetchone()
         
-        if result and result[0] == otp_input:
-            cur.execute("UPDATE vlh_user SET email_verified = TRUE, otp_code = NULL WHERE email = %s", (email,))
-            conn.commit()
-            return jsonify({'success': True, 'message': 'Email verified successfully!'})
-        else:
-            return jsonify({'success': False, 'error': 'Invalid OTP'}), 400
+        if result:
+            db_otp = str(result[0]).strip() # FORCE STRING & STRIP DB VALUE
             
+            print(f"DEBUG CHECK: Input '{otp_input}' vs DB '{db_otp}'") # Log for debugging
+            
+            if db_otp == otp_input:
+                cur.execute("UPDATE vlh_user SET email_verified = TRUE, otp_code = NULL WHERE email = %s", (email,))
+                conn.commit()
+                return jsonify({'success': True, 'message': 'Email verified!'})
+            else:
+                return jsonify({'success': False, 'error': 'Invalid OTP'}), 400
+        else:
+            return jsonify({'success': False, 'error': 'Email not found'}), 400
+            
+    except Exception as e:
+        print(f"Verify Error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
     finally:
-        conn.close()
+        if conn: conn.close()
 
+# 3. LOGIN USER (NEW)
 @app.route('/api/login', methods=['POST'])
 def login_user():
-    conn = get_db_connection()
-    cur = conn.cursor()
+    conn = None
     try:
         data = request.get_json()
-        username = data.get('username') # Mobile or Email
+        username = data.get('username')
         password = data.get('password')
         
-        # Check against mobile or email
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
         cur.execute("""
             SELECT id, full_name, mobile_number, email, password_hash, address_full, latitude, longitude 
             FROM vlh_user 
@@ -211,26 +204,55 @@ def login_user():
             })
         else:
             return jsonify({'success': False, 'error': 'Invalid credentials'}), 401
+    except Exception as e:
+        print(f"Login Error: {e}")
+        return jsonify({'success': False, 'error': 'Login error'}), 500
     finally:
-        conn.close()
+        if conn: conn.close()
 
+# 4. GET MENU (EXISTING)
+@app.route('/api/menu-items', methods=['GET'])
+def get_menu():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id, item_name, description, CAST(price AS FLOAT) as price, category, veg_nonveg, meal_type, availability_time, image_url FROM menu_items ORDER BY category, item_name")
+        menu_items = cur.fetchall()
+        column_names = [desc[0] for desc in cur.description]
+        menu_list = [dict(zip(column_names, item)) for item in menu_items]
+        cur.close()
+        conn.close()
+        return jsonify(menu_list)
+    except Exception as e:
+        print(f"Error in get_menu: {str(e)}")
+        return jsonify({'error': 'Failed to load menu'}), 500
+
+# 5. PLACE ORDER (EXISTING - FULL CODE)
 @app.route('/api/order', methods=['POST'])
 def place_order():
     conn = None
     cur = None
     try:
         data = request.get_json()
+        
+        # Log received data for debugging
         print("Received order data:", json.dumps(data, indent=2))
         
+        # Get fields from request
         name = data.get('name', '').strip()
         mobile = data.get('mobile', '').strip()
         address = data.get('address', '').strip()
         cart_items = data.get('cart_items', [])
         
-        if not name or not mobile or not address:
-            return jsonify({'success': False, 'error': 'Name, Mobile, and Address are required'}), 400
-        if not cart_items or len(cart_items) == 0:
-            return jsonify({'success': False, 'error': 'Cart is empty'}), 400
+        # Validation
+        if not name:
+            return jsonify({'success': False, 'error': 'Customer name is required'}), 400
+        if not mobile:
+            return jsonify({'success': False, 'error': 'Mobile number is required'}), 400
+        if not address:
+            return jsonify({'success': False, 'error': 'Address is required'}), 400
+        if not cart_items or not isinstance(cart_items, list) or len(cart_items) == 0:
+            return jsonify({'success': False, 'error': 'Cart is empty or invalid'}), 400
         
         conn = get_db_connection()
         cur = conn.cursor()
@@ -242,33 +264,35 @@ def place_order():
             item_id = cart_item.get('id')
             quantity = int(cart_item.get('quantity', 0))
             
-            if not item_id or quantity <= 0:
-                continue
-
+            if not item_id:
+                return jsonify({'error': 'Item ID is missing'}), 400
+            if quantity <= 0:
+                return jsonify({'error': f'Invalid quantity for item ID {item_id}'}), 400
+            
             cur.execute("SELECT id, item_name, price FROM menu_items WHERE id = %s", (item_id,))
             menu_item = cur.fetchone()
             
-            if menu_item:
-                actual_price = float(menu_item[2])
-                item_total = actual_price * quantity
-                subtotal += item_total
-                
-                validated_items.append({
-                    'id': menu_item[0],
-                    'name': menu_item[1],
-                    'price': actual_price,
-                    'quantity': quantity,
-                })
+            if not menu_item:
+                return jsonify({'error': f'Menu item with ID {item_id} not found'}), 400
+            
+            actual_price = float(menu_item[2])
+            item_total = actual_price * quantity
+            subtotal += item_total
+            
+            validated_items.append({
+                'id': menu_item[0],
+                'name': menu_item[1],
+                'price': actual_price,
+                'quantity': quantity,
+            })
         
-        if not validated_items:
-             return jsonify({'error': 'No valid items in cart'}), 400
-
         total_price = subtotal
         order_id = str(random.randint(10000000, 99999999))
         ist_tz = pytz.timezone('Asia/Kolkata')
         now_ist = datetime.now(ist_tz)
         now_ist_str = now_ist.strftime('%Y-%m-%d %H:%M:%S.%f')
 
+        # Insert order into database
         cur.execute("""
             INSERT INTO orders (order_id, customer_name, customer_mobile, items, subtotal, total_price, status, payment_method, created_at, updated_at, order_status, order_placed_by)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -281,7 +305,7 @@ def place_order():
         new_order_db_id = cur.fetchone()[0]
         conn.commit()
 
-        # Send Firebase notification
+        # Send Firebase notification if initialized
         if firebase_admin._apps:
             try:
                 message_data = {
@@ -302,8 +326,8 @@ def place_order():
                     data=message_data,
                     topic='new_orders'
                 )
-                messaging.send(message)
-                print('Successfully sent notification.')
+                response = messaging.send(message)
+                print('Successfully sent notification:', response)
             except Exception as e:
                 print(f"Error sending Firebase notification: {e}")
 
@@ -313,16 +337,22 @@ def place_order():
             'order_id': order_id
         })
         
+    except json.JSONDecodeError:
+        return jsonify({'error': 'Invalid JSON data'}), 400
     except Exception as e:
-        if conn: conn.rollback()
+        if conn:
+            conn.rollback()
         print(f"Error in place_order: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': f'Failed to place order: {str(e)}'}), 500
     finally:
-        if cur: cur.close()
-        if conn: conn.close()
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
-
