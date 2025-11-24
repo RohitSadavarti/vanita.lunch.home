@@ -83,7 +83,8 @@ def send_otp_email(to_email, otp):
 def index():
     return render_template('index.html')
 
-# 1. REGISTER USER (NEW)
+# Inside vanitalunchhome/app.py
+
 @app.route('/api/register', methods=['POST'])
 def register_user():
     conn = None
@@ -91,23 +92,29 @@ def register_user():
         data = request.get_json()
         full_name = data.get('full_name')
         mobile = data.get('mobile')
-        email = data.get('email', '').strip().lower() # Normalize email
+        email = data.get('email', '').strip().lower()
         password = data.get('password')
         address = data.get('address')
         lat = data.get('latitude')
         lng = data.get('longitude')
 
-        # Hash Password
-        hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        
-        # Generate 6-digit OTP
-        otp = str(random.randint(100000, 999999))
-        
         conn = get_db_connection()
         cur = conn.cursor()
+
+        # 1. CHECK IF MOBILE EXISTS
+        cur.execute("SELECT id FROM vlh_user WHERE mobile_number = %s", (mobile,))
+        if cur.fetchone():
+            return jsonify({'success': False, 'error': 'Mobile number already registered'}), 400
+
+        # 2. CHECK IF EMAIL EXISTS
+        cur.execute("SELECT id FROM vlh_user WHERE email = %s", (email,))
+        if cur.fetchone():
+            return jsonify({'success': False, 'error': 'Email address already registered'}), 400
+
+        # 3. IF CLEAR, PROCEED TO INSERT
+        hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        otp = str(random.randint(100000, 999999))
         
-        # Insert User 
-        # (Note: Requires 'vlh_user' table to verify email/otp columns exist)
         cur.execute("""
             INSERT INTO vlh_user 
             (full_name, mobile_number, email, password_hash, address_full, latitude, longitude, otp_code, otp_created_at, email_verified)
@@ -118,22 +125,19 @@ def register_user():
         user_id = cur.fetchone()[0]
         conn.commit()
         
-        # Send OTP (Prints to console if email fails)
+        # Send OTP
         print(f"DEBUG: OTP for {email} is ===> {otp} <===") 
         send_otp_email(email, otp)
 
         return jsonify({'success': True, 'message': 'User registered. Verify OTP.', 'userId': user_id})
 
-    except psycopg2.IntegrityError:
-        if conn: conn.rollback()
-        return jsonify({'success': False, 'error': 'Mobile or Email already exists'}), 400
     except Exception as e:
         if conn: conn.rollback()
         print(f"Register Error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         if conn: conn.close()
-
+            
 # 2. VERIFY OTP (NEW - Fixed "Invalid OTP" issue)
 @app.route('/api/verify-otp', methods=['POST'])
 def verify_otp():
@@ -356,3 +360,4 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
+
