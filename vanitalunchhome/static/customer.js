@@ -7,14 +7,14 @@ let currentUser = null; // Stores user object if logged in
 
 document.addEventListener('DOMContentLoaded', function() {
     lucide.createIcons();
-    checkAuthStatus(); // Check if user is already logged in or allow guest access
+    checkAuthStatus(); // Check authentication and load data
     setupEventListeners();
 });
 
 // --- AUTHENTICATION LOGIC ---
 
 function checkAuthStatus() {
-    // 1. Always load the menu items, regardless of login status
+    // 1. Always load data immediately
     loadMenuItems(); 
     loadCartFromStorage();
 
@@ -31,17 +31,13 @@ function checkAuthStatus() {
         currentUser = null;
     }
 
-    // 2. Decide whether to show Landing Page or Main App
-    // Change this logic if you want to force the Landing Page first.
-    // Currently set to: Show App immediately (Guest Mode) so menu is visible.
+    // 2. Decide View: 
+    // If logged in -> Show App. 
+    // If NOT logged in -> Show Landing Page.
     if (currentUser) {
         showApp();
     } else {
-        // Option A: Show Landing Page first (User must click "Order Now" to see menu)
-        // showLanding(); 
-        
-        // Option B: Show App immediately as Guest (Menu is visible) - CHOSEN FIX
-        showApp(); 
+        showLanding();
     }
 }
 
@@ -62,7 +58,7 @@ function showApp() {
         document.getElementById('user-avatar').textContent = "G";
         document.getElementById('user-location-display').textContent = "Select Location";
         
-        // You might want to change the "Log Out" button to "Log In" for guests
+        // Change Dropdown to show "Log In" instead of "Log Out"
         const dropdown = document.querySelector('.group .absolute');
         if(dropdown) {
             dropdown.innerHTML = `<a href="#" onclick="showAuthModal('login')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Log In</a>`;
@@ -78,10 +74,7 @@ function showLanding() {
 
 function logoutUser() {
     localStorage.removeItem('vlh_user');
-    // localStorage.removeItem('vanita_cart'); // Optional: keep cart on logout?
     currentUser = null;
-    
-    // Refresh to reset state or just show landing
     window.location.reload(); 
 }
 
@@ -132,7 +125,6 @@ window.handleRegister = async function(e) {
         const result = await response.json();
 
         if (result.success) {
-            // Store temp email for OTP verification
             localStorage.setItem('temp_verify_email', data.email);
             document.getElementById('otp-email-display').innerText = data.email;
             switchAuthTab('otp');
@@ -162,11 +154,9 @@ window.handleVerifyOTP = async function(e) {
         const result = await response.json();
 
         if (result.success) {
-            // Save user and login
             localStorage.setItem('vlh_user', JSON.stringify(result.user));
             localStorage.removeItem('temp_verify_email');
             closeAuthModal();
-            // Reload to apply logged-in state
             window.location.reload(); 
         } else {
             showToast(result.error, 'error');
@@ -198,7 +188,7 @@ window.handleLogin = async function(e) {
         if (result.success) {
             localStorage.setItem('vlh_user', JSON.stringify(result.user));
             closeAuthModal();
-            window.location.reload(); // Reload to update UI completely
+            window.location.reload();
         } else {
             showToast(result.error, 'error');
         }
@@ -214,7 +204,7 @@ window.handleLogin = async function(e) {
 
 async function loadMenuItems() {
     const container = document.getElementById('menu-container');
-    if (!container) return; // Guard clause
+    if (!container) return;
 
     container.innerHTML = '<div class="col-span-full text-center py-10"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500 mx-auto"></div></div>';
     
@@ -226,10 +216,7 @@ async function loadMenuItems() {
         }
 
         const data = await response.json();
-        
-        // Handle inconsistent API response structure (array vs object)
         menuItems = Array.isArray(data) ? data : (data.menu_items || []);
-        
         renderMenu(menuItems);
     } catch (error) {
         console.error("Failed to load menu:", error);
@@ -253,7 +240,6 @@ function renderMenu(items) {
     }
 
     items.forEach(item => {
-        // Fallback image if URL is missing or null
         const img = item.image_url ? item.image_url : `https://placehold.co/600x400/f3f4f6/9ca3af?text=${encodeURIComponent(item.item_name)}`;
         
         const card = document.createElement('div');
@@ -289,9 +275,6 @@ window.addToCart = function(itemId) {
     const item = menuItems.find(i => i.id === itemId);
     if (!item) return;
     
-    // Optional: Force login before adding to cart? 
-    // Currently allowing guest cart but checkout will require details.
-    
     const existing = cart.find(i => i.id === itemId);
     if (existing) {
         existing.quantity++;
@@ -319,13 +302,11 @@ function updateCartUI() {
     const countBadge = document.getElementById('cartCount');
     const totalQty = cart.reduce((sum, i) => sum + i.quantity, 0);
     
-    // Update Badge
     if (countBadge) {
         countBadge.innerText = totalQty;
         countBadge.classList.toggle('hidden', totalQty === 0);
     }
     
-    // Render Sidebar Items
     const container = document.getElementById('cart-page-items-container');
     if (!container) return;
 
@@ -358,7 +339,6 @@ function updateCartUI() {
         });
     }
     
-    // Update Summary
     const subtotal = cart.reduce((sum, i) => sum + (i.price * i.quantity), 0);
     const summaryContainer = document.getElementById('cart-page-summary');
     if (summaryContainer) {
@@ -368,7 +348,6 @@ function updateCartUI() {
         `;
     }
     
-    // Pre-fill Checkout Form if user exists
     if (currentUser) {
         const nameInput = document.getElementById('checkout-name');
         const mobileInput = document.getElementById('checkout-mobile');
@@ -446,6 +425,18 @@ function setupEventListeners() {
     if (closeCartBtn) closeCartBtn.addEventListener('click', toggleCart);
     if (cartOverlay) cartOverlay.addEventListener('click', toggleCart);
     
+    // --- THIS IS THE NEW FIX FOR THE LANDING PAGE BUTTON ---
+    // Find the "Order Now" button in the landing page and make it open the app (Guest Mode)
+    const landingButtons = document.querySelectorAll('#landing-page button');
+    landingButtons.forEach(btn => {
+        if (btn.innerText.includes('Order Now')) {
+            btn.onclick = function(e) {
+                e.preventDefault();
+                showApp(); // Open the menu in Guest Mode
+            };
+        }
+    });
+
     // Category filtering
     document.querySelectorAll('.category-filter').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -482,7 +473,7 @@ function toggleCart() {
         sidebar.classList.remove('translate-x-full');
         overlay.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
-        updateCartUI(); // Refresh UI when opening
+        updateCartUI(); 
     }
 }
 
@@ -504,7 +495,6 @@ function showToast(msg, type='success') {
 
     toastMsg.innerText = msg;
     
-    // Color logic
     const icon = toast.querySelector('i');
     if (icon) {
         if (type === 'error') {
@@ -520,7 +510,6 @@ function showToast(msg, type='success') {
     setTimeout(() => toast.classList.add('hidden'), 3000);
 }
 
-// Smooth scroll for landing page
 window.scrollToSection = function(id) {
-    showToast('Scroll to ' + id + ' (Placeholder)');
+    // Basic scroll placeholder
 };
