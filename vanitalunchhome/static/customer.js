@@ -1,77 +1,233 @@
-// Global variables
+// vanitalunchhome/static/customer.js
+
+// Global State
 let menuItems = [];
 let cart = [];
-let filteredMenuItems = [];
-let currentCategory = 'all';
-let currentVegFilter = 'all';
-let currentSearchTerm = '';
+let currentUser = null; // Stores user object if logged in
 
-// Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     lucide.createIcons();
-    loadMenuItems();
+    checkAuthStatus(); // Check if user is already logged in
     setupEventListeners();
-    loadCartFromStorage();
 });
 
-// Setup event listeners
-function setupEventListeners() {
-    document.getElementById('cartBtn').addEventListener('click', toggleCart);
-    document.getElementById('closeCartBtn').addEventListener('click', toggleCart);
-    document.getElementById('cartOverlay').addEventListener('click', toggleCart);
-    document.getElementById('payNowBtn').addEventListener('click', handleOrderSubmit);
-    
-    document.getElementById('searchInput').addEventListener('input', handleSearch);
-    document.querySelectorAll('.category-filter').forEach(button => {
-        button.addEventListener('click', handleCategoryFilter);
-    });
-    // Note: Your HTML does not have '.veg-filter' elements, but I left the code.
-    document.querySelectorAll('.veg-filter').forEach(button => {
-        button.addEventListener('click', handleVegFilter);
-    });
+// --- AUTHENTICATION LOGIC ---
 
-    document.getElementById('customerForm').addEventListener('submit', (e) => e.preventDefault());
-}
-
-// Load menu items from the backend API
-async function loadMenuItems() {
-    const menuContainer = document.getElementById('menu-container');
-    try {
-        const response = await fetch('/api/menu-items');
-        if (!response.ok) throw new Error('Failed to load menu');
-        
-        menuItems = await response.json();
-        applyFilters();
-
-    } catch (error) {
-        console.error('Error loading menu:', error);
-        menuContainer.innerHTML = `<p class="col-span-full text-center text-red-500">Could not load menu.</p>`;
+function checkAuthStatus() {
+    const storedUser = localStorage.getItem('vlh_user');
+    if (storedUser) {
+        currentUser = JSON.parse(storedUser);
+        showApp(); // Show the ordering interface
+    } else {
+        showLanding(); // Show the landing page
     }
 }
 
-// Render menu items on the page
-function renderMenu() {
-    const container = document.getElementById('menu-container');
-    container.innerHTML = ''; 
+function showApp() {
+    document.getElementById('landing-page').classList.add('hidden');
+    document.getElementById('main-app').classList.remove('hidden');
+    
+    // Update UI with user details
+    document.getElementById('user-name-display').textContent = currentUser.name;
+    document.getElementById('user-avatar').textContent = currentUser.name.charAt(0).toUpperCase();
+    document.getElementById('user-location-display').textContent = currentUser.address || 'Add Address';
+    
+    // Load data
+    loadMenuItems();
+    loadCartFromStorage();
+}
 
-    if (filteredMenuItems.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center py-12"><h3 class="text-lg font-medium">No items found matching your criteria.</h3></div>`;
+function showLanding() {
+    document.getElementById('landing-page').classList.remove('hidden');
+    document.getElementById('main-app').classList.add('hidden');
+    currentUser = null;
+}
+
+function logoutUser() {
+    localStorage.removeItem('vlh_user');
+    localStorage.removeItem('vanita_cart'); // Optional: clear cart on logout
+    cart = [];
+    showLanding();
+    showToast('Logged out successfully');
+}
+
+// --- MODAL HANDLING ---
+
+window.showAuthModal = function(tab) {
+    document.getElementById('auth-modal').classList.remove('hidden');
+    switchAuthTab(tab);
+};
+
+window.closeAuthModal = function() {
+    document.getElementById('auth-modal').classList.add('hidden');
+};
+
+window.switchAuthTab = function(tab) {
+    document.getElementById('login-form').classList.add('hidden');
+    document.getElementById('register-form').classList.add('hidden');
+    document.getElementById('otp-form').classList.add('hidden');
+    
+    if (tab === 'login') document.getElementById('login-form').classList.remove('hidden');
+    if (tab === 'register') document.getElementById('register-form').classList.remove('hidden');
+    if (tab === 'otp') document.getElementById('otp-form').classList.remove('hidden');
+};
+
+// --- API CALLS FOR AUTH ---
+
+window.handleRegister = async function(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button');
+    const originalText = btn.innerText;
+    btn.innerText = 'Sending...';
+    btn.disabled = true;
+
+    const data = {
+        full_name: document.getElementById('reg-name').value,
+        mobile: document.getElementById('reg-mobile').value,
+        email: document.getElementById('reg-email').value,
+        password: document.getElementById('reg-password').value,
+        address: document.getElementById('reg-address').value
+    };
+
+    try {
+        const response = await fetch('/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            // Store temp email for OTP verification
+            localStorage.setItem('temp_verify_email', data.email);
+            document.getElementById('otp-email-display').innerText = data.email;
+            switchAuthTab('otp');
+            showToast('OTP sent to your email!', 'success');
+        } else {
+            showToast(result.error, 'error');
+        }
+    } catch (error) {
+        showToast('Registration failed. Try again.', 'error');
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+};
+
+window.handleVerifyOTP = async function(e) {
+    e.preventDefault();
+    const otp = document.getElementById('otp-input').value;
+    const email = localStorage.getItem('temp_verify_email');
+
+    try {
+        const response = await fetch('/api/verify-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, otp })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            // Save user and login
+            localStorage.setItem('vlh_user', JSON.stringify(result.user));
+            localStorage.removeItem('temp_verify_email');
+            closeAuthModal();
+            showApp();
+            showToast('Email verified! Welcome.', 'success');
+        } else {
+            showToast(result.error, 'error');
+        }
+    } catch (error) {
+        showToast('Verification failed.', 'error');
+    }
+};
+
+window.handleLogin = async function(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button');
+    btn.innerText = 'Logging in...';
+    btn.disabled = true;
+
+    const data = {
+        username: document.getElementById('login-username').value,
+        password: document.getElementById('login-password').value
+    };
+
+    try {
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            localStorage.setItem('vlh_user', JSON.stringify(result.user));
+            closeAuthModal();
+            showApp();
+            showToast('Welcome back!', 'success');
+        } else {
+            showToast(result.error, 'error');
+        }
+    } catch (error) {
+        showToast('Login error.', 'error');
+    } finally {
+        btn.innerText = 'Log In';
+        btn.disabled = false;
+    }
+};
+
+// --- MENU & CART LOGIC (Adapted from previous version) ---
+
+async function loadMenuItems() {
+    const container = document.getElementById('menu-container');
+    container.innerHTML = '<div class="col-span-full text-center py-10"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500 mx-auto"></div></div>';
+    
+    try {
+        const response = await fetch('/api/menu-items');
+        const data = await response.json();
+        
+        // Handle inconsistent API response structure (array vs object)
+        menuItems = Array.isArray(data) ? data : (data.menu_items || []);
+        
+        renderMenu(menuItems);
+    } catch (error) {
+        console.error(error);
+        container.innerHTML = '<p class="col-span-full text-center text-red-500">Failed to load menu.</p>';
+    }
+}
+
+function renderMenu(items) {
+    const container = document.getElementById('menu-container');
+    container.innerHTML = '';
+    
+    if (items.length === 0) {
+        container.innerHTML = '<p class="col-span-full text-center text-gray-500">No items available.</p>';
         return;
     }
 
-    filteredMenuItems.forEach(item => {
-        const imageUrl = item.image_url || `https://placehold.co/600x400/f3f4f6/6b7280?text=No+Image`;
-        
+    items.forEach(item => {
+        const img = item.image_url || `https://placehold.co/600x400/f3f4f6/9ca3af?text=${encodeURIComponent(item.item_name)}`;
         const card = document.createElement('div');
-        card.className = 'bg-white rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-transform duration-300';
+        card.className = 'bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-100 flex flex-col h-full group';
         card.innerHTML = `
-            <img src="${imageUrl}" alt="${item.item_name}" class="h-48 w-full object-cover">
-            <div class="p-4">
-                <h4 class="text-lg font-bold">${item.item_name}</h4>
-                <p class="text-sm text-gray-600 mt-1 h-10 overflow-hidden">${item.description || ''}</p>
-                <div class="flex justify-between items-center mt-4">
-                    <span class="text-lg font-bold text-orange-600">₹${parseFloat(item.price).toFixed(2)}</span>
-                    <button class="add-to-cart-btn bg-orange-100 text-orange-700 font-semibold px-4 py-2 rounded-lg hover:bg-orange-200" onclick="addToCart(${item.id})">Add to Cart</button>
+            <div class="relative h-48 overflow-hidden">
+                <img src="${img}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                <div class="absolute top-2 right-2 bg-white/90 backdrop-blur px-2 py-1 rounded text-xs font-bold text-gray-700 shadow-sm">
+                    ${item.category}
+                </div>
+            </div>
+            <div class="p-4 flex flex-col flex-grow">
+                <div class="flex justify-between items-start mb-2">
+                    <h3 class="font-bold text-gray-800 text-lg leading-tight">${item.item_name}</h3>
+                    <div class="flex items-center justify-center h-5 w-5 border ${item.veg_nonveg === 'Veg' ? 'border-green-600' : 'border-red-600'} rounded-[2px] p-[2px]">
+                        <div class="h-2.5 w-2.5 rounded-full ${item.veg_nonveg === 'Veg' ? 'bg-green-600' : 'bg-red-600'}"></div>
+                    </div>
+                </div>
+                <p class="text-gray-500 text-sm line-clamp-2 mb-4 flex-grow">${item.description || 'Delicious authentic dish.'}</p>
+                <div class="flex justify-between items-center mt-auto pt-3 border-t border-gray-50">
+                    <span class="text-lg font-bold text-gray-900">₹${parseFloat(item.price).toFixed(2)}</span>
+                    <button onclick="addToCart(${item.id})" class="bg-orange-50 text-orange-600 hover:bg-orange-600 hover:text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors duration-300">ADD</button>
                 </div>
             </div>
         `;
@@ -79,174 +235,110 @@ function renderMenu() {
     });
 }
 
-// Apply all active filters
-function applyFilters() {
-    filteredMenuItems = menuItems.filter(item => {
-        const categoryMatch = currentCategory === 'all' || (item.category && item.category.toLowerCase() === currentCategory);
-        
-        const vegMatch = currentVegFilter === 'all' || (item.veg_nonveg && item.veg_nonveg.toLowerCase().replace(/ /g, '-') === currentVegFilter);
+// --- CART FUNCTIONS ---
 
-        const searchMatch = !currentSearchTerm ||
-            (item.item_name && item.item_name.toLowerCase().includes(currentSearchTerm)) ||
-            (item.description && item.description.toLowerCase().includes(currentSearchTerm));
-            
-        return categoryMatch && vegMatch && searchMatch;
-    });
-    renderMenu();
-}
-
-function handleSearch(e) {
-    currentSearchTerm = e.target.value.toLowerCase();
-    applyFilters();
-}
-
-function handleCategoryFilter(e) {
-    document.querySelectorAll('.category-filter').forEach(btn => {
-        btn.classList.remove('active', 'bg-orange-500', 'text-white');
-        btn.classList.add('bg-gray-200', 'text-gray-700');
-    });
-    const clickedButton = e.currentTarget;
-    clickedButton.classList.add('active', 'bg-orange-500', 'text-white');
-    clickedButton.classList.remove('bg-gray-200', 'text-gray-700');
-    currentCategory = clickedButton.dataset.category;
-    applyFilters();
-}
-
-function handleVegFilter(e) {
-    document.querySelectorAll('.veg-filter').forEach(btn => {
-        btn.classList.remove('active');
-        btn.classList.remove('bg-green-100', 'text-green-800');
-        btn.classList.remove('bg-red-100', 'text-red-800');
-        btn.classList.add('bg-gray-100', 'text-gray-700');
-    });
-    const clickedButton = e.currentTarget;
-    clickedButton.classList.add('active');
-    clickedButton.classList.remove('bg-gray-100', 'text-gray-700');
-    if (clickedButton.dataset.type === 'veg') {
-        clickedButton.classList.add('bg-green-100', 'text-green-800');
-    } else if (clickedButton.dataset.type === 'non-veg') {
-         clickedButton.classList.add('bg-red-100', 'text-red-800');
-    }
-
-    currentVegFilter = clickedButton.dataset.type;
-    applyFilters();
-}
-
-// Cart and Order functions
-function addToCart(itemId) {
+window.addToCart = function(itemId) {
     const item = menuItems.find(i => i.id === itemId);
     if (!item) return;
-    const existingItem = cart.find(i => i.id === itemId);
-    if (existingItem) {
-        existingItem.quantity++;
+    
+    const existing = cart.find(i => i.id === itemId);
+    if (existing) {
+        existing.quantity++;
     } else {
-        cart.push({ id: item.id, name: item.item_name, price: item.price, quantity: 1 });
+        cart.push({ ...item, quantity: 1 });
     }
-    updateCartDisplay();
-    saveCartToStorage();
-    showToast(`${item.item_name} added to cart!`);
-}
+    updateCartUI();
+    saveCart();
+    showToast(`${item.item_name} added to cart`);
+};
 
-function updateQuantity(itemId, change) {
+window.updateQuantity = function(itemId, change) {
     const item = cart.find(i => i.id === itemId);
-    if (item) {
-        item.quantity += change;
-        if (item.quantity <= 0) {
-            cart = cart.filter(i => i.id !== itemId);
-        }
-    }
-    updateCartDisplay();
-    saveCartToStorage();
-}
-
-function removeFromCart(itemId) {
-    const item = cart.find(i => i.id === itemId);
-    cart = cart.filter(i => i.id !== itemId);
-    updateCartDisplay();
-    saveCartToStorage();
-    showToast(`${item.name} removed from cart.`, 'info');
-}
-
-function updateCartDisplay() {
-    const cartCount = document.getElementById('cartCount');
-    const cartItems = document.getElementById('cart-page-items');
-    const cartSummary = document.getElementById('cart-page-summary');
-    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-
-    cartCount.textContent = totalItems;
-    cartCount.classList.toggle('hidden', totalItems === 0);
-
-    if (cart.length === 0) {
-        cartItems.innerHTML = '<p class="text-gray-500 text-center py-4">Your cart is empty</p>';
-        cartSummary.innerHTML = '';
-        return;
-    }
+    if (!item) return;
     
-    let cartHTML = '';
-    cart.forEach(item => {
-        cartHTML += `
-            <div class="py-3 border-b">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <h6 class="font-semibold">${item.name}</h6>
-                        <small class="text-gray-500">₹${parseFloat(item.price).toFixed(2)} x ${item.quantity}</small>
-                    </div>
-                    <div class="font-bold">₹${(item.price * item.quantity).toFixed(2)}</div>
-                </div>
-                <div class="flex items-center mt-2">
-                    <button class="bg-gray-200 w-7 h-7 rounded-full font-bold" onclick="updateQuantity(${item.id}, -1)">-</button>
-                    <span class="mx-3">${item.quantity}</span>
-                    <button class="bg-gray-200 w-7 h-7 rounded-full font-bold" onclick="updateQuantity(${item.id}, 1)">+</button>
-                    <button class="text-red-500 hover:text-red-700 ml-auto text-sm font-medium" onclick="removeFromCart(${item.id})">Remove</button>
-                </div>
+    item.quantity += change;
+    if (item.quantity <= 0) {
+        cart = cart.filter(i => i.id !== itemId);
+    }
+    updateCartUI();
+    saveCart();
+};
+
+function updateCartUI() {
+    const countBadge = document.getElementById('cartCount');
+    const totalQty = cart.reduce((sum, i) => sum + i.quantity, 0);
+    
+    // Update Badge
+    countBadge.innerText = totalQty;
+    countBadge.classList.toggle('hidden', totalQty === 0);
+    
+    // Render Sidebar Items
+    const container = document.getElementById('cart-page-items-container');
+    container.innerHTML = '';
+    
+    if (cart.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-10 opacity-60">
+                <i data-lucide="shopping-bag" class="h-12 w-12 mx-auto mb-3 text-gray-300"></i>
+                <p>Your cart is empty</p>
+                <button onclick="toggleCart()" class="mt-4 text-orange-600 font-semibold text-sm">Browse Menu</button>
             </div>`;
-    });
-    cartItems.innerHTML = cartHTML;
+        lucide.createIcons();
+    } else {
+        cart.forEach(item => {
+            const el = document.createElement('div');
+            el.className = 'flex justify-between items-center bg-white p-3 rounded-lg border border-gray-100 shadow-sm';
+            el.innerHTML = `
+                <div>
+                    <h4 class="font-medium text-gray-800 text-sm">${item.item_name}</h4>
+                    <p class="text-xs text-gray-500">₹${item.price} x ${item.quantity}</p>
+                </div>
+                <div class="flex items-center gap-3 bg-gray-50 rounded-md px-2 py-1">
+                    <button onclick="updateQuantity(${item.id}, -1)" class="text-gray-500 hover:text-orange-600">-</button>
+                    <span class="text-sm font-semibold w-4 text-center">${item.quantity}</span>
+                    <button onclick="updateQuantity(${item.id}, 1)" class="text-gray-500 hover:text-orange-600">+</button>
+                </div>
+            `;
+            container.appendChild(el);
+        });
+    }
     
-    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    cartSummary.innerHTML = `<div class="flex justify-between font-bold mt-2 text-lg"><span>Total</span><span>₹${subtotal.toFixed(2)}</span></div>`;
+    // Update Summary
+    const subtotal = cart.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+    document.getElementById('cart-page-summary').innerHTML = `
+        <div class="flex justify-between"><span>Subtotal</span><span>₹${subtotal.toFixed(2)}</span></div>
+        <div class="flex justify-between text-lg font-bold text-gray-900 mt-2 pt-2 border-t"><span>Total</span><span>₹${subtotal.toFixed(2)}</span></div>
+    `;
+    
+    // Pre-fill Checkout Form if user exists
+    if (currentUser) {
+        document.getElementById('checkout-name').value = currentUser.name;
+        document.getElementById('checkout-mobile').value = currentUser.mobile;
+        // Only set address if input is empty to avoid overwriting user edits
+        const addrInput = document.getElementById('checkout-address');
+        if (!addrInput.value) addrInput.value = currentUser.address;
+    }
 }
 
-function toggleCart() {
-    const cartSidebar = document.getElementById('cartSidebar');
-    const cartOverlay = document.getElementById('cartOverlay');
-    cartSidebar.classList.toggle('translate-x-full');
-    cartOverlay.classList.toggle('hidden');
-    document.body.style.overflow = cartSidebar.classList.contains('translate-x-full') ? '' : 'hidden';
-}
+// --- ORDER SUBMISSION ---
 
-async function handleOrderSubmit() {
-    const submitBtn = document.getElementById('payNowBtn');
-    submitBtn.querySelector('span').textContent = 'Placing...';
-    submitBtn.disabled = true;
-
-    // --- THIS IS THE FIX ---
-    if (cart.length === 0) {
-        showToast('Your cart is empty. Please add items first.', 'error');
-        submitBtn.querySelector('span').textContent = 'Place Order (Cash)';
-        submitBtn.disabled = false;
-        return;
-    }
-    // --- END OF FIX ---
+document.getElementById('checkoutForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    if (cart.length === 0) return showToast('Cart is empty', 'error');
     
-    const customerName = document.getElementById('customerNameCart').value.trim();
-    const customerMobile = document.getElementById('customerMobileCart').value.trim();
-    const customerAddress = document.getElementById('customerAddress').value.trim();
-
-    if (!customerName || !customerMobile || !customerAddress) {
-        showToast('Please fill in all delivery details.', 'error');
-        submitBtn.querySelector('span').textContent = 'Place Order (Cash)';
-        submitBtn.disabled = false;
-        return;
-    }
-
+    const btn = document.getElementById('payNowBtn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = 'Processing...';
+    btn.disabled = true;
+    
     const orderData = {
-        name: customerName,
-        mobile: customerMobile,
-        address: customerAddress,
-        cart_items: cart.map(item => ({ id: item.id, quantity: item.quantity })),
+        name: currentUser.name,
+        mobile: currentUser.mobile,
+        email: currentUser.email, // Send email for notification
+        address: document.getElementById('checkout-address').value,
+        cart_items: cart.map(i => ({ id: i.id, quantity: i.quantity }))
     };
-
+    
     try {
         const response = await fetch('/api/order', {
             method: 'POST',
@@ -254,49 +346,97 @@ async function handleOrderSubmit() {
             body: JSON.stringify(orderData)
         });
         const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'Failed to place order.');
         
-        showToast(result.message, 'success');
-        clearCart();
-        resetCheckoutForm();
-        toggleCart();
+        if (result.success) {
+            cart = [];
+            saveCart();
+            updateCartUI();
+            toggleCart();
+            showToast('Order placed successfully! Check your email.', 'success');
+        } else {
+            showToast(result.error || 'Failed to place order', 'error');
+        }
     } catch (error) {
-        showToast(error.message, 'error');
+        console.error(error);
+        showToast('Network error', 'error');
     } finally {
-        submitBtn.querySelector('span').textContent = 'Place Order (Cash)';
-        submitBtn.disabled = false;
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+});
+
+// --- UTILS ---
+
+function setupEventListeners() {
+    document.getElementById('cartBtn').addEventListener('click', toggleCart);
+    document.getElementById('closeCartBtn').addEventListener('click', toggleCart);
+    document.getElementById('cartOverlay').addEventListener('click', toggleCart);
+    
+    // Category filtering
+    document.querySelectorAll('.category-filter').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.category-filter').forEach(b => {
+                b.classList.remove('bg-orange-600', 'text-white', 'shadow-sm');
+                b.classList.add('bg-white', 'text-gray-600', 'hover:border-orange-500');
+            });
+            e.target.classList.remove('bg-white', 'text-gray-600', 'hover:border-orange-500');
+            e.target.classList.add('bg-orange-600', 'text-white', 'shadow-sm');
+            
+            const cat = e.target.dataset.category;
+            const filtered = cat === 'all' ? menuItems : menuItems.filter(i => i.category === cat);
+            renderMenu(filtered);
+        });
+    });
+}
+
+function toggleCart() {
+    const sidebar = document.getElementById('cartSidebar');
+    const overlay = document.getElementById('cartOverlay');
+    const isOpen = !sidebar.classList.contains('translate-x-full');
+    
+    if (isOpen) {
+        sidebar.classList.add('translate-x-full');
+        overlay.classList.add('hidden');
+        document.body.style.overflow = '';
+    } else {
+        sidebar.classList.remove('translate-x-full');
+        overlay.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        updateCartUI(); // Refresh UI when opening
     }
 }
 
-// Helper functions
-function clearCart() {
-    cart = [];
-    updateCartDisplay();
-    saveCartToStorage();
-}
-function resetCheckoutForm() {
-    document.getElementById('customerForm').reset();
-}
-function saveCartToStorage() {
+function saveCart() {
     localStorage.setItem('vanita_cart', JSON.stringify(cart));
 }
+
 function loadCartFromStorage() {
-    const savedCart = localStorage.getItem('vanita_cart');
-    if (savedCart) {
-        cart = JSON.parse(savedCart);
-        updateCartDisplay();
+    const saved = localStorage.getItem('vanita_cart');
+    if (saved) {
+        try { cart = JSON.parse(saved); updateCartUI(); } catch(e) { cart = []; }
     }
 }
-function showToast(message, type = 'success') {
-    const toastEl = document.getElementById('toast');
-    const toastMessage = document.getElementById('toast-message');
-    toastMessage.textContent = message;
-    
-    const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500' };
-    toastEl.className = `fixed bottom-5 right-5 text-white px-6 py-3 rounded-lg shadow-lg animate-pop z-50 ${colors[type] || colors.success}`;
 
-    toastEl.classList.remove('hidden');
-    setTimeout(() => {
-        toastEl.classList.add('hidden');
-    }, 3000);
+function showToast(msg, type='success') {
+    const toast = document.getElementById('toast');
+    document.getElementById('toast-message').innerText = msg;
+    
+    // Color logic
+    const icon = toast.querySelector('i');
+    if (type === 'error') {
+        icon.classList.add('text-red-400');
+        icon.classList.remove('text-orange-400', 'text-green-400');
+    } else {
+        icon.classList.add('text-green-400');
+        icon.classList.remove('text-red-400', 'text-orange-400');
+    }
+    
+    toast.classList.remove('hidden');
+    setTimeout(() => toast.classList.add('hidden'), 3000);
 }
+
+// Smooth scroll for landing page
+window.scrollToSection = function(id) {
+    // Placeholder as specific sections aren't implemented in this detail
+    showToast('Scroll to ' + id + ' (Placeholder)');
+};
