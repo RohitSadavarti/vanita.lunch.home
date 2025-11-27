@@ -3,18 +3,74 @@
 // Global State
 let menuItems = [];
 let cart = [];
-let currentUser = null; // Stores user object if logged in
+let currentUser = null; 
 
 document.addEventListener('DOMContentLoaded', function() {
     lucide.createIcons();
-    checkAuthStatus(); // Check authentication and load data
+    checkAuthStatus(); 
     setupEventListeners();
 });
+
+// --- GEOLOCATION LOGIC (New Feature) ---
+
+window.detectLocation = function(targetInputId) {
+    const inputField = document.getElementById(targetInputId);
+    if (!navigator.geolocation) {
+        showToast('Geolocation is not supported by your browser', 'error');
+        return;
+    }
+
+    // Show loading state
+    const originalPlaceholder = inputField.placeholder;
+    inputField.placeholder = "Detecting location...";
+    inputField.value = "Fetching location...";
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        // If this is the registration form, save lat/lng to hidden fields
+        if (targetInputId === 'reg-address') {
+            document.getElementById('reg-lat').value = lat;
+            document.getElementById('reg-lng').value = lng;
+        }
+
+        try {
+            // Use OpenStreetMap (Nominatim) for free Reverse Geocoding
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+            const data = await response.json();
+            
+            if (data && data.display_name) {
+                inputField.value = data.display_name;
+                showToast('Location detected successfully!');
+            } else {
+                inputField.value = `${lat}, ${lng}`; // Fallback
+                showToast('Address not found, but coordinates captured.');
+            }
+        } catch (error) {
+            console.error("Geocoding error:", error);
+            inputField.value = "";
+            inputField.placeholder = originalPlaceholder;
+            showToast('Failed to fetch address name.', 'error');
+        }
+    }, (error) => {
+        console.error("Geolocation error:", error);
+        inputField.value = "";
+        inputField.placeholder = originalPlaceholder;
+        let msg = 'Location access denied.';
+        if(error.code === 2) msg = 'Location unavailable.';
+        if(error.code === 3) msg = 'Location request timed out.';
+        showToast(msg, 'error');
+    }, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+    });
+};
 
 // --- AUTHENTICATION LOGIC ---
 
 function checkAuthStatus() {
-    // 1. Always load data immediately
     loadMenuItems(); 
     loadCartFromStorage();
 
@@ -23,17 +79,11 @@ function checkAuthStatus() {
     if (storedUser) {
         try {
             currentUser = JSON.parse(storedUser);
-        } catch (e) {
-            console.error("Error parsing user data", e);
-            currentUser = null;
-        }
+        } catch (e) { currentUser = null; }
     } else {
         currentUser = null;
     }
 
-    // 2. Decide View: 
-    // If logged in -> Show App. 
-    // If NOT logged in -> Show Landing Page.
     if (currentUser) {
         showApp();
     } else {
@@ -45,20 +95,16 @@ function showApp() {
     document.getElementById('landing-page').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
     
-    // Update UI with user details OR Guest details
     if (currentUser) {
         document.getElementById('user-name-display').textContent = currentUser.name;
         document.getElementById('user-avatar').textContent = currentUser.name.charAt(0).toUpperCase();
         document.getElementById('user-location-display').textContent = currentUser.address || 'Add Address';
-        // Show Profile/Logout options
         document.getElementById('user-name-display').parentElement.classList.remove('hidden'); 
     } else {
         // Guest View
         document.getElementById('user-name-display').textContent = "Guest";
         document.getElementById('user-avatar').textContent = "G";
         document.getElementById('user-location-display').textContent = "Select Location";
-        
-        // Change Dropdown to show "Log In" instead of "Log Out"
         const dropdown = document.querySelector('.group .absolute');
         if(dropdown) {
             dropdown.innerHTML = `<a href="#" onclick="showAuthModal('login')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Log In</a>`;
@@ -103,17 +149,23 @@ window.switchAuthTab = function(tab) {
 
 window.handleRegister = async function(e) {
     e.preventDefault();
-    const btn = e.target.querySelector('button');
+    const btn = e.target.querySelector('button[type="submit"]');
     const originalText = btn.innerText;
     btn.innerText = 'Sending...';
     btn.disabled = true;
+
+    // Get Lat/Lng from the hidden fields we added
+    const lat = document.getElementById('reg-lat').value || null;
+    const lng = document.getElementById('reg-lng').value || null;
 
     const data = {
         full_name: document.getElementById('reg-name').value,
         mobile: document.getElementById('reg-mobile').value,
         email: document.getElementById('reg-email').value,
         password: document.getElementById('reg-password').value,
-        address: document.getElementById('reg-address').value
+        address: document.getElementById('reg-address').value,
+        latitude: lat,  // Send captured latitude
+        longitude: lng  // Send captured longitude
     };
 
     try {
@@ -210,10 +262,7 @@ async function loadMenuItems() {
     
     try {
         const response = await fetch('/api/menu-items');
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
         const data = await response.json();
         menuItems = Array.isArray(data) ? data : (data.menu_items || []);
@@ -223,7 +272,6 @@ async function loadMenuItems() {
         container.innerHTML = `
             <div class="col-span-full text-center text-red-500">
                 <p>Failed to load menu items.</p>
-                <p class="text-xs text-gray-400 mt-2">${error.message}</p>
                 <button onclick="loadMenuItems()" class="mt-4 px-4 py-2 bg-orange-100 text-orange-600 rounded">Retry</button>
             </div>`;
     }
@@ -309,7 +357,6 @@ function updateCartUI() {
     
     const container = document.getElementById('cart-page-items-container');
     if (!container) return;
-
     container.innerHTML = '';
     
     if (cart.length === 0) {
@@ -348,6 +395,7 @@ function updateCartUI() {
         `;
     }
     
+    // Pre-fill Checkout Form if user exists
     if (currentUser) {
         const nameInput = document.getElementById('checkout-name');
         const mobileInput = document.getElementById('checkout-mobile');
@@ -425,14 +473,13 @@ function setupEventListeners() {
     if (closeCartBtn) closeCartBtn.addEventListener('click', toggleCart);
     if (cartOverlay) cartOverlay.addEventListener('click', toggleCart);
     
-    // --- THIS IS THE NEW FIX FOR THE LANDING PAGE BUTTON ---
-    // Find the "Order Now" button in the landing page and make it open the app (Guest Mode)
+    // Landing Page "Order Now" Logic
     const landingButtons = document.querySelectorAll('#landing-page button');
     landingButtons.forEach(btn => {
         if (btn.innerText.includes('Order Now')) {
             btn.onclick = function(e) {
                 e.preventDefault();
-                showApp(); // Open the menu in Guest Mode
+                showApp(); 
             };
         }
     });
@@ -511,5 +558,4 @@ function showToast(msg, type='success') {
 }
 
 window.scrollToSection = function(id) {
-    // Basic scroll placeholder
 };
