@@ -4,31 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vanita Lunch Home - Authentic Home Style Food</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-    <!-- Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Custom Landing Page Styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='landing.css') }}">
 </head>
 <body class="bg-gray-50 text-gray-800 font-inter antialiased">
 
-    <!-- ================= LANDING PAGE ================= -->
     <div id="landing-page" class="relative min-h-screen flex flex-col">
         
-        <!-- Hero Background -->
         <div class="absolute inset-0 z-0 overflow-hidden">
-            <!-- Overlay -->
             <div class="absolute inset-0 bg-black/60 z-10"></div>
-            <!-- Background Image (Zomato style) -->
             <img src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?q=80&w=2574&auto=format&fit=crop" 
                  alt="Delicious Food" 
                  class="w-full h-full object-cover animate-zoom-slow">
         </div>
 
-        <!-- Navbar (Landing) -->
         <nav class="relative z-20 w-full px-6 py-4 flex justify-between items-center text-white">
             <div class="flex items-center gap-2">
                 <i data-lucide="utensils-crossed" class="h-6 w-6 text-orange-500"></i>
@@ -44,7 +35,6 @@
             </div>
         </nav>
 
-        <!-- Hero Content -->
         <main class="relative z-20 flex-grow flex flex-col items-center justify-center text-center px-4">
             <h1 class="font-playfair text-5xl md:text-7xl font-bold text-white mb-6 leading-tight drop-shadow-lg">
                 Discover the best food <br/> in your city
@@ -62,11 +52,10 @@
                     <i data-lucide="search" class="text-gray-400 h-5 w-5 mr-3"></i>
                     <input type="text" placeholder="Search for dishes, thalis..." class="w-full py-3 outline-none text-gray-700 bg-transparent">
                 </div>
-                <button onclick="showAuthModal('login')" class="bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-orange-700 transition">Order Now</button>
+                <button onclick="showApp()" class="bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-orange-700 transition">Order Now</button>
             </div>
         </main>
 
-        <!-- Features Strip -->
         <div class="relative z-20 bg-white border-b py-6 hidden md:block">
             <div class="container mx-auto flex justify-center gap-12 text-gray-600">
                 <div class="flex items-center gap-3"><div class="p-2 bg-orange-100 rounded-full text-orange-600"><i data-lucide="truck"></i></div><span>Fast Delivery</span></div>
@@ -76,10 +65,8 @@
         </div>
     </div>
 
-    <!-- ================= MAIN APP (Hidden initially) ================= -->
     <div id="main-app" class="hidden min-h-screen flex flex-col bg-gray-50">
         
-        <!-- App Header -->
         <header class="bg-white shadow-sm sticky top-0 z-30">
             <nav class="container mx-auto px-4 lg:px-8">
                 <div class="flex items-center justify-between h-16">
@@ -102,7 +89,6 @@
                                 <span id="user-name-display" class="text-sm font-medium hidden sm:block">User</span>
                                 <i data-lucide="chevron-down" class="h-4 w-4 text-gray-400"></i>
                             </button>
-                            <!-- Dropdown -->
                             <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-2 hidden group-hover:block border border-gray-100">
                                 <a href="#" onclick="logoutUser()" class="block px-4 py-2 text-sm text-red-600 hover:bg-red-50">Log Out</a>
                             </div>
@@ -117,9 +103,7 @@
             </nav>
         </header>
 
-        <!-- App Content -->
         <main class="container mx-auto p-4 lg:p-8 flex-grow">
-            <!-- Category Filters -->
             <div class="mb-8 overflow-x-auto pb-2 scrollbar-hide">
                 <div class="flex gap-3 min-w-max">
                     <button class="category-filter active px-5 py-2.5 rounded-full text-sm font-semibold transition shadow-sm border border-transparent bg-orange-600 text-white" data-category="all">All Items</button>
@@ -129,21 +113,15 @@
                 </div>
             </div>
 
-            <!-- Menu Grid -->
             <div id="menu-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                <!-- Items injected by JS -->
-            </div>
+                </div>
         </main>
     </div>
 
-    <!-- ================= MODALS ================= -->
-
-    <!-- Auth Modal Overlay -->
     <div id="auth-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative animate-pop">
             <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
             
-            <!-- Login Form -->
             <div id="login-form" class="p-8">
                 <h2 class="text-3xl font-bold mb-2 text-gray-800">Login</h2>
                 <p class="text-gray-500 mb-6 text-sm">Enter your details to continue ordering.</p>
@@ -166,7 +144,6 @@
                 </p>
             </div>
 
-            <!-- Register Form -->
             <div id="register-form" class="p-8 hidden">
                 <h2 class="text-2xl font-bold mb-2 text-gray-800">Sign up</h2>
                 <p class="text-gray-500 mb-6 text-sm">Create an account to start ordering.</p>
@@ -176,7 +153,15 @@
                         <input type="text" id="reg-mobile" required placeholder="Mobile Number" pattern="[0-9]{10}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none">
                         <input type="email" id="reg-email" required placeholder="Email Address" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none">
                         <input type="password" id="reg-password" required placeholder="Password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none">
-                        <textarea id="reg-address" placeholder="Delivery Address" rows="2" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"></textarea>
+                        
+                        <div class="relative">
+                            <textarea id="reg-address" rows="2" placeholder="Delivery Address" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none pr-12"></textarea>
+                            <button type="button" onclick="detectLocation('reg-address')" class="absolute bottom-2 right-2 text-orange-600 hover:text-orange-700 p-1 rounded-md hover:bg-orange-50 transition" title="Detect My Location">
+                                <i data-lucide="crosshair" class="h-5 w-5"></i>
+                            </button>
+                        </div>
+                        <input type="hidden" id="reg-lat">
+                        <input type="hidden" id="reg-lng">
                         
                         <button type="submit" class="w-full bg-orange-600 text-white font-bold py-3.5 rounded-lg hover:bg-orange-700 transition shadow-lg shadow-orange-500/30">Send OTP</button>
                     </div>
@@ -187,7 +172,6 @@
                 </p>
             </div>
 
-            <!-- OTP Form -->
             <div id="otp-form" class="p-8 hidden text-center">
                 <div class="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 text-green-600">
                     <i data-lucide="mail-check" class="h-8 w-8"></i>
@@ -204,7 +188,6 @@
         </div>
     </div>
 
-    <!-- Cart Sidebar -->
     <div id="cartOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden transition-opacity"></div>
     <div id="cartSidebar" class="fixed top-0 right-0 bottom-0 w-full max-w-md bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
         <div class="flex items-center justify-between p-5 border-b bg-gray-50">
@@ -213,15 +196,12 @@
         </div>
         
         <div id="cart-page-items-container" class="flex-grow overflow-y-auto p-5 space-y-4">
-            <!-- Items go here -->
-        </div>
+            </div>
         
         <div class="p-6 border-t bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
             <div id="cart-page-summary" class="space-y-3 mb-6 text-sm text-gray-600">
-                <!-- Summary goes here -->
-            </div>
+                </div>
             
-            <!-- Checkout Form Section -->
             <div class="border-t border-dashed border-gray-300 pt-4">
                 <h4 class="font-semibold mb-3 text-gray-800 flex items-center gap-2">
                     <i data-lucide="map-pin" class="h-4 w-4 text-orange-500"></i> Delivery Details
@@ -231,7 +211,13 @@
                         <input type="text" id="checkout-name" readonly class="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-500 cursor-not-allowed text-sm">
                         <input type="tel" id="checkout-mobile" readonly class="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-500 cursor-not-allowed text-sm">
                     </div>
-                    <textarea id="checkout-address" required rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-orange-500 outline-none" placeholder="Confirm Delivery Address"></textarea>
+                    
+                    <div class="relative">
+                        <textarea id="checkout-address" required rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-orange-500 outline-none pr-10" placeholder="Confirm Delivery Address"></textarea>
+                        <button type="button" onclick="detectLocation('checkout-address')" class="absolute bottom-2 right-2 text-orange-600 hover:text-orange-700 p-1 rounded-md hover:bg-orange-50 transition" title="Detect My Location">
+                            <i data-lucide="crosshair" class="h-5 w-5"></i>
+                        </button>
+                    </div>
                     
                     <button type="submit" id="payNowBtn" class="w-full mt-2 bg-orange-600 text-white font-bold py-3 rounded-lg hover:bg-orange-700 transition flex items-center justify-center gap-2 shadow-lg shadow-orange-500/30">
                         <span>Place Order</span>
@@ -242,7 +228,6 @@
         </div>
     </div>
 
-    <!-- Toast -->
     <div id="toast" class="hidden fixed bottom-6 right-6 bg-gray-800 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 z-[60] animate-slide-up">
         <i data-lucide="info" class="h-5 w-5 text-orange-400"></i>
         <p id="toast-message" class="font-medium"></p>
