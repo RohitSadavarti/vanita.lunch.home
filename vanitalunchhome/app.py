@@ -15,7 +15,18 @@ from email.mime.multipart import MIMEMultipart
 import firebase_admin
 from firebase_admin import credentials, messaging
 
-from twilio.rest import Client as TwilioClient
+def get_db_connection():
+    """Create and return a database connection using DATABASE_URL environment variable"""
+    database_url = os.environ.get('DATABASE_URL')
+    if not database_url:
+        raise Exception("DATABASE_URL environment variable not set")
+    
+    # Handle Render/Heroku postgres:// vs postgresql:// URL format
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    
+    conn = psycopg2.connect(database_url)
+    return conn
 
 # --- Securely Initialize Firebase Admin SDK ---
 try:
