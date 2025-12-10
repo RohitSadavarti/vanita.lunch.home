@@ -150,8 +150,8 @@
                 <form onsubmit="handleRegister(event)">
                     <div class="space-y-3">
                         <input type="text" id="reg-name" required placeholder="Full Name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none">
-                        <input type="text" id="reg-mobile" required placeholder="Mobile Number" pattern="[0-9]{10}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none">
-                        <input type="email" id="reg-email" required placeholder="Email Address" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none">
+                        <input type="text" id="reg-mobile" required placeholder="Mobile Number (10 digits)" pattern="[0-9]{10}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none">
+                        <input type="email" id="reg-email" placeholder="Email Address (Optional)" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none">
                         <input type="password" id="reg-password" required placeholder="Password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none">
                         
                         <div class="relative">
@@ -162,6 +162,26 @@
                         </div>
                         <input type="hidden" id="reg-lat">
                         <input type="hidden" id="reg-lng">
+                        
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <p class="text-sm font-medium text-gray-700 mb-2">Receive OTP via:</p>
+                            <div class="flex gap-4">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="otp-method" value="whatsapp" checked class="text-orange-600 focus:ring-orange-500">
+                                    <span class="flex items-center gap-1 text-sm">
+                                        <svg class="h-4 w-4 text-green-600" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                                        WhatsApp
+                                    </span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer opacity-50" title="SMS coming soon">
+                                    <input type="radio" name="otp-method" value="sms" disabled class="text-orange-600 focus:ring-orange-500">
+                                    <span class="flex items-center gap-1 text-sm">
+                                        <i data-lucide="message-square" class="h-4 w-4"></i>
+                                        SMS <span class="text-xs text-gray-400">(Coming soon)</span>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
                         
                         <button type="submit" class="w-full bg-orange-600 text-white font-bold py-3.5 rounded-lg hover:bg-orange-700 transition shadow-lg shadow-orange-500/30">Send OTP</button>
                     </div>
@@ -174,56 +194,62 @@
 
             <div id="otp-form" class="p-8 hidden text-center">
                 <div class="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 text-green-600">
-                    <i data-lucide="mail-check" class="h-8 w-8"></i>
+                    <svg class="h-8 w-8" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                 </div>
-                <h2 class="text-2xl font-bold mb-2">Verify Email</h2>
-                <p class="text-gray-500 mb-6 text-sm">We've sent a verification code to <span id="otp-email-display" class="font-semibold text-gray-800">your email</span></p>
+                <h2 class="text-2xl font-bold mb-2">Verify Mobile</h2>
+                <p class="text-gray-500 mb-2 text-sm">We've sent a verification code via WhatsApp to</p>
+                <p id="otp-mobile-display" class="font-semibold text-gray-800 mb-4">your mobile</p>
                 
                 <form onsubmit="handleVerifyOTP(event)">
                     <input type="text" id="otp-input" required placeholder="Enter 6-digit OTP" maxlength="6" class="w-full px-4 py-3 text-center text-2xl tracking-widest border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none mb-4 font-mono">
                     <button type="submit" class="w-full bg-green-600 text-white font-bold py-3.5 rounded-lg hover:bg-green-700 transition">Verify & Continue</button>
                 </form>
-                <button onclick="switchAuthTab('register')" class="mt-4 text-sm text-gray-500 hover:text-gray-700">Wrong email? Back</button>
+                
+                <div class="mt-4 space-y-2">
+                    <p class="text-sm text-gray-500">Didn't receive the code?</p>
+                    <button onclick="resendOTP()" id="resend-otp-btn" class="text-sm text-orange-600 font-semibold hover:underline">Resend OTP</button>
+                </div>
+                
+                <button onclick="switchAuthTab('register')" class="mt-4 text-sm text-gray-500 hover:text-gray-700">Wrong number? Go back</button>
             </div>
-        </div>
-    </div>
 
-    <div id="cartOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden transition-opacity"></div>
-    <div id="cartSidebar" class="fixed top-0 right-0 bottom-0 w-full max-w-md bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
-        <div class="flex items-center justify-between p-5 border-b bg-gray-50">
-            <h2 class="text-xl font-bold text-gray-800">Your Cart</h2>
-            <button id="closeCartBtn" class="p-2 rounded-full hover:bg-gray-200 text-gray-500"><i data-lucide="x" class="h-6 w-6"></i></button>
-        </div>
-        
-        <div id="cart-page-items-container" class="flex-grow overflow-y-auto p-5 space-y-4">
+        <div id="cartOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden transition-opacity"></div>
+        <div id="cartSidebar" class="fixed top-0 right-0 bottom-0 w-full max-w-md bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+            <div class="flex items-center justify-between p-5 border-b bg-gray-50">
+                <h2 class="text-xl font-bold text-gray-800">Your Cart</h2>
+                <button id="closeCartBtn" class="p-2 rounded-full hover:bg-gray-200 text-gray-500"><i data-lucide="x" class="h-6 w-6"></i></button>
             </div>
-        
-        <div class="p-6 border-t bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-            <div id="cart-page-summary" class="space-y-3 mb-6 text-sm text-gray-600">
+            
+            <div id="cart-page-items-container" class="flex-grow overflow-y-auto p-5 space-y-4">
                 </div>
             
-            <div class="border-t border-dashed border-gray-300 pt-4">
-                <h4 class="font-semibold mb-3 text-gray-800 flex items-center gap-2">
-                    <i data-lucide="map-pin" class="h-4 w-4 text-orange-500"></i> Delivery Details
-                </h4>
-                <form id="checkoutForm" class="space-y-3">
-                    <div class="grid grid-cols-2 gap-3">
-                        <input type="text" id="checkout-name" readonly class="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-500 cursor-not-allowed text-sm">
-                        <input type="tel" id="checkout-mobile" readonly class="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-500 cursor-not-allowed text-sm">
+            <div class="p-6 border-t bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+                <div id="cart-page-summary" class="space-y-3 mb-6 text-sm text-gray-600">
                     </div>
-                    
-                    <div class="relative">
-                        <textarea id="checkout-address" required rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-orange-500 outline-none pr-10" placeholder="Confirm Delivery Address"></textarea>
-                        <button type="button" onclick="detectLocation('checkout-address')" class="absolute bottom-2 right-2 text-orange-600 hover:text-orange-700 p-1 rounded-md hover:bg-orange-50 transition" title="Detect My Location">
-                            <i data-lucide="crosshair" class="h-5 w-5"></i>
+                
+                <div class="border-t border-dashed border-gray-300 pt-4">
+                    <h4 class="font-semibold mb-3 text-gray-800 flex items-center gap-2">
+                        <i data-lucide="map-pin" class="h-4 w-4 text-orange-500"></i> Delivery Details
+                    </h4>
+                    <form id="checkoutForm" class="space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <input type="text" id="checkout-name" readonly class="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-500 cursor-not-allowed text-sm">
+                            <input type="tel" id="checkout-mobile" readonly class="w-full px-3 py-2 border rounded-md bg-gray-50 text-gray-500 cursor-not-allowed text-sm">
+                        </div>
+                        
+                        <div class="relative">
+                            <textarea id="checkout-address" required rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-orange-500 outline-none pr-10" placeholder="Confirm Delivery Address"></textarea>
+                            <button type="button" onclick="detectLocation('checkout-address')" class="absolute bottom-2 right-2 text-orange-600 hover:text-orange-700 p-1 rounded-md hover:bg-orange-50 transition" title="Detect My Location">
+                                <i data-lucide="crosshair" class="h-5 w-5"></i>
+                            </button>
+                        </div>
+                        
+                        <button type="submit" id="payNowBtn" class="w-full mt-2 bg-orange-600 text-white font-bold py-3 rounded-lg hover:bg-orange-700 transition flex items-center justify-center gap-2 shadow-lg shadow-orange-500/30">
+                            <span>Place Order</span>
+                            <i data-lucide="arrow-right" class="h-4 w-4"></i>
                         </button>
-                    </div>
-                    
-                    <button type="submit" id="payNowBtn" class="w-full mt-2 bg-orange-600 text-white font-bold py-3 rounded-lg hover:bg-orange-700 transition flex items-center justify-center gap-2 shadow-lg shadow-orange-500/30">
-                        <span>Place Order</span>
-                        <i data-lucide="arrow-right" class="h-4 w-4"></i>
-                    </button>
-                </form>
+                    </form>
+                </div>
             </div>
         </div>
     </div>

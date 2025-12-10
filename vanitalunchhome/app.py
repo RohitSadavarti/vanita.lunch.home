@@ -15,6 +15,9 @@ from email.mime.multipart import MIMEMultipart
 import firebase_admin
 from firebase_admin import credentials, messaging
 
+import pywhatkit
+import threading
+
 # --- Securely Initialize Firebase Admin SDK ---
 try:
     firebase_key_json = os.environ.get('FIREBASE_KEY')
@@ -39,17 +42,8 @@ SMTP_PASSWORD = os.environ.get('MAIL_PASSWORD')
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 
-# --- Database Connection ---
-def get_db_connection():
-    conn = psycopg2.connect(
-        host=os.environ.get('DB_HOST'),
-        port=os.environ.get('DB_PORT'),
-        database=os.environ.get('DB_NAME'),
-        user=os.environ.get('DB_USER'),
-        password=os.environ.get('DB_PASSWORD'),
-        sslmode='require'
-    )
-    return conn
+SMS_API_KEY = os.environ.get('SMS_API_KEY')  # For future SMS implementation
+SMS_SENDER_ID = os.environ.get('SMS_SENDER_ID')  # For future SMS implementation
 
 # --- Helper: Send Email ---
 def send_email(to_email, subject, body):
@@ -75,6 +69,69 @@ def send_email(to_email, subject, body):
         print(f"Failed to send email: {e}")
         return False
 
+def send_otp_whatsapp(mobile_number, otp):
+    """Send OTP via WhatsApp using pywhatkit (opens browser tab)"""
+    try:
+        # Format the mobile number (ensure it has country code)
+        formatted_number = mobile_number.strip()
+        if not formatted_number.startswith('+'):
+            if formatted_number.startswith('91'):
+                formatted_number = '+' + formatted_number
+            else:
+                formatted_number = '+91' + formatted_number
+        
+        message = f"🍽️ *Vanita Lunch Home*\n\nYour verification code is: *{otp}*\n\nThis code is valid for 10 minutes. Do not share it with anyone."
+        
+        # Run in a separate thread to avoid blocking the request
+        def send_whatsapp():
+            try:
+                pywhatkit.sendwhatmsg_instantly(
+                    formatted_number,
+                    message,
+                    wait_time=15,  # Wait for WhatsApp Web to load
+                    tab_close=True  # Auto close tab after sending
+                )
+                print(f"WhatsApp OTP sent successfully to {formatted_number}")
+            except Exception as e:
+                print(f"Error sending WhatsApp message: {e}")
+        
+        # Start thread for sending message
+        thread = threading.Thread(target=send_whatsapp)
+        thread.start()
+        
+        print(f"WhatsApp OTP initiated for {formatted_number}. OTP: {otp}")
+        return True
+        
+    except Exception as e:
+        print(f"Failed to send WhatsApp OTP: {e}")
+        print(f"DEBUG: OTP for {mobile_number} is ===> {otp} <===")
+        return False
+
+def send_otp_sms(mobile_number, otp):
+    """Send OTP via SMS - PLACEHOLDER FOR FUTURE IMPLEMENTATION"""
+    if not SMS_API_KEY:
+        print(f"DEBUG: SMS service not configured. SMS OTP to {mobile_number} not sent.")
+        print(f"DEBUG: OTP for {mobile_number} is ===> {otp} <===")
+        return False
+    
+    try:
+        # TODO: Implement SMS sending when service is enabled
+        # Example with a generic SMS API:
+        # response = requests.post('https://sms-api.example.com/send', {
+        #     'api_key': SMS_API_KEY,
+        #     'sender': SMS_SENDER_ID,
+        #     'to': mobile_number,
+        #     'message': f'Vanita Lunch Home: Your OTP is {otp}. Valid for 10 minutes.'
+        # })
+        
+        print(f"SMS OTP would be sent to {mobile_number} when service is enabled")
+        print(f"DEBUG: OTP for {mobile_number} is ===> {otp} <===")
+        return False  # Return False until SMS is implemented
+        
+    except Exception as e:
+        print(f"Failed to send SMS OTP: {e}")
+        return False
+
 # --- ROUTES ---
 
 @app.route('/')
@@ -90,6 +147,7 @@ def register_user():
         mobile = data.get('mobile')
         email = data.get('email', '').strip().lower()
         password = data.get('password')
+        otp_method = data.get('otp_method', 'whatsapp')  # Default to WhatsApp
         
         # Optional fields
         address = data.get('address', '')
@@ -104,10 +162,11 @@ def register_user():
         if cur.fetchone():
             return jsonify({'success': False, 'error': 'Mobile number already registered'}), 400
 
-        # 2. CHECK IF EMAIL EXISTS
-        cur.execute("SELECT id FROM vlh_user WHERE email = %s", (email,))
-        if cur.fetchone():
-            return jsonify({'success': False, 'error': 'Email address already registered'}), 400
+        # 2. CHECK IF EMAIL EXISTS (only if email provided)
+        if email:
+            cur.execute("SELECT id FROM vlh_user WHERE email = %s", (email,))
+            if cur.fetchone():
+                return jsonify({'success': False, 'error': 'Email address already registered'}), 400
 
         # 3. IF CLEAR, PROCEED TO INSERT
         hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
@@ -123,21 +182,75 @@ def register_user():
         user_id = cur.fetchone()[0]
         conn.commit()
         
-        # Send OTP
-        print(f"DEBUG: OTP for {email} is ===> {otp} <===") 
-        email_body = f"""
-        <h2>Welcome to Vanita Lunch Home!</h2>
-        <p>Thank you for registering. Please use the OTP below to verify your email address:</p>
-        <h1 style="color: #ff8100;">{otp}</h1>
-        <p>This OTP is valid for 10 minutes.</p>
-        """
-        send_email(email, "Verify Your Email - Vanita Lunch Home", email_body)
-
-        return jsonify({'success': True, 'message': 'User registered. Verify OTP.', 'userId': user_id, 'email': email})
+        print(f"DEBUG: OTP for {mobile} is ===> {otp} <===")
+        
+        otp_sent = False
+        if otp_method == 'whatsapp':
+            otp_sent = send_otp_whatsapp(mobile, otp)
+        elif otp_method == 'sms':
+            otp_sent = send_otp_sms(mobile, otp)
+        
+        return jsonify({
+            'success': True, 
+            'message': 'User registered. Verify OTP sent to your WhatsApp.', 
+            'userId': user_id, 
+            'mobile': mobile,  # Return mobile instead of email for verification
+            'otp_method': otp_method,
+            'otp_sent': otp_sent
+        })
 
     except Exception as e:
         if conn: conn.rollback()
         print(f"Register Error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if conn: conn.close()
+
+@app.route('/api/resend-otp', methods=['POST'])
+def resend_otp():
+    conn = None
+    try:
+        data = request.get_json()
+        mobile = data.get('mobile', '').strip()
+        otp_method = data.get('otp_method', 'whatsapp')
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Generate new OTP
+        new_otp = str(random.randint(100000, 999999))
+        
+        # Update OTP in database
+        cur.execute("""
+            UPDATE vlh_user 
+            SET otp_code = %s, otp_created_at = NOW() 
+            WHERE mobile_number = %s AND email_verified = FALSE
+            RETURNING id
+        """, (new_otp, mobile))
+        
+        result = cur.fetchone()
+        if not result:
+            return jsonify({'success': False, 'error': 'User not found or already verified'}), 400
+        
+        conn.commit()
+        
+        # Send OTP
+        print(f"DEBUG: New OTP for {mobile} is ===> {new_otp} <===")
+        
+        otp_sent = False
+        if otp_method == 'whatsapp':
+            otp_sent = send_otp_whatsapp(mobile, new_otp)
+        elif otp_method == 'sms':
+            otp_sent = send_otp_sms(mobile, new_otp)
+        
+        return jsonify({
+            'success': True, 
+            'message': f'OTP resent via {otp_method.upper()}',
+            'otp_sent': otp_sent
+        })
+        
+    except Exception as e:
+        print(f"Resend OTP Error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         if conn: conn.close()
@@ -147,28 +260,35 @@ def verify_otp():
     conn = None
     try:
         data = request.get_json()
-        email = data.get('email', '').strip().lower()
+        mobile = data.get('mobile', '').strip()
         otp_input = str(data.get('otp', '')).strip()
         
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Fetch user details along with OTP verification
         cur.execute("""
-            SELECT otp_code, id, full_name, mobile_number, address_full 
-            FROM vlh_user WHERE email = %s
-        """, (email,))
+            SELECT otp_code, id, full_name, mobile_number, email, address_full, otp_created_at
+            FROM vlh_user WHERE mobile_number = %s
+        """, (mobile,))
         result = cur.fetchone()
         
         if result:
             db_otp = str(result[0]).strip()
             user_id = result[1]
             full_name = result[2]
-            mobile = result[3]
-            address = result[4]
+            mobile_number = result[3]
+            email = result[4]
+            address = result[5]
+            otp_created_at = result[6]
+            
+            # Check if OTP is expired (10 minutes)
+            if otp_created_at:
+                otp_age = datetime.now(otp_created_at.tzinfo) - otp_created_at if otp_created_at.tzinfo else datetime.now() - otp_created_at
+                if otp_age.total_seconds() > 600:  # 10 minutes
+                    return jsonify({'success': False, 'error': 'OTP expired. Please request a new one.'}), 400
             
             if db_otp == otp_input:
-                cur.execute("UPDATE vlh_user SET email_verified = TRUE, otp_code = NULL WHERE email = %s", (email,))
+                cur.execute("UPDATE vlh_user SET email_verified = TRUE, otp_code = NULL WHERE mobile_number = %s", (mobile,))
                 conn.commit()
                 
                 # Return user data on successful verification for auto-login
@@ -176,14 +296,14 @@ def verify_otp():
                     'id': user_id,
                     'name': full_name,
                     'email': email,
-                    'mobile': mobile,
+                    'mobile': mobile_number,
                     'address': address
                 }
-                return jsonify({'success': True, 'message': 'Email verified!', 'user': user_data})
+                return jsonify({'success': True, 'message': 'Mobile verified successfully!', 'user': user_data})
             else:
                 return jsonify({'success': False, 'error': 'Invalid OTP'}), 400
         else:
-            return jsonify({'success': False, 'error': 'Email not found'}), 400
+            return jsonify({'success': False, 'error': 'Mobile number not found'}), 400
             
     except Exception as e:
         print(f"Verify Error: {e}")
