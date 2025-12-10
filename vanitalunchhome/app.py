@@ -15,8 +15,7 @@ from email.mime.multipart import MIMEMultipart
 import firebase_admin
 from firebase_admin import credentials, messaging
 
-import pywhatkit
-import threading
+from twilio.rest import Client as TwilioClient
 
 # --- Securely Initialize Firebase Admin SDK ---
 try:
@@ -42,8 +41,23 @@ SMTP_PASSWORD = os.environ.get('MAIL_PASSWORD')
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 
+TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
+TWILIO_WHATSAPP_NUMBER = os.environ.get('TWILIO_WHATSAPP_NUMBER', 'whatsapp:+14155238886')  # Twilio Sandbox default
+
 SMS_API_KEY = os.environ.get('SMS_API_KEY')  # For future SMS implementation
 SMS_SENDER_ID = os.environ.get('SMS_SENDER_ID')  # For future SMS implementation
+
+# Initialize Twilio client
+twilio_client = None
+if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
+    try:
+        twilio_client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        print("Twilio client initialized successfully.")
+    except Exception as e:
+        print(f"Error initializing Twilio client: {e}")
+else:
+    print("WARNING: Twilio credentials not found. WhatsApp OTP disabled.")
 
 # --- Helper: Send Email ---
 def send_email(to_email, subject, body):
@@ -70,7 +84,12 @@ def send_email(to_email, subject, body):
         return False
 
 def send_otp_whatsapp(mobile_number, otp):
-    """Send OTP via WhatsApp using pywhatkit (opens browser tab)"""
+    """Send OTP via WhatsApp using Twilio API"""
+    if not twilio_client:
+        print(f"DEBUG: Twilio not configured. WhatsApp OTP to {mobile_number} not sent.")
+        print(f"DEBUG: OTP for {mobile_number} is ===> {otp} <===")
+        return False
+        
     try:
         # Format the mobile number (ensure it has country code)
         formatted_number = mobile_number.strip()
@@ -80,26 +99,18 @@ def send_otp_whatsapp(mobile_number, otp):
             else:
                 formatted_number = '+91' + formatted_number
         
-        message = f"🍽️ *Vanita Lunch Home*\n\nYour verification code is: *{otp}*\n\nThis code is valid for 10 minutes. Do not share it with anyone."
+        # Add whatsapp: prefix for Twilio
+        whatsapp_to = f"whatsapp:{formatted_number}"
         
-        # Run in a separate thread to avoid blocking the request
-        def send_whatsapp():
-            try:
-                pywhatkit.sendwhatmsg_instantly(
-                    formatted_number,
-                    message,
-                    wait_time=15,  # Wait for WhatsApp Web to load
-                    tab_close=True  # Auto close tab after sending
-                )
-                print(f"WhatsApp OTP sent successfully to {formatted_number}")
-            except Exception as e:
-                print(f"Error sending WhatsApp message: {e}")
+        message_body = f"🍽️ *Vanita Lunch Home*\n\nYour verification code is: *{otp}*\n\nThis code is valid for 10 minutes. Do not share it with anyone."
         
-        # Start thread for sending message
-        thread = threading.Thread(target=send_whatsapp)
-        thread.start()
+        message = twilio_client.messages.create(
+            body=message_body,
+            from_=TWILIO_WHATSAPP_NUMBER,
+            to=whatsapp_to
+        )
         
-        print(f"WhatsApp OTP initiated for {formatted_number}. OTP: {otp}")
+        print(f"WhatsApp OTP sent successfully to {formatted_number}. SID: {message.sid}")
         return True
         
     except Exception as e:
