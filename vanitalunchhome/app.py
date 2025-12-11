@@ -11,6 +11,7 @@ from flask_cors import CORS
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import threading  # Added for background Firebase notifications
 
 # --- Firebase Imports ---
 import firebase_admin
@@ -401,12 +402,15 @@ def place_order():
         name = data.get('name', '').strip()
         mobile = data.get('mobile', '').strip()
         address = data.get('address', '').strip()
-        email = data.get('email', '').strip() # New field for email notification
+        email = data.get('email', '').strip()
         cart_items = data.get('cart_items', [])
         
-        # Validation
-        if not name or not mobile:
-            return jsonify({'success': False, 'error': 'Name and Mobile are required'}), 400
+        if not name:
+            return jsonify({'success': False, 'error': 'Customer name is required'}), 400
+        if not mobile:
+            return jsonify({'success': False, 'error': 'Mobile number is required'}), 400
+        if not address:
+            return jsonify({'success': False, 'error': 'Address is required'}), 400
         if not cart_items or not isinstance(cart_items, list) or len(cart_items) == 0:
             return jsonify({'success': False, 'error': 'Cart is empty'}), 400
         
@@ -415,30 +419,35 @@ def place_order():
         
         validated_items = []
         subtotal = 0
-        items_html_list = "" # For email
+        items_html_list = ""
         
         for cart_item in cart_items:
             item_id = cart_item.get('id')
             quantity = int(cart_item.get('quantity', 0))
             
-            if quantity <= 0: continue
+            if not item_id:
+                return jsonify({'error': 'Item ID is missing'}), 400
+            if quantity <= 0:
+                return jsonify({'error': f'Invalid quantity for item ID {item_id}'}), 400
             
             cur.execute("SELECT id, item_name, price FROM menu_items WHERE id = %s", (item_id,))
             menu_item = cur.fetchone()
             
-            if menu_item:
-                actual_price = float(menu_item[2])
-                item_total = actual_price * quantity
-                subtotal += item_total
-                
-                validated_items.append({
-                    'id': menu_item[0],
-                    'name': menu_item[1],
-                    'price': actual_price,
-                    'quantity': quantity,
-                })
-                
-                items_html_list += f"<li>{quantity} x {menu_item[1]} - ₹{item_total:.2f}</li>"
+            if not menu_item:
+                return jsonify({'error': f'Menu item with ID {item_id} not found'}), 400
+            
+            actual_price = float(menu_item[2])
+            item_total = actual_price * quantity
+            subtotal += item_total
+            
+            validated_items.append({
+                'id': menu_item[0],
+                'name': menu_item[1],
+                'price': actual_price,
+                'quantity': quantity,
+            })
+            
+            items_html_list += f"<li>{quantity} x {menu_item[1]} - ₹{item_total:.2f}</li>"
         
         total_price = subtotal
         order_id = str(random.randint(10000000, 99999999))
@@ -446,31 +455,34 @@ def place_order():
         now_ist = datetime.now(ist_tz)
         now_ist_str = now_ist.strftime('%Y-%m-%d %H:%M:%S.%f')
 
-        # Insert order into database
         cur.execute("""
-            INSERT INTO orders (order_id, customer_name, customer_mobile, items, subtotal, total_price, status, payment_method, created_at, updated_at, order_status, order_placed_by)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO orders (order_id, customer_name, customer_mobile, customer_address, items, subtotal, total_price, status, payment_method, created_at, updated_at, order_status, order_placed_by)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         """, (
-            order_id, name, mobile, json.dumps(validated_items), subtotal, total_price, 
+            order_id, name, mobile, address, json.dumps(validated_items), subtotal, total_price, 
             'confirmed', 'Cash', now_ist_str, now_ist_str, 'open', 'customer'
         ))
         
         new_order_db_id = cur.fetchone()[0]
         conn.commit()
 
-        # 1. Send Firebase Notification to Admin
-        if firebase_admin._apps:
+        def send_firebase_notification_async(order_db_id, order_id, name, mobile, total_price, validated_items):
+            """Sends Firebase notification in a background thread to prevent blocking the UI."""
+            if not firebase_admin._apps:
+                return
+
             try:
                 message_data = {
-                    'id': str(new_order_db_id),
+                    'id': str(order_db_id),
                     'order_id': order_id,
                     'customer_name': name,
+                    'customer_phone': mobile,
                     'total_price': str(total_price),
                     'items': json.dumps(validated_items),
-                    'order_source': 'customer',
-                    'status': 'pending'
+                    'order_source': 'customer'
                 }
+
                 message = messaging.Message(
                     notification=messaging.Notification(
                         title='🔔 New Customer Order!',
@@ -479,11 +491,19 @@ def place_order():
                     data=message_data,
                     topic='new_orders'
                 )
-                messaging.send(message)
+                response = messaging.send(message)
+                print(f'✅ Successfully sent notification for order {order_id}:', response)
             except Exception as e:
-                print(f"Error sending Firebase notification: {e}")
+                print(f"❌ Error sending Firebase notification for order {order_id}: {e}")
 
-        # 2. Send Email Notification to Customer
+        if firebase_admin._apps:
+            thread = threading.Thread(
+                target=send_firebase_notification_async,
+                args=(new_order_db_id, order_id, name, mobile, total_price, validated_items)
+            )
+            thread.daemon = True
+            thread.start()
+
         if email:
             email_subject = f"Order Confirmation - #{order_id}"
             email_body = f"""
@@ -514,18 +534,24 @@ def place_order():
         return jsonify({
             'success': True, 
             'message': f'Order placed successfully! Order ID: {order_id}',
-            'order_id': order_id
+            'order_id': order_id,
+            'total_price': total_price
         })
         
     except json.JSONDecodeError:
         return jsonify({'error': 'Invalid JSON data'}), 400
     except Exception as e:
-        if conn: conn.rollback()
+        if conn:
+            conn.rollback()
         print(f"Error in place_order: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': f'Failed to place order: {str(e)}'}), 500
     finally:
-        if cur: cur.close()
-        if conn: conn.close()
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 
 @app.route('/api/customer-orders', methods=['GET'])
 def get_customer_orders():
