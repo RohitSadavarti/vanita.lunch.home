@@ -558,25 +558,64 @@ document.addEventListener("DOMContentLoaded", () => {
             document.body.style.overflow = ""
           }
 
-          showToast(`Order placed successfully! Order ID: ${result.order_id}`, "success")
-
-          // Reload page after 2 seconds to show fresh state
-          setTimeout(() => {
-            window.location.reload()
-          }, 2000)
+          showOrderSuccessModal(
+            result.order_id,
+            result.total_price || orderData.cart_items.reduce((sum, item) => sum + item.quantity * 50, 0),
+          )
         } else {
           showToast(result.error || "Failed to place order", "error")
+          btn.innerHTML = originalText
+          btn.disabled = false
         }
       } catch (error) {
         console.error(error)
         showToast("Network error", "error")
-      } finally {
         btn.innerHTML = originalText
         btn.disabled = false
       }
     })
   }
 })
+
+// --- NEW FUNCTION TO SHOW ORDER SUCCESS MODAL ---
+
+function showOrderSuccessModal(orderId, totalPrice) {
+  const modal = document.createElement("div")
+  modal.id = "order-success-modal"
+  modal.className = "fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 text-center animate-pop">
+      <div class="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 text-green-600">
+        <i data-lucide="check" class="h-8 w-8"></i>
+      </div>
+      <h2 class="text-2xl font-bold mb-2 text-gray-800">Order Placed Successfully!</h2>
+      <p class="text-gray-600 mb-4">Your order has been confirmed and will be prepared soon.</p>
+      
+      <div class="bg-gray-50 p-4 rounded-lg mb-6">
+        <p class="text-sm text-gray-600 mb-1">Order ID</p>
+        <p class="text-lg font-bold text-gray-800">#${orderId}</p>
+        <p class="text-sm text-gray-600 mt-3 mb-1">Total Amount</p>
+        <p class="text-lg font-bold text-orange-600">₹${totalPrice || 0}</p>
+      </div>
+      
+      <div class="space-y-2">
+        <button onclick="closeOrderModal(); viewMyOrders()" class="w-full bg-orange-600 text-white font-bold py-3 rounded-lg hover:bg-orange-700 transition">View Order Status</button>
+        <button onclick="closeOrderModal()" class="w-full bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 transition">Continue Shopping</button>
+      </div>
+    </div>
+  `
+  document.body.appendChild(modal)
+
+  // Reinitialize Lucide icons
+  if (window.lucide) {
+    lucide.createIcons()
+  }
+}
+
+function closeOrderModal() {
+  const modal = document.getElementById("order-success-modal")
+  if (modal) modal.remove()
+}
 
 // --- UTILS ---
 
@@ -686,3 +725,79 @@ function scrollToSection(id) {
 }
 
 window.scrollToSection = scrollToSection
+
+// --- NEW FUNCTION TO VIEW ORDER STATUS ---
+
+async function viewMyOrders() {
+  const ordersModal = document.getElementById("orders-modal")
+  const ordersList = document.getElementById("orders-list")
+
+  if (!currentUser) {
+    showToast("Please login to view orders", "error")
+    return
+  }
+
+  ordersModal.classList.remove("hidden")
+  ordersList.innerHTML =
+    '<div class="flex items-center justify-center h-32"><p class="text-gray-500">Loading...</p></div>'
+
+  try {
+    const response = await fetch(`/api/customer-orders?mobile=${encodeURIComponent(currentUser.mobile)}`)
+    const result = await response.json()
+
+    if (result.success && result.orders.length > 0) {
+      const html = result.orders
+        .map(
+          (order) => `
+        <div class="border border-gray-200 rounded-lg p-4 mb-4 hover:border-orange-300 transition">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-bold text-gray-800">Order #${order.order_id}</h3>
+            <span class="text-xs font-semibold px-3 py-1 rounded-full ${
+              order.order_status === "open"
+                ? "bg-blue-100 text-blue-700"
+                : order.order_status === "ready"
+                  ? "bg-green-100 text-green-700"
+                  : order.order_status === "pickedup"
+                    ? "bg-gray-100 text-gray-700"
+                    : "bg-gray-100 text-gray-700"
+            }">
+              ${
+                order.order_status === "open"
+                  ? "Preparing"
+                  : order.order_status === "ready"
+                    ? "Ready for Pickup"
+                    : order.order_status === "pickedup"
+                      ? "Completed"
+                      : order.order_status
+              }
+            </span>
+          </div>
+          <p class="text-sm text-gray-600 mb-2">${new Date(order.created_at).toLocaleString()}</p>
+          <p class="text-sm text-gray-700 mb-2"><strong>Items:</strong> ${order.items_list}</p>
+          <p class="text-lg font-bold text-orange-600">Total: ₹${Number.parseFloat(order.total_price).toFixed(2)}</p>
+        </div>
+      `,
+        )
+        .join("")
+      ordersList.innerHTML = html
+    } else {
+      ordersList.innerHTML =
+        '<div class="flex items-center justify-center h-32"><p class="text-gray-500">No orders found</p></div>'
+    }
+  } catch (error) {
+    console.error("Error fetching orders:", error)
+    ordersList.innerHTML =
+      '<div class="flex items-center justify-center h-32"><p class="text-red-500">Error loading orders</p></div>'
+  }
+
+  if (window.lucide) {
+    lucide.createIcons()
+  }
+}
+
+function closeOrdersModal() {
+  document.getElementById("orders-modal").classList.add("hidden")
+}
+
+window.viewMyOrders = viewMyOrders
+window.closeOrdersModal = closeOrdersModal
