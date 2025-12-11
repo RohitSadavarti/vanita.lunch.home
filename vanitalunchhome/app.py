@@ -106,20 +106,29 @@ def send_otp_whatsapp(mobile_number, otp):
     try:
         # Format the mobile number (ensure it has country code)
         formatted_number = mobile_number.strip()
-        if not formatted_number.startswith('+'):
-            if formatted_number.startswith('91'):
-                formatted_number = '+' + formatted_number
-            else:
-                formatted_number = '+91' + formatted_number
         
-        # Add whatsapp: prefix for Twilio
-        whatsapp_to = f"whatsapp:{formatted_number}"
+        # Remove any existing prefix
+        formatted_number = formatted_number.replace('whatsapp:', '').replace('+', '')
         
-        message_body = f"🍽️ *Vanita Lunch Home*\n\nYour verification code is: *{otp}*\n\nThis code is valid for 10 minutes. Do not share it with anyone."
+        # Add country code if not present (assuming India +91)
+        if not formatted_number.startswith('91'):
+            formatted_number = '91' + formatted_number
+        
+        # Add + and whatsapp: prefix for Twilio WhatsApp
+        whatsapp_to = f"whatsapp:+{formatted_number}"
+        
+        # Ensure from number has whatsapp: prefix
+        from_number = TWILIO_WHATSAPP_NUMBER
+        if not from_number.startswith('whatsapp:'):
+            from_number = f"whatsapp:{from_number}"
+        
+        print(f"DEBUG: Sending WhatsApp OTP from {from_number} to {whatsapp_to}")
+        
+        message_body = f"Your Vanita Lunch Home verification code is: {otp}\n\nThis code is valid for 10 minutes. Do not share it with anyone."
         
         message = twilio_client.messages.create(
             body=message_body,
-            from_=TWILIO_WHATSAPP_NUMBER,
+            from_=from_number,
             to=whatsapp_to
         )
         
