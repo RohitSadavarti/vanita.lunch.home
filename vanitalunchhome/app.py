@@ -456,7 +456,7 @@ def place_order():
         now_ist_str = now_ist.strftime('%Y-%m-%d %H:%M:%S.%f')
 
         cur.execute("""
-            INSERT INTO orders (order_id, customer_name, customer_mobile, customer_address, items, subtotal, total_price, status, payment_method, created_at, updated_at, order_status, order_placed_by)
+            INSERT INTO orders (order_id, customer_name, customer_mobile, address_full, items, subtotal, total_price, status, payment_method, created_at, updated_at, order_status, order_placed_by)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         """, (
