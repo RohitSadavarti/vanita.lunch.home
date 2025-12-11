@@ -540,13 +540,19 @@ document.addEventListener("DOMContentLoaded", () => {
       const orderData = {
         name: currentUser.name,
         mobile: currentUser.mobile,
-        email: currentUser.email,
         address: customerAddress,
-        cart_items: cart.map((i) => ({ id: i.id, quantity: i.quantity })),
+        items: cart.map((i) => ({
+          id: i.id,
+          name: i.name,
+          price: i.price,
+          quantity: i.quantity,
+        })),
+        subtotal: calculateSubtotal(),
+        total_price: calculateTotal(),
       }
 
       try {
-        const response = await fetch("/api/order", {
+        const response = await fetch("/place-order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(orderData),
@@ -555,8 +561,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const result = await response.json()
 
         if (!response.ok) {
-          throw new Error(result.error || "Failed to place order.")
+          throw new Error(result.message || "Failed to place order.")
         }
+
+        btnSpan.textContent = originalText
+        submitBtn.disabled = false
 
         cart = []
         localStorage.removeItem("vanita_cart")
@@ -574,7 +583,7 @@ document.addEventListener("DOMContentLoaded", () => {
         showOrderSuccessModal(result.order_id, result.total_price || 0)
       } catch (error) {
         console.error("[v0] Order error:", error)
-        showToast(error.message || "Server connection failed", "error")
+        showToast(error.message, "error")
       } finally {
         if (btnSpan) btnSpan.textContent = originalText
         if (submitBtn) submitBtn.disabled = false
@@ -582,6 +591,14 @@ document.addEventListener("DOMContentLoaded", () => {
     })
   }
 })
+
+function calculateSubtotal() {
+  return cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+}
+
+function calculateTotal() {
+  return cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+}
 
 // --- NEW FUNCTION TO SHOW ORDER SUCCESS MODAL ---
 
