@@ -807,3 +807,29 @@ function closeOrdersModal() {
 
 window.viewMyOrders = viewMyOrders
 window.closeOrdersModal = closeOrdersModal
+
+// --- PROFILE MENU LOGIC ---
+// Added to handle the click-based dropdown toggle
+
+function toggleProfileMenu(e) {
+    if (e) e.stopPropagation(); // Prevent the click from bubbling to the document
+    const menu = document.getElementById('profile-dropdown');
+    if (menu) {
+        menu.classList.toggle('hidden');
+    }
+}
+
+// Close menu when clicking anywhere else on the page
+document.addEventListener('click', function(e) {
+    const menu = document.getElementById('profile-dropdown');
+    // Select the button that triggers the toggle
+    const button = document.querySelector('button[onclick="toggleProfileMenu(event)"]');
+    
+    // If menu exists, is currently open (not hidden), and the click was NOT inside the menu AND NOT on the button
+    if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target) && (!button || !button.contains(e.target))) {
+        menu.classList.add('hidden');
+    }
+});
+
+// Expose to window so onclick works
+window.toggleProfileMenu = toggleProfileMenu;
