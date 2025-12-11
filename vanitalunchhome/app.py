@@ -527,6 +527,64 @@ def place_order():
         if cur: cur.close()
         if conn: conn.close()
 
+@app.route('/api/customer-orders', methods=['GET'])
+def get_customer_orders():
+    conn = None
+    try:
+        mobile = request.args.get('mobile', '').strip()
+        
+        if not mobile:
+            return jsonify({'success': False, 'error': 'Mobile number required'}), 400
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Fetch all orders for the customer
+        cur.execute("""
+            SELECT id, order_id, customer_name, customer_mobile, items, subtotal, total_price, 
+                   status, payment_method, created_at, order_status
+            FROM orders 
+            WHERE customer_mobile = %s 
+            ORDER BY created_at DESC
+            LIMIT 50
+        """, (mobile,))
+        
+        orders = cur.fetchall()
+        
+        if not orders:
+            return jsonify({'success': True, 'orders': []})
+        
+        orders_data = []
+        for order in orders:
+            try:
+                items = json.loads(order[4]) if isinstance(order[4], str) else order[4]
+                items_list = ', '.join([f"{item.get('quantity', 1)}x {item.get('name', 'Item')}" for item in items])
+            except:
+                items_list = 'Items'
+            
+            orders_data.append({
+                'id': order[0],
+                'order_id': order[1],
+                'customer_name': order[2],
+                'customer_mobile': order[3],
+                'items_list': items_list,
+                'subtotal': float(order[5]),
+                'total_price': float(order[6]),
+                'status': order[7],
+                'payment_method': order[8],
+                'created_at': order[9].isoformat() if order[9] else None,
+                'order_status': order[10]
+            })
+        
+        return jsonify({'success': True, 'orders': orders_data})
+    
+    except Exception as e:
+        print(f"Error fetching customer orders: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV') == 'development'
