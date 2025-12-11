@@ -516,18 +516,32 @@ document.addEventListener("DOMContentLoaded", () => {
         return
       }
 
-      if (cart.length === 0) return showToast("Cart is empty", "error")
+      if (cart.length === 0) {
+        showToast("Your cart is empty. Please add items first.", "error")
+        return
+      }
 
-      const btn = document.getElementById("payNowBtn")
-      const originalText = btn.innerHTML
-      btn.innerHTML = "Processing..."
-      btn.disabled = true
+      const submitBtn = document.getElementById("payNowBtn")
+      const btnSpan = submitBtn.querySelector("span")
+      const originalText = btnSpan.textContent
+
+      btnSpan.textContent = "Placing..."
+      submitBtn.disabled = true
+
+      const customerAddress = document.getElementById("checkout-address").value.trim()
+
+      if (!customerAddress) {
+        showToast("Please enter a delivery address.", "error")
+        btnSpan.textContent = originalText
+        submitBtn.disabled = false
+        return
+      }
 
       const orderData = {
         name: currentUser.name,
         mobile: currentUser.mobile,
         email: currentUser.email,
-        address: document.getElementById("checkout-address").value,
+        address: customerAddress,
         cart_items: cart.map((i) => ({ id: i.id, quantity: i.quantity })),
       }
 
@@ -537,41 +551,33 @@ document.addEventListener("DOMContentLoaded", () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(orderData),
         })
+
         const result = await response.json()
 
-        if (result.success) {
-          cart = []
-          localStorage.removeItem("vanita_cart")
-
-          // Reset checkout form
-          checkoutForm.reset()
-
-          // Update UI immediately
-          updateCartUI()
-
-          // Close cart sidebar
-          const sidebar = document.getElementById("cartSidebar")
-          const overlay = document.getElementById("cartOverlay")
-          if (sidebar && overlay) {
-            sidebar.classList.add("translate-x-full")
-            overlay.classList.add("hidden")
-            document.body.style.overflow = ""
-          }
-
-          showOrderSuccessModal(
-            result.order_id,
-            result.total_price || orderData.cart_items.reduce((sum, item) => sum + item.quantity * 50, 0),
-          )
-        } else {
-          showToast(result.error || "Failed to place order", "error")
-          btn.innerHTML = originalText
-          btn.disabled = false
+        if (!response.ok) {
+          throw new Error(result.error || "Failed to place order.")
         }
+
+        cart = []
+        localStorage.removeItem("vanita_cart")
+        checkoutForm.reset()
+        updateCartUI()
+
+        const sidebar = document.getElementById("cartSidebar")
+        const overlay = document.getElementById("cartOverlay")
+        if (sidebar && overlay) {
+          sidebar.classList.add("translate-x-full")
+          overlay.classList.add("hidden")
+          document.body.style.overflow = ""
+        }
+
+        showOrderSuccessModal(result.order_id, result.total_price || 0)
       } catch (error) {
-        console.error(error)
-        showToast("Network error", "error")
-        btn.innerHTML = originalText
-        btn.disabled = false
+        console.error("[v0] Order error:", error)
+        showToast(error.message || "Server connection failed", "error")
+      } finally {
+        if (btnSpan) btnSpan.textContent = originalText
+        if (submitBtn) submitBtn.disabled = false
       }
     })
   }
