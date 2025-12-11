@@ -5,6 +5,7 @@ import bcrypt
 import smtplib
 import random
 import json
+import requests  # Added for Green API HTTP requests
 from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 from datetime import datetime, timedelta
@@ -15,7 +16,6 @@ from email.mime.multipart import MIMEMultipart
 import firebase_admin
 from firebase_admin import credentials, messaging
 
-from twilio.rest import Client as TwilioClient
 
 def get_db_connection():
     """Create and return a database connection using DATABASE_URL environment variable"""
@@ -54,26 +54,16 @@ SMTP_PASSWORD = os.environ.get('MAIL_PASSWORD')
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 
-TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
-TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
-TWILIO_WHATSAPP_NUMBER = os.environ.get('TWILIO_WHATSAPP_NUMBER', 'whatsapp:+14155238886')  # Twilio Sandbox default
+GREEN_API_ID_INSTANCE = os.environ.get('GREEN_API_ID_INSTANCE', '7105417909')
+GREEN_API_TOKEN = os.environ.get('GREEN_API_TOKEN', '5a524925ff024788818b04590bcfa39f5a1efa8e0e0b42c2b8')
+GREEN_API_URL = os.environ.get('GREEN_API_URL', 'https://7105.api.greenapi.com')
 
 SMS_API_KEY = os.environ.get('SMS_API_KEY')  # For future SMS implementation
 SMS_SENDER_ID = os.environ.get('SMS_SENDER_ID')  # For future SMS implementation
 
-# Initialize Twilio client
-twilio_client = None
-if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
-    try:
-        twilio_client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-        print("Twilio client initialized successfully.")
-    except Exception as e:
-        print(f"Error initializing Twilio client: {e}")
-else:
-    print("WARNING: Twilio credentials not found. WhatsApp OTP disabled.")
-
 # --- Helper: Send Email ---
 def send_email(to_email, subject, body):
+    """Send an email to the specified recipient with the given subject and body."""
     if not SMTP_EMAIL or not SMTP_PASSWORD:
         print(f"DEBUG: Email credentials missing. Email to {to_email} not sent.")
         return False
@@ -97,43 +87,43 @@ def send_email(to_email, subject, body):
         return False
 
 def send_otp_whatsapp(mobile_number, otp):
-    """Send OTP via WhatsApp using Twilio API"""
-    if not twilio_client:
-        print(f"DEBUG: Twilio not configured. WhatsApp OTP to {mobile_number} not sent.")
+    """Send OTP via WhatsApp using Green API"""
+    if not GREEN_API_ID_INSTANCE or not GREEN_API_TOKEN:
+        print(f"DEBUG: Green API not configured. WhatsApp OTP to {mobile_number} not sent.")
         print(f"DEBUG: OTP for {mobile_number} is ===> {otp} <===")
         return False
         
     try:
-        # Format the mobile number (ensure it has country code)
-        formatted_number = mobile_number.strip()
-        
-        # Remove any existing prefix
-        formatted_number = formatted_number.replace('whatsapp:', '').replace('+', '')
+        # Format the mobile number
+        clean_mobile = mobile_number.strip().replace("+", "").replace(" ", "").replace("-", "")
         
         # Add country code if not present (assuming India +91)
-        if not formatted_number.startswith('91'):
-            formatted_number = '91' + formatted_number
+        if len(clean_mobile) == 10:
+            clean_mobile = "91" + clean_mobile
         
-        # Add + and whatsapp: prefix for Twilio WhatsApp
-        whatsapp_to = f"whatsapp:+{formatted_number}"
+        # Green API endpoint
+        url = f"{GREEN_API_URL}/waInstance{GREEN_API_ID_INSTANCE}/sendMessage/{GREEN_API_TOKEN}"
         
-        # Ensure from number has whatsapp: prefix
-        from_number = TWILIO_WHATSAPP_NUMBER
-        if not from_number.startswith('whatsapp:'):
-            from_number = f"whatsapp:{from_number}"
+        payload = {
+            "chatId": f"{clean_mobile}@c.us",
+            "message": f"Your Vanita Lunch Home verification code is: {otp}\n\nThis code is valid for 10 minutes. Do not share it with anyone."
+        }
         
-        print(f"DEBUG: Sending WhatsApp OTP from {from_number} to {whatsapp_to}")
+        headers = {'Content-Type': 'application/json'}
         
-        message_body = f"Your Vanita Lunch Home verification code is: {otp}\n\nThis code is valid for 10 minutes. Do not share it with anyone."
+        print(f"DEBUG: Sending WhatsApp OTP via Green API to {clean_mobile}")
         
-        message = twilio_client.messages.create(
-            body=message_body,
-            from_=from_number,
-            to=whatsapp_to
-        )
+        response = requests.post(url, json=payload, headers=headers)
         
-        print(f"WhatsApp OTP sent successfully to {formatted_number}. SID: {message.sid}")
-        return True
+        print(f"Green-API Response: {response.status_code} - {response.text}")
+        
+        if response.status_code == 200:
+            print(f"WhatsApp OTP sent successfully to {clean_mobile}")
+            return True
+        else:
+            print(f"Failed to send WhatsApp OTP: {response.text}")
+            print(f"DEBUG: OTP for {mobile_number} is ===> {otp} <===")
+            return False
         
     except Exception as e:
         print(f"Failed to send WhatsApp OTP: {e}")
