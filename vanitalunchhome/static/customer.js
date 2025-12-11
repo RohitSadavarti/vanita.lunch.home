@@ -541,10 +541,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (result.success) {
           cart = []
-          saveCart()
+          localStorage.removeItem("vanita_cart")
+
+          // Reset checkout form
+          checkoutForm.reset()
+
+          // Update UI immediately
           updateCartUI()
-          toggleCart()
-          showToast("Order placed successfully!", "success")
+
+          // Close cart sidebar
+          const sidebar = document.getElementById("cartSidebar")
+          const overlay = document.getElementById("cartOverlay")
+          if (sidebar && overlay) {
+            sidebar.classList.add("translate-x-full")
+            overlay.classList.add("hidden")
+            document.body.style.overflow = ""
+          }
+
+          showToast(`Order placed successfully! Order ID: ${result.order_id}`, "success")
+
+          // Reload page after 2 seconds to show fresh state
+          setTimeout(() => {
+            window.location.reload()
+          }, 2000)
         } else {
           showToast(result.error || "Failed to place order", "error")
         }
