@@ -83,18 +83,17 @@
                             <span id="user-location-display" class="text-sm font-medium text-gray-700 truncate max-w-[150px]">Select Location</span>
                         </div>
 
-                        <div class="relative group">
-                            <button class="flex items-center gap-2 hover:bg-gray-100 p-2 rounded-lg transition">
+                        <div class="relative">
+                            <button onclick="toggleProfileMenu(event)" class="flex items-center gap-2 hover:bg-gray-100 p-2 rounded-lg transition">
                                 <div class="h-8 w-8 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center font-bold" id="user-avatar">U</div>
                                 <span id="user-name-display" class="text-sm font-medium hidden sm:block">User</span>
                                 <i data-lucide="chevron-down" class="h-4 w-4 text-gray-400"></i>
                             </button>
-                            <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-2 hidden group-hover:block border border-gray-100">
-                                <a href="#" onclick="viewMyOrders(); return false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">My Orders</a>
+                            <div id="profile-dropdown" class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-2 hidden border border-gray-100 z-50">
+                                <a href="#" onclick="viewMyOrders(); toggleProfileMenu(event); return false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">My Orders</a>
                                 <a href="#" onclick="logoutUser()" class="block px-4 py-2 text-sm text-red-600 hover:bg-red-50">Log Out</a>
                             </div>
                         </div>
-
                         <button id="cartBtn" class="relative p-2 text-gray-600 hover:text-orange-600 transition">
                             <i data-lucide="shopping-cart" class="h-6 w-6"></i>
                             <span id="cartCount" class="absolute -top-1 -right-1 h-5 w-5 bg-orange-600 text-white text-xs font-bold rounded-full flex items-center justify-center hidden shadow-sm">0</span>
