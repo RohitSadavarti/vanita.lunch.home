@@ -90,6 +90,7 @@
                                 <i data-lucide="chevron-down" class="h-4 w-4 text-gray-400"></i>
                             </button>
                             <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-2 hidden group-hover:block border border-gray-100">
+                                <a href="#" onclick="viewMyOrders(); return false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">My Orders</a>
                                 <a href="#" onclick="logoutUser()" class="block px-4 py-2 text-sm text-red-600 hover:bg-red-50">Log Out</a>
                             </div>
                         </div>
@@ -213,6 +214,23 @@
                 <button onclick="switchAuthTab('register')" class="mt-4 text-sm text-gray-500 hover:text-gray-700">Wrong number? Go back</button>
             </div>
 
+        </div>
+    </div>
+
+    <div id="orders-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-96 overflow-hidden flex flex-col">
+            <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 class="text-2xl font-bold text-gray-800">My Orders</h2>
+                <button onclick="closeOrdersModal()" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="h-6 w-6"></i>
+                </button>
+            </div>
+            
+            <div id="orders-list" class="flex-1 overflow-y-auto p-6">
+                <div class="flex items-center justify-center h-32">
+                    <p class="text-gray-500">Loading your orders...</p>
+                </div>
+            </div>
         </div>
     </div>
 
