@@ -17,6 +17,82 @@ document.addEventListener("DOMContentLoaded", () => {
   setupEventListeners()
 })
 
+// --- TOAST NOTIFICATIONS ---
+function showToast(message, type = "success") {
+    const toast = document.getElementById("toast")
+    if (!toast) {
+        console.warn("Toast element not found")
+        return
+    }
+    
+    // Remove old classes
+    toast.className = "fixed bottom-6 right-6 px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 z-[60] animate-slide-up text-white"
+    
+    // Add color based on type
+    if (type === "error") {
+        toast.classList.add("bg-red-500")
+    } else {
+        toast.classList.add("bg-green-500")
+    }
+    
+    const messageEl = document.getElementById("toast-message")
+    if (messageEl) messageEl.textContent = message
+    
+    toast.classList.remove("hidden")
+    setTimeout(() => toast.classList.add("hidden"), 3000)
+}
+
+window.showToast = showToast
+
+// --- STORAGE FUNCTIONS ---
+function loadCartFromStorage() {
+    try {
+        const stored = localStorage.getItem("vanita_cart")
+        cart = stored ? JSON.parse(stored) : []
+    } catch (e) {
+        console.error("Failed to load cart:", e)
+        cart = []
+    }
+}
+
+function saveCart() {
+    try {
+        localStorage.setItem("vanita_cart", JSON.stringify(cart))
+    } catch (e) {
+        console.error("Failed to save cart:", e)
+    }
+}
+
+// --- UI TOGGLE FUNCTIONS ---
+function toggleCart() {
+    const sidebar = document.getElementById("cartSidebar")
+    const overlay = document.getElementById("cartOverlay")
+    if (!sidebar || !overlay) return
+
+    const isOpen = !sidebar.classList.contains("translate-x-full")
+
+    if (isOpen) {
+        sidebar.classList.add("translate-x-full")
+        overlay.classList.add("hidden")
+        document.body.style.overflow = ""
+    } else {
+        sidebar.classList.remove("translate-x-full")
+        overlay.classList.remove("hidden")
+        document.body.style.overflow = "hidden"
+    }
+}
+
+window.toggleCart = toggleCart
+
+function scrollToSection(sectionId) {
+    const element = document.getElementById(sectionId)
+    if (element) {
+        element.scrollIntoView({ behavior: "smooth" })
+    }
+}
+
+window.scrollToSection = scrollToSection
+
 // --- GEOLOCATION LOGIC ---
 
 function detectLocation(targetInputId) {
@@ -117,8 +193,12 @@ function showApp() {
     document.getElementById("user-location-display").textContent = "Select Location"
     const dropdown = document.querySelector(".group .absolute")
     if (dropdown) {
-      dropdown.innerHTML = `<a href="#" onclick="showAuthModal('login')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Log In</a>`
+      dropdown.innerHTML = `<a href="#" onclick="showAuthModal('login'); return false" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Log In</a>`
     }
+  }
+
+  if (window.lucide) {
+    lucide.createIcons()
   }
 }
 
@@ -128,11 +208,17 @@ function showLanding() {
   document.getElementById("landing-page").classList.remove("hidden")
   document.getElementById("main-app").classList.add("hidden")
   currentUser = null
+
+  if (window.lucide) {
+    lucide.createIcons()
+  }
 }
 
 function logoutUser() {
   localStorage.removeItem("vlh_user")
   currentUser = null
+  cart = []
+  localStorage.removeItem("vanita_cart")
   window.location.reload()
 }
 
@@ -148,6 +234,10 @@ function switchAuthTab(tab) {
   if (tab === "login") document.getElementById("login-form").classList.remove("hidden")
   if (tab === "register") document.getElementById("register-form").classList.remove("hidden")
   if (tab === "otp") document.getElementById("otp-form").classList.remove("hidden")
+
+  if (window.lucide) {
+    lucide.createIcons()
+  }
 }
 
 function showAuthModal(tab) {
@@ -208,6 +298,7 @@ async function handleRegister(e) {
       showToast(result.error, "error")
     }
   } catch (error) {
+    console.error("Registration error:", error)
     showToast("Registration failed. Try again.", "error")
   } finally {
     btn.innerText = originalText
@@ -228,6 +319,11 @@ async function handleVerifyOTP(e) {
     return
   }
 
+  const btn = e.target.querySelector('button[type="submit"]')
+  const originalText = btn.innerText
+  btn.innerText = "Verifying..."
+  btn.disabled = true
+
   try {
     const response = await fetch("/api/verify-otp", {
       method: "POST",
@@ -247,7 +343,11 @@ async function handleVerifyOTP(e) {
       showToast(result.error, "error")
     }
   } catch (error) {
+    console.error("Verification error:", error)
     showToast("Verification failed.", "error")
+  } finally {
+    btn.innerText = originalText
+    btn.disabled = false
   }
 }
 
@@ -294,6 +394,7 @@ async function resendOTP() {
       btn.disabled = false
     }
   } catch (error) {
+    console.error("Resend OTP error:", error)
     showToast("Failed to resend OTP.", "error")
     btn.innerText = "Resend OTP"
     btn.disabled = false
@@ -305,6 +406,7 @@ window.resendOTP = resendOTP
 async function handleLogin(e) {
   e.preventDefault()
   const btn = e.target.querySelector("button")
+  const originalText = btn.innerText
   btn.innerText = "Logging in..."
   btn.disabled = true
 
@@ -324,14 +426,16 @@ async function handleLogin(e) {
     if (result.success) {
       localStorage.setItem("vlh_user", JSON.stringify(result.user))
       closeAuthModal()
+      showToast("Logged in successfully!", "success")
       window.location.reload()
     } else {
-      showToast(result.error, "error")
+      showToast(result.error || "Login failed", "error")
     }
   } catch (error) {
-    showToast("Login error.", "error")
+    console.error("Login error:", error)
+    showToast("Login error. Please try again.", "error")
   } finally {
-    btn.innerText = "Log In"
+    btn.innerText = originalText
     btn.disabled = false
   }
 }
@@ -386,7 +490,7 @@ function renderMenu(items) {
       "bg-white rounded-xl shadow-sm hover:shadow-md transition overflow-hidden border border-gray-100 flex flex-col h-full group"
     card.innerHTML = `
             <div class="relative h-48 overflow-hidden">
-                <img src="${img}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" alt="${item.item_name}">
+                <img src="${img}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" alt="${item.item_name}" onerror="this.src='https://placehold.co/600x400/cccccc/ffffff?text=Image+Not+Found'">
                 <div class="absolute top-2 right-2 bg-white/90 backdrop-blur px-2 py-1 rounded text-xs font-bold text-gray-700 shadow-sm">
                     ${item.category || "General"}
                 </div>
@@ -407,11 +511,21 @@ function renderMenu(items) {
         `
     container.appendChild(card)
   })
+
+  if (window.lucide) {
+    lucide.createIcons()
+  }
 }
 
 // --- CART FUNCTIONS ---
 
 function addToCart(itemId) {
+  if (!currentUser) {
+    showToast("Please login to add items to cart", "error")
+    showAuthModal("login")
+    return
+  }
+
   const item = menuItems.find((i) => i.id === itemId)
   if (!item) return
 
@@ -498,8 +612,10 @@ function updateCartUI() {
 
     if (nameInput) nameInput.value = currentUser.name
     if (mobileInput) mobileInput.value = currentUser.mobile
-    if (addrInput && !addrInput.value) addrInput.value = currentUser.address
+    if (addrInput && !addrInput.value) addrInput.value = currentUser.address || ""
   }
+
+  if (typeof lucide !== "undefined") lucide.createIcons()
 }
 
 // --- ORDER SUBMISSION ---
@@ -525,7 +641,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const btnSpan = submitBtn.querySelector("span")
       const originalText = btnSpan.textContent
 
-      btnSpan.textContent = "Placing..."
+      // Show immediate loading state
+      btnSpan.textContent = "Processing..."
       submitBtn.disabled = true
 
       const customerAddress = document.getElementById("checkout-address").value.trim()
@@ -537,41 +654,47 @@ document.addEventListener("DOMContentLoaded", () => {
         return
       }
 
+      // Prepare order data
       const orderData = {
         name: currentUser.name,
         mobile: currentUser.mobile,
+        email: currentUser.email || '',
         address: customerAddress,
-        items: cart.map((i) => ({
+        cart_items: cart.map((i) => ({
           id: i.id,
-          name: i.name,
-          price: i.price,
           quantity: i.quantity,
-        })),
-        subtotal: calculateSubtotal(),
-        total_price: calculateTotal(),
+        }))
       }
 
+      console.log('Sending order data:', orderData)
+
       try {
-        const response = await fetch("/place-order", {
+        const response = await fetch("/api/order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(orderData),
         })
 
         const result = await response.json()
+        console.log('Order response:', result)
 
-        if (!response.ok) {
-          throw new Error(result.message || "Failed to place order.")
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || result.message || "Failed to place order.")
         }
 
-        btnSpan.textContent = originalText
-        submitBtn.disabled = false
-
+        // SUCCESS - Show immediate feedback
+        showToast("Order placed successfully!", "success")
+        
+        // Clear cart and form IMMEDIATELY
+        const tempOrderId = result.order_id
+        const tempTotal = result.total_price || calculateTotal()
+        
         cart = []
         localStorage.removeItem("vanita_cart")
         checkoutForm.reset()
         updateCartUI()
 
+        // Close cart sidebar
         const sidebar = document.getElementById("cartSidebar")
         const overlay = document.getElementById("cartOverlay")
         if (sidebar && overlay) {
@@ -580,13 +703,16 @@ document.addEventListener("DOMContentLoaded", () => {
           document.body.style.overflow = ""
         }
 
-        showOrderSuccessModal(result.order_id, result.total_price || 0)
+        // Show success modal IMMEDIATELY
+        showOrderSuccessModal(tempOrderId, tempTotal)
+
       } catch (error) {
-        console.error("[v0] Order error:", error)
-        showToast(error.message, "error")
+        console.error("Order placement error:", error)
+        showToast(error.message || "Failed to place order. Please try again.", "error")
       } finally {
-        if (btnSpan) btnSpan.textContent = originalText
-        if (submitBtn) submitBtn.disabled = false
+        // Reset button
+        btnSpan.textContent = originalText
+        submitBtn.disabled = false
       }
     })
   }
@@ -600,9 +726,13 @@ function calculateTotal() {
   return cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
 }
 
-// --- NEW FUNCTION TO SHOW ORDER SUCCESS MODAL ---
+// --- ORDER SUCCESS MODAL ---
 
 function showOrderSuccessModal(orderId, totalPrice) {
+  // Remove any existing modal first
+  const existingModal = document.getElementById("order-success-modal")
+  if (existingModal) existingModal.remove()
+
   const modal = document.createElement("div")
   modal.id = "order-success-modal"
   modal.className = "fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -618,7 +748,7 @@ function showOrderSuccessModal(orderId, totalPrice) {
         <p class="text-sm text-gray-600 mb-1">Order ID</p>
         <p class="text-lg font-bold text-gray-800">#${orderId}</p>
         <p class="text-sm text-gray-600 mt-3 mb-1">Total Amount</p>
-        <p class="text-lg font-bold text-orange-600">₹${totalPrice || 0}</p>
+        <p class="text-lg font-bold text-orange-600">₹${totalPrice.toFixed(2)}</p>
       </div>
       
       <div class="space-y-2">
@@ -640,116 +770,9 @@ function closeOrderModal() {
   if (modal) modal.remove()
 }
 
-// --- UTILS ---
+window.closeOrderModal = closeOrderModal
 
-function setupEventListeners() {
-  const cartBtn = document.getElementById("cartBtn")
-  const closeCartBtn = document.getElementById("closeCartBtn")
-  const cartOverlay = document.getElementById("cartOverlay")
-
-  if (cartBtn) cartBtn.addEventListener("click", toggleCart)
-  if (closeCartBtn) closeCartBtn.addEventListener("click", toggleCart)
-  if (cartOverlay) cartOverlay.addEventListener("click", toggleCart)
-
-  const landingButtons = document.querySelectorAll("#landing-page button")
-  landingButtons.forEach((btn) => {
-    if (btn.innerText.includes("Order Now")) {
-      btn.onclick = (e) => {
-        e.preventDefault()
-        showApp()
-      }
-    }
-  })
-
-  document.querySelectorAll(".category-filter").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      document.querySelectorAll(".category-filter").forEach((b) => {
-        b.classList.remove("bg-orange-600", "text-white", "shadow-sm")
-        b.classList.add("bg-white", "text-gray-600", "hover:border-orange-500")
-      })
-      e.target.classList.remove("bg-white", "text-gray-600", "hover:border-orange-500")
-      e.target.classList.add("bg-orange-600", "text-white", "shadow-sm")
-
-      const cat = e.target.dataset.category
-      if (cat === "all") {
-        renderMenu(menuItems)
-      } else {
-        const filtered = menuItems.filter((i) => i.category === cat)
-        renderMenu(filtered)
-      }
-    })
-  })
-}
-
-function toggleCart() {
-  const sidebar = document.getElementById("cartSidebar")
-  const overlay = document.getElementById("cartOverlay")
-  if (!sidebar || !overlay) return
-
-  const isOpen = !sidebar.classList.contains("translate-x-full")
-
-  if (isOpen) {
-    sidebar.classList.add("translate-x-full")
-    overlay.classList.add("hidden")
-    document.body.style.overflow = ""
-  } else {
-    sidebar.classList.remove("translate-x-full")
-    overlay.classList.remove("hidden")
-    document.body.style.overflow = "hidden"
-    updateCartUI()
-  }
-}
-
-window.toggleCart = toggleCart
-
-function saveCart() {
-  localStorage.setItem("vanita_cart", JSON.stringify(cart))
-}
-
-function loadCartFromStorage() {
-  const saved = localStorage.getItem("vanita_cart")
-  if (saved) {
-    try {
-      cart = JSON.parse(saved)
-      updateCartUI()
-    } catch (e) {
-      cart = []
-    }
-  }
-}
-
-function showToast(msg, type = "success") {
-  const toast = document.getElementById("toast")
-  const toastMsg = document.getElementById("toast-message")
-  if (!toast || !toastMsg) return
-
-  toastMsg.innerText = msg
-
-  const icon = toast.querySelector("i")
-  if (icon) {
-    if (type === "error") {
-      icon.classList.add("text-red-400")
-      icon.classList.remove("text-orange-400", "text-green-400")
-    } else {
-      icon.classList.add("text-green-400")
-      icon.classList.remove("text-red-400", "text-orange-400")
-    }
-  }
-
-  toast.classList.remove("hidden")
-  setTimeout(() => toast.classList.add("hidden"), 3000)
-}
-
-function scrollToSection(id) {
-  const element = document.getElementById(id)
-  if (element) {
-    element.scrollIntoView({ behavior: "smooth" })
-  }
-}
-
-window.scrollToSection = scrollToSection
-
-// --- NEW FUNCTION TO VIEW ORDER STATUS ---
+// --- VIEW MY ORDERS ---
 
 async function viewMyOrders() {
   const ordersModal = document.getElementById("orders-modal")
@@ -796,31 +819,4 @@ async function viewMyOrders() {
             </span>
           </div>
           <p class="text-sm text-gray-600 mb-2">${new Date(order.created_at).toLocaleString()}</p>
-          <p class="text-sm text-gray-700 mb-2"><strong>Items:</strong> ${order.items_list}</p>
-          <p class="text-lg font-bold text-orange-600">Total: ₹${Number.parseFloat(order.total_price).toFixed(2)}</p>
-        </div>
-      `,
-        )
-        .join("")
-      ordersList.innerHTML = html
-    } else {
-      ordersList.innerHTML =
-        '<div class="flex items-center justify-center h-32"><p class="text-gray-500">No orders found</p></div>'
-    }
-  } catch (error) {
-    console.error("Error fetching orders:", error)
-    ordersList.innerHTML =
-      '<div class="flex items-center justify-center h-32"><p class="text-red-500">Error loading orders</p></div>'
-  }
-
-  if (window.lucide) {
-    lucide.createIcons()
-  }
-}
-
-function closeOrdersModal() {
-  document.getElementById("orders-modal").classList.add("hidden")
-}
-
-window.viewMyOrders = viewMyOrders
-window.closeOrdersModal = closeOrdersModal
+          <p class="text-sm text-gray-700 mb-2"><strong>Items
