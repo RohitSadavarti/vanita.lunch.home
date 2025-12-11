@@ -502,7 +502,7 @@ function updateCartUI() {
   }
 }
 
-// --- ORDER SUBMISSION - FIXED FOR IMMEDIATE FEEDBACK ---
+// --- ORDER SUBMISSION ---
 
 document.addEventListener("DOMContentLoaded", () => {
   const checkoutForm = document.getElementById("checkoutForm")
@@ -525,8 +525,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const btnSpan = submitBtn.querySelector("span")
       const originalText = btnSpan.textContent
 
-      // Show immediate loading state
-      btnSpan.textContent = "Processing..."
+      btnSpan.textContent = "Placing..."
       submitBtn.disabled = true
 
       const customerAddress = document.getElementById("checkout-address").value.trim()
@@ -538,48 +537,41 @@ document.addEventListener("DOMContentLoaded", () => {
         return
       }
 
-      // Prepare order data - FIXED: Use correct property names
       const orderData = {
         name: currentUser.name,
         mobile: currentUser.mobile,
-        email: currentUser.email || '',
         address: customerAddress,
-        cart_items: cart.map((i) => ({
+        items: cart.map((i) => ({
           id: i.id,
+          name: i.name,
+          price: i.price,
           quantity: i.quantity,
-        }))
+        })),
+        subtotal: calculateSubtotal(),
+        total_price: calculateTotal(),
       }
 
-      console.log('Sending order data:', orderData) // Debug log
-
       try {
-        // FIXED: Use correct endpoint /api/order instead of /place-order
-        const response = await fetch("/api/order", {
+        const response = await fetch("/place-order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(orderData),
         })
 
         const result = await response.json()
-        console.log('Order response:', result) // Debug log
 
-        if (!response.ok || !result.success) {
-          throw new Error(result.error || result.message || "Failed to place order.")
+        if (!response.ok) {
+          throw new Error(result.message || "Failed to place order.")
         }
 
-        // SUCCESS - Show immediate feedback
-        showToast("Order placed successfully!", "success")
-        
-        // Clear cart and form IMMEDIATELY
-        const tempOrderId = result.order_id
-        const tempTotal = result.total_price || calculateTotal()
-        
+        btnSpan.textContent = originalText
+        submitBtn.disabled = false
+
         cart = []
         localStorage.removeItem("vanita_cart")
         checkoutForm.reset()
         updateCartUI()
 
-        // Close cart sidebar
         const sidebar = document.getElementById("cartSidebar")
         const overlay = document.getElementById("cartOverlay")
         if (sidebar && overlay) {
@@ -588,16 +580,13 @@ document.addEventListener("DOMContentLoaded", () => {
           document.body.style.overflow = ""
         }
 
-        // Show success modal IMMEDIATELY
-        showOrderSuccessModal(tempOrderId, tempTotal)
-
+        showOrderSuccessModal(result.order_id, result.total_price || 0)
       } catch (error) {
-        console.error("Order placement error:", error)
-        showToast(error.message || "Failed to place order. Please try again.", "error")
+        console.error("[v0] Order error:", error)
+        showToast(error.message, "error")
       } finally {
-        // Reset button
-        btnSpan.textContent = originalText
-        submitBtn.disabled = false
+        if (btnSpan) btnSpan.textContent = originalText
+        if (submitBtn) submitBtn.disabled = false
       }
     })
   }
@@ -611,13 +600,9 @@ function calculateTotal() {
   return cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
 }
 
-// --- ORDER SUCCESS MODAL ---
+// --- NEW FUNCTION TO SHOW ORDER SUCCESS MODAL ---
 
 function showOrderSuccessModal(orderId, totalPrice) {
-  // Remove any existing modal first
-  const existingModal = document.getElementById("order-success-modal")
-  if (existingModal) existingModal.remove()
-
   const modal = document.createElement("div")
   modal.id = "order-success-modal"
   modal.className = "fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -633,7 +618,7 @@ function showOrderSuccessModal(orderId, totalPrice) {
         <p class="text-sm text-gray-600 mb-1">Order ID</p>
         <p class="text-lg font-bold text-gray-800">#${orderId}</p>
         <p class="text-sm text-gray-600 mt-3 mb-1">Total Amount</p>
-        <p class="text-lg font-bold text-orange-600">₹${totalPrice.toFixed(2)}</p>
+        <p class="text-lg font-bold text-orange-600">₹${totalPrice || 0}</p>
       </div>
       
       <div class="space-y-2">
@@ -655,9 +640,116 @@ function closeOrderModal() {
   if (modal) modal.remove()
 }
 
-window.closeOrderModal = closeOrderModal
+// --- UTILS ---
 
-// --- VIEW MY ORDERS ---
+function setupEventListeners() {
+  const cartBtn = document.getElementById("cartBtn")
+  const closeCartBtn = document.getElementById("closeCartBtn")
+  const cartOverlay = document.getElementById("cartOverlay")
+
+  if (cartBtn) cartBtn.addEventListener("click", toggleCart)
+  if (closeCartBtn) closeCartBtn.addEventListener("click", toggleCart)
+  if (cartOverlay) cartOverlay.addEventListener("click", toggleCart)
+
+  const landingButtons = document.querySelectorAll("#landing-page button")
+  landingButtons.forEach((btn) => {
+    if (btn.innerText.includes("Order Now")) {
+      btn.onclick = (e) => {
+        e.preventDefault()
+        showApp()
+      }
+    }
+  })
+
+  document.querySelectorAll(".category-filter").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      document.querySelectorAll(".category-filter").forEach((b) => {
+        b.classList.remove("bg-orange-600", "text-white", "shadow-sm")
+        b.classList.add("bg-white", "text-gray-600", "hover:border-orange-500")
+      })
+      e.target.classList.remove("bg-white", "text-gray-600", "hover:border-orange-500")
+      e.target.classList.add("bg-orange-600", "text-white", "shadow-sm")
+
+      const cat = e.target.dataset.category
+      if (cat === "all") {
+        renderMenu(menuItems)
+      } else {
+        const filtered = menuItems.filter((i) => i.category === cat)
+        renderMenu(filtered)
+      }
+    })
+  })
+}
+
+function toggleCart() {
+  const sidebar = document.getElementById("cartSidebar")
+  const overlay = document.getElementById("cartOverlay")
+  if (!sidebar || !overlay) return
+
+  const isOpen = !sidebar.classList.contains("translate-x-full")
+
+  if (isOpen) {
+    sidebar.classList.add("translate-x-full")
+    overlay.classList.add("hidden")
+    document.body.style.overflow = ""
+  } else {
+    sidebar.classList.remove("translate-x-full")
+    overlay.classList.remove("hidden")
+    document.body.style.overflow = "hidden"
+    updateCartUI()
+  }
+}
+
+window.toggleCart = toggleCart
+
+function saveCart() {
+  localStorage.setItem("vanita_cart", JSON.stringify(cart))
+}
+
+function loadCartFromStorage() {
+  const saved = localStorage.getItem("vanita_cart")
+  if (saved) {
+    try {
+      cart = JSON.parse(saved)
+      updateCartUI()
+    } catch (e) {
+      cart = []
+    }
+  }
+}
+
+function showToast(msg, type = "success") {
+  const toast = document.getElementById("toast")
+  const toastMsg = document.getElementById("toast-message")
+  if (!toast || !toastMsg) return
+
+  toastMsg.innerText = msg
+
+  const icon = toast.querySelector("i")
+  if (icon) {
+    if (type === "error") {
+      icon.classList.add("text-red-400")
+      icon.classList.remove("text-orange-400", "text-green-400")
+    } else {
+      icon.classList.add("text-green-400")
+      icon.classList.remove("text-red-400", "text-orange-400")
+    }
+  }
+
+  toast.classList.remove("hidden")
+  setTimeout(() => toast.classList.add("hidden"), 3000)
+}
+
+function scrollToSection(id) {
+  const element = document.getElementById(id)
+  if (element) {
+    element.scrollIntoView({ behavior: "smooth" })
+  }
+}
+
+window.scrollToSection = scrollToSection
+
+// --- NEW FUNCTION TO VIEW ORDER STATUS ---
 
 async function viewMyOrders() {
   const ordersModal = document.getElementById("orders-modal")
@@ -732,55 +824,3 @@ function closeOrdersModal() {
 
 window.viewMyOrders = viewMyOrders
 window.closeOrdersModal = closeOrdersModal
-
-// --- UTILS ---
-
-function setupEventListeners() {
-  const cartBtn = document.getElementById("cartBtn")
-  const closeCartBtn = document.getElementById("closeCartBtn")
-  const cartOverlay = document.getElementById("cartOverlay")
-
-  if (cartBtn) cartBtn.addEventListener("click", toggleCart)
-  if (closeCartBtn) closeCartBtn.addEventListener("click", toggleCart)
-  if (cartOverlay) cartOverlay.addEventListener("click", toggleCart)
-
-  const landingButtons = document.querySelectorAll("#landing-page button")
-  landingButtons.forEach((btn) => {
-    if (btn.innerText.includes("Order Now")) {
-      btn.onclick = (e) => {
-        e.preventDefault()
-        showApp()
-      }
-    }
-  })
-
-  document.querySelectorAll(".category-filter").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      document.querySelectorAll(".category-filter").forEach((b) => {
-        b.classList.remove("bg-orange-600", "text-white", "shadow-sm")
-        b.classList.add("bg-white", "text-gray-600", "hover:border-orange-500")
-      })
-      e.target.classList.remove("bg-white", "text-gray-600", "hover:border-orange-500")
-      e.target.classList.add("bg-orange-600", "text-white", "shadow-sm")
-
-      const cat = e.target.dataset.category
-      if (cat === "all") {
-        renderMenu(menuItems)
-      } else {
-        const filtered = menuItems.filter((i) => i.category === cat)
-        renderMenu(filtered)
-      }
-    })
-  })
-}
-
-function toggleCart() {
-  const sidebar = document.getElementById("cartSidebar")
-  const overlay = document.getElementById("cartOverlay")
-  if (!sidebar || !overlay) return
-
-  const isOpen = !sidebar.classList.contains("translate-x-full")
-
-  if (isOpen) {
-    sidebar.classList.add("translate-x-full")
-    overlay.classList.add("hidden")
