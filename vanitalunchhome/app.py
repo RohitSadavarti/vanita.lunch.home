@@ -15,6 +15,8 @@ from email.mime.multipart import MIMEMultipart
 import firebase_admin
 from firebase_admin import credentials, messaging
 
+from twilio.rest import Client as TwilioClient
+
 def get_db_connection():
     """Create and return a database connection using DATABASE_URL environment variable"""
     database_url = os.environ.get('DATABASE_URL')
