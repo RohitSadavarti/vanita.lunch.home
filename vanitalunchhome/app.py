@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import threading  # Added for background Firebase notifications
-
+from whitenoise import WhiteNoise
 # --- Firebase Imports ---
 import firebase_admin
 from firebase_admin import credentials, messaging
@@ -47,6 +47,7 @@ except Exception as e:
     print("WARNING: Firebase notifications disabled.")
 
 app = Flask(__name__)
+app.wsgi_app = WhiteNoise(app.wsgi_app, root=os.path.join(os.path.dirname(__file__), 'static'), prefix='static/')
 CORS(app, origins=['*'])
 
 # --- Email Configuration ---
