@@ -547,7 +547,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Create AbortController for timeout
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 120000) // 2 minute timeout
 
       try {
         const response = await fetch("/api/order", {
@@ -585,7 +585,7 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error("[v0] Order error:", error)
 
         if (error.name === 'AbortError') {
-          showToast("Request timed out. Please check your order status.", "error")
+          showToast("Order is being processed. Please check your order status in a few minutes.", "info")
         } else {
           showToast(error.message || "Server connection failed", "error")
         }
