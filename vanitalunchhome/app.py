@@ -1,21 +1,22 @@
-import pytz
-import os
-import psycopg2
-import bcrypt
-import smtplib
-import random
 import json
-import requests  # Added for Green API HTTP requests
-from flask import Flask, jsonify, request, render_template
-from flask_cors import CORS
-from datetime import datetime, timedelta
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import os
+import random
+import smtplib
 import threading  # Added for background Firebase notifications
-from whitenoise import WhiteNoise
+from datetime import datetime, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+import bcrypt
 # --- Firebase Imports ---
 import firebase_admin
+import psycopg2
+import pytz
+import requests  # Added for Green API HTTP requests
 from firebase_admin import credentials, messaging
+from flask import Flask, jsonify, render_template, request
+from flask_cors import CORS
+from whitenoise import WhiteNoise
 
 
 def get_db_connection():
@@ -506,6 +507,13 @@ def place_order():
             thread.start()
 
         if email:
+            def send_email_async(to_email, subject, body):
+                """Send email in a background thread to prevent blocking the response."""
+                try:
+                    send_email(to_email, subject, body)
+                except Exception as e:
+                    print(f"Error sending email: {e}")
+
             email_subject = f"Order Confirmation - #{order_id}"
             email_body = f"""
             <html>
@@ -513,7 +521,7 @@ def place_order():
                 <h2 style="color: #ff8100;">Order Placed Successfully!</h2>
                 <p>Hi {name},</p>
                 <p>Thank you for ordering from Vanita Lunch Home. We have received your order.</p>
-                
+
                 <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
                     <h3>Order Summary (#{order_id})</h3>
                     <ul>
@@ -522,7 +530,7 @@ def place_order():
                     <hr>
                     <h3>Total: ₹{total_price:.2f}</h3>
                 </div>
-                
+
                 <p><strong>Delivery Address:</strong><br>{address}</p>
                 <p>We will contact you on <strong>{mobile}</strong> if required.</p>
                 <br>
@@ -530,7 +538,9 @@ def place_order():
             </body>
             </html>
             """
-            send_email(email, email_subject, email_body)
+            thread = threading.Thread(target=send_email_async, args=(email, email_subject, email_body))
+            thread.daemon = True
+            thread.start()
 
         return jsonify({
             'success': True, 
