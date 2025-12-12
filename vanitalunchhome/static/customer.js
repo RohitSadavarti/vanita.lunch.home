@@ -545,12 +545,19 @@ document.addEventListener("DOMContentLoaded", () => {
         cart_items: cart.map((i) => ({ id: i.id, quantity: i.quantity })),
       }
 
+      // Create AbortController for timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+
       try {
         const response = await fetch("/api/order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(orderData),
+          signal: controller.signal,
         })
+
+        clearTimeout(timeoutId)
 
         const result = await response.json()
 
@@ -558,6 +565,7 @@ document.addEventListener("DOMContentLoaded", () => {
           throw new Error(result.error || "Failed to place order.")
         }
 
+        // Clear cart and update UI immediately on success
         cart = []
         localStorage.removeItem("vanita_cart")
         checkoutForm.reset()
@@ -573,8 +581,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
         showOrderSuccessModal(result.order_id, result.total_price || 0)
       } catch (error) {
+        clearTimeout(timeoutId)
         console.error("[v0] Order error:", error)
-        showToast(error.message || "Server connection failed", "error")
+
+        if (error.name === 'AbortError') {
+          showToast("Request timed out. Please check your order status.", "error")
+        } else {
+          showToast(error.message || "Server connection failed", "error")
+        }
       } finally {
         if (btnSpan) btnSpan.textContent = originalText
         if (submitBtn) submitBtn.disabled = false
