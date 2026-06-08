@@ -239,6 +239,59 @@ Set `DJANGO_SETTINGS_MODULE=vanita_lunch.settings` as a Render environment varia
 
 ---
 
-## License
 
-This project is licensed under the MIT License.
+
+
+Application Screenshots
+
+Login Page
+The secure entry point for staff members. It utilizes Django's authentication system to ensure only authorized personnel can manage orders and revenue data.
+<img width="940" height="564" alt="image" src="https://github.com/user-attachments/assets/76cd45a8-373c-4cbc-b386-0f511ea70e02" />
+
+
+ 
+
+
+ 
+Customer Menu (Flutter Mobile)
+The main interface where customers browse dishes. It features category filters (Morning Breakfast, Lunch Thali, Veg/Non-Veg) and a dynamic cart system for adding multiple quantities of food items.
+<img width="937" height="1204" alt="image" src="https://github.com/user-attachments/assets/208ac8b8-5bac-4c4b-9cc9-8553925e9231" />
+
+
+ 
+
+ 
+Admin Order Management Dashboard
+This is the live "Kitchen Command Center." New orders appear here in real-time. Staff can view the customer’s mobile number, order items, and update the status to "Ready" or "Picked Up."
+<img width="940" height="396" alt="image" src="https://github.com/user-attachments/assets/e3184e31-fa8f-4bd8-a5dd-c968b293f80c" />
+<img width="940" height="513" alt="image" src="https://github.com/user-attachments/assets/ef28333b-7767-4656-98ba-389499fd2f62" />
+<img width="940" height="459" alt="image" src="https://github.com/user-attachments/assets/bb62008a-2644-4df6-ae4f-47c5d4c1f9ce" />
+<img width="940" height="564" alt="image" src="https://github.com/user-attachments/assets/ac36c163-acbd-49ad-8d77-9b936132af7e" />
+ 
+ 
+ 
+
+ 
+
+
+
+Revenue Analytics & Reports
+A data-heavy page for the owner. It visualizes daily and monthly sales using charts and tables, allowing for a quick check on the business’s financial health and popular menu items.
+<img width="940" height="564" alt="image" src="https://github.com/user-attachments/assets/65853291-c574-4bdc-8bf3-314564127bc0" />
+ 
+
+Menu & Item Management
+The administrative page where the owner can:
+•	Add Students/Customers: Maintain user records if needed for credit-based systems.
+•	Manage Food Items: Update prices, upload food images, and toggle availability in a flash of time.
+•	Bulk Updates: Similar to student data in other systems, the admin can update the teacher/staff schedule or menu items in a single action.
+<img width="871" height="1303" alt="image" src="https://github.com/user-attachments/assets/5fbe770f-87b2-4f0c-9010-5acdc82d4550" />
+ 
+ 
+Digital Invoice
+The final output of a successful transaction. It provides a clear breakdown of items, quantities, and the total amount, replacing the need for handwritten bills.
+<img width="416" height="690" alt="image" src="https://github.com/user-attachments/assets/0659d1e7-6b5f-45a9-9046-039ae6f7dded" />
+
+
+
+  
